@@ -4,3 +4,7 @@ Desktop.ini
 *.log
 .vscode/
 .idea/
+
+# 原始素材備份（本機保留，不部署）
+assets/bgm/_src/
+assets/characters/_src/

@@ -1,10 +1,13 @@
 # 戰鬥 BGM
 
-請將三首 MP3 放到此資料夾，檔名需為：
+請將三首音檔放到此資料夾，檔名需為：
 
-- `battle-1.mp3`
-- `battle-2.mp3`
-- `battle-3.mp3`
+- `battle-1.ogg`
+- `battle-2.ogg`
+- `battle-3.ogg`
+
+格式建議：Opus in Ogg、約 96 kbps（體積小、聽感接近原 192k MP3）。
+原始 MP3 備份於 `_src/`。
 
 對戰開始時會隨機選一首循環播放；結束或回首頁會停止。
 

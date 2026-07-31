@@ -23,11 +23,11 @@ python -m http.server 8001
 
 | 類型 | 路徑 |
 |------|------|
-| 立繪 | `assets/characters/{ao,rin,ya,go}.png` |
+| 立繪／攻擊／受擊姿勢 | `assets/characters/{ao,rin,ya,go}{.webp,-atk.webp,-hit.webp}` |
 | 大招影片（約 6 秒，內建喊招／音效） | `assets/anim/{id}-cast.mp4` |
 | 受擊 | `assets/voice/{id}/hit.mp3` |
 | 敗北 | `assets/voice/{id}/defeat.mp3` |
-| 戰鬥 BGM×3 | `assets/bgm/battle-{1,2,3}.mp3` |
+| 戰鬥 BGM×3 | `assets/bgm/battle-{1,2,3}.ogg`（Opus ~96k） |
 | 連打音效 | `assets/sfx/hit{1..5}.mp3` |
 
 大招：播角色 `*-cast.mp4`（缺檔則立繪約 3 秒）；結束後接連打結算。

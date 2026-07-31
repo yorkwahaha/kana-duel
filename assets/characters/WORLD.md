@@ -6,10 +6,12 @@
 
 | ID | 名稱 | 稱號 | 必殺 | 立繪 |
 |----|------|------|------|------|
-| ao | 墨切・蒼 | 墨刃 | 一筆断空 | `ao.png` |
-| rin | 焔詠・燐 | 焔詠 | 焦言劫火 | `rin.png` |
-| ya | 霜鈴・夜 | 霜鈴 | 千鈴凍結 | `ya.png` |
-| go | 雷拳・轟 | 雷拳 | 轟鳴崩拳 | `go.png` |
+| ao | 墨切・蒼 | 墨刃 | 一筆断空 | `ao.webp`（`ao-atk.webp` / `ao-hit.webp`） |
+| rin | 焔詠・燐 | 焔詠 | 焦言劫火 | `rin.webp`（`rin-atk.webp` / `rin-hit.webp`） |
+| ya | 霜鈴・夜 | 霜鈴 | 千鈴凍結 | `ya.webp`（`ya-atk.webp` / `ya-hit.webp`） |
+| go | 雷拳・轟 | 雷拳 | 轟鳴崩拳 | `go.webp`（`go-atk.webp` / `go-hit.webp`） |
+
+原始 PNG 備份於 `_src/`。
 
 ## 媒體
 
