@@ -23,7 +23,7 @@ python -m http.server 8001
 
 | 類型 | 路徑 |
 |------|------|
-| 立繪／攻擊／受擊姿勢 | `assets/characters/{ao,rin,ya,go}{.webp,-atk.webp,-hit.webp}` |
+| 立繪／攻擊／受擊姿勢 | `assets/characters/{ao,rin,ya,go,ran,gen,sho,yo}{.webp,-atk.webp,-hit.webp}` |
 | 大招影片（約 6 秒，內建喊招／音效） | `assets/anim/{id}-cast.mp4` |
 | 受擊 | `assets/voice/{id}/hit.mp3` |
 | 敗北 | `assets/voice/{id}/defeat.mp3` |

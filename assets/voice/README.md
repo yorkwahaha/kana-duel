@@ -1,4 +1,4 @@
-# 墨域・言靈闘場 · 語音（v1.0）
+# 墨域・言靈闘場 · 語音
 
 各角色音檔：
 
@@ -7,6 +7,8 @@
 
 路徑範例：`assets/voice/ao/hit.mp3`
 
+角色 ID：`ao` `rin` `ya` `go` `ran` `gen` `sho` `yo`
+
 大招喊招／音效改由影片內建：
 
-- `assets/anim/{ao,rin,ya,go}-cast.mp4`
+- `assets/anim/{id}-cast.mp4`
