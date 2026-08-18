@@ -90,9 +90,10 @@ test("reduced-motion mode avoids long video and shake sequences", () => {
 test("split scripts load in dependency order", () => {
   const html = read("index.html");
   const scripts = ["questions-data.js", "game-content.js", "game-audio.js", "game-vfx.js", "game.js"];
-  const offsets = scripts.map((script) => html.indexOf(`src="${script}"`));
+  const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
+  assert.equal((html.match(/\?v=20260818-manual-submit/g) || []).length, 6, "CSS and scripts must bypass stale release caches");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
