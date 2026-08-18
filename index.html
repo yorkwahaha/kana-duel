@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>聲の仮名 · 墨域言靈闘場 v1.0</title>
+  <link rel="icon" href="assets/cover.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -98,12 +99,18 @@
         </div>
         <div class="char-carousel" data-char-carousel="2">
           <button class="char-nav" type="button" data-char-step="-1" data-p="2" aria-label="上一位">‹</button>
-          <div class="char-stage" data-char-stage="2"></div>
+          <div class="char-stage" data-char-stage="2" aria-label="P2 角色選擇"></div>
           <button class="char-nav" type="button" data-char-step="1" data-p="2" aria-label="下一位">›</button>
         </div>
         <div class="char-face-foot">已選 <b data-char-picked="2">—</b><span>左右滑動選角 · 不可同角</span></div>
       </div>
       <div class="char-mid" id="char-mid-opts">
+        <label class="opt"><strong>模式</strong>
+          <select id="opt-battle-mode" aria-label="對戰模式">
+            <option value="race">競速</option>
+            <option value="listen">聽力搶答</option>
+          </select>
+        </label>
         <label class="opt-toggle"><input type="checkbox" id="opt-distractors" checked /> 干擾項</label>
         <label class="opt"><strong>字數</strong>
           <select id="opt-maxlen" aria-label="題目字數上限">
@@ -129,7 +136,7 @@
         </div>
         <div class="char-carousel" data-char-carousel="1">
           <button class="char-nav" type="button" data-char-step="-1" data-p="1" aria-label="上一位">‹</button>
-          <div class="char-stage" data-char-stage="1"></div>
+          <div class="char-stage" data-char-stage="1" aria-label="P1 角色選擇"></div>
           <button class="char-nav" type="button" data-char-step="1" data-p="1" aria-label="下一位">›</button>
         </div>
         <div class="char-face-foot">已選 <b data-char-picked="1">—</b><span>左右滑動選角 · 不可同角</span></div>
@@ -166,10 +173,11 @@
             <div class="slots-hint" id="slots-hint">依序放入假名（答案不預先顯示）</div>
             <div class="slots" id="slots"></div>
             <div class="pool" id="pool"></div>
-            <div class="feedback" id="feedback"></div>
+            <div class="feedback" id="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
             <div class="actions">
               <button class="btn btn-ghost btn-sm" id="btn-clear" type="button">清空</button>
               <button class="btn btn-soft btn-sm" id="btn-listen" type="button">再聽</button>
+              <button class="btn btn-soft btn-sm hidden" id="btn-listen-seg" type="button" title="長詞分段重聽，點一次播一段">分段聽</button>
               <div class="spacer"></div>
               <button class="btn btn-primary btn-sm" id="btn-submit" type="button">提交</button>
             </div>
@@ -194,27 +202,27 @@
           <div class="duel-panel">
             <div class="duel-hp">
               <div class="hp-label"><span class="name-p2" id="hp2-name">P2</span><span id="hp2-text">2400</span></div>
-              <div class="hp-bar p2"><i id="hp2-bar"></i></div>
+              <div class="hp-bar p2" id="hp-meter-2" role="progressbar" aria-label="P2 體力" aria-valuemin="0" aria-valuemax="2400" aria-valuenow="2400"><i id="hp2-bar"></i></div>
             </div>
             <div class="duel-meters">
-              <div class="duel-meter gauge" id="gauge-wrap-2">
+              <div class="duel-meter gauge" id="gauge-wrap-2" role="progressbar" aria-label="P2 大招槽" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0">
                 <div class="bar"><i id="gauge-bar-2"></i></div>
               </div>
             </div>
             <div class="board p2" id="board2">
               <div class="slots" id="slots2"></div>
               <div class="pool" id="pool2"></div>
-              <div class="feedback" id="feedback2"></div>
+              <div class="feedback" id="feedback2" role="status" aria-live="polite" aria-atomic="true"></div>
               <div class="actions">
                 <button class="btn btn-ghost btn-sm" data-act="clear" data-p="2" type="button">清空</button>
                 <button class="btn btn-ghost btn-sm" data-act="skip" data-p="2" type="button">跳過</button>
                 <div class="spacer"></div>
                 <button class="btn btn-attack btn-p2 btn-sm" data-act="attack" data-p="2" type="button" id="btn-attack-2" disabled>攻擊 0</button>
-                <button class="btn btn-submit btn-p2 btn-sm" data-act="submit" data-p="2" type="button" id="btn-submit-2" title="格滿且全對會自動提交；排錯時再按">提交</button>
+                <button class="btn btn-submit btn-p2 btn-sm" data-act="submit" data-p="2" type="button" id="btn-submit-2" title="排好後手動提交答案">提交</button>
               </div>
             </div>
             <div class="skill-bar" id="skill-bar-2">
-              <span class="combo-chip" id="combo-chip-2">COMBO 0</span>
+              <span class="combo-chip" id="combo-chip-2" aria-live="polite">COMBO 0</span>
               <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="2" type="button" id="btn-skill-block-2" disabled title="耗 1 COMBO · 2 秒窗：期間內被按下的攻擊／大招整包傷半（含長動畫）">格擋</button>
               <button class="btn btn-skill btn-sm" data-act="skill-heal" data-p="2" type="button" id="btn-skill-heal-2" disabled title="耗 2 COMBO · 回復 200 HP">回墨</button>
               <button class="btn btn-skill btn-sm" data-act="skill-unique" data-p="2" type="button" id="btn-skill-unique-2" disabled>專屬</button>
@@ -227,6 +235,7 @@
           <div class="duel-mid-meta">
             <span class="rule-chip" id="rule-chip">墨域・言靈対決</span>
           </div>
+          <button class="chip hidden" id="btn-battle-listen" type="button" title="重播本題讀音">再聽</button>
           <span class="timer" id="battle-timer">0.0s</span>
         </div>
 
@@ -243,27 +252,27 @@
           <div class="duel-panel">
             <div class="duel-hp">
               <div class="hp-label"><span class="name-p1" id="hp1-name">P1</span><span id="hp1-text">2400</span></div>
-              <div class="hp-bar p1"><i id="hp1-bar"></i></div>
+              <div class="hp-bar p1" id="hp-meter-1" role="progressbar" aria-label="P1 體力" aria-valuemin="0" aria-valuemax="2400" aria-valuenow="2400"><i id="hp1-bar"></i></div>
             </div>
             <div class="duel-meters">
-              <div class="duel-meter gauge" id="gauge-wrap-1">
+              <div class="duel-meter gauge" id="gauge-wrap-1" role="progressbar" aria-label="P1 大招槽" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0">
                 <div class="bar"><i id="gauge-bar-1"></i></div>
               </div>
             </div>
             <div class="board p1" id="board1">
               <div class="slots" id="slots1"></div>
               <div class="pool" id="pool1"></div>
-              <div class="feedback" id="feedback1"></div>
+              <div class="feedback" id="feedback1" role="status" aria-live="polite" aria-atomic="true"></div>
               <div class="actions">
                 <button class="btn btn-ghost btn-sm" data-act="clear" data-p="1" type="button">清空</button>
                 <button class="btn btn-ghost btn-sm" data-act="skip" data-p="1" type="button">跳過</button>
                 <div class="spacer"></div>
                 <button class="btn btn-attack btn-p1 btn-sm" data-act="attack" data-p="1" type="button" id="btn-attack-1" disabled>攻擊 0</button>
-                <button class="btn btn-submit btn-p1 btn-sm" data-act="submit" data-p="1" type="button" id="btn-submit-1" title="格滿且全對會自動提交；排錯時再按">提交</button>
+                <button class="btn btn-submit btn-p1 btn-sm" data-act="submit" data-p="1" type="button" id="btn-submit-1" title="排好後手動提交答案">提交</button>
               </div>
             </div>
             <div class="skill-bar" id="skill-bar-1">
-              <span class="combo-chip" id="combo-chip-1">COMBO 0</span>
+              <span class="combo-chip" id="combo-chip-1" aria-live="polite">COMBO 0</span>
               <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="1" type="button" id="btn-skill-block-1" disabled title="耗 1 COMBO · 2 秒窗：期間內被按下的攻擊／大招整包傷半（含長動畫）">格擋</button>
               <button class="btn btn-skill btn-sm" data-act="skill-heal" data-p="1" type="button" id="btn-skill-heal-1" disabled title="耗 2 COMBO · 回復 200 HP">回墨</button>
               <button class="btn btn-skill btn-sm" data-act="skill-unique" data-p="1" type="button" id="btn-skill-unique-1" disabled>專屬</button>
@@ -300,8 +309,8 @@
     </section>
   </div>
 
-  <div class="reward-stage" id="reward-stage">
-    <div class="reward-panel">
+  <div class="reward-stage" id="reward-stage" role="dialog" aria-modal="true" aria-labelledby="reward-title" aria-hidden="true">
+    <div class="reward-panel" tabindex="-1">
       <div class="reward-video-wrap">
         <video id="reward-video" playsinline muted></video>
         <img id="reward-still" class="hidden" alt="" />
@@ -320,6 +329,9 @@
   </div>
 
   <script src="questions-data.js"></script>
+  <script src="game-content.js"></script>
+  <script src="game-audio.js"></script>
+  <script src="game-vfx.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

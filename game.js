@@ -1,517 +1,18 @@
-// —— TTS (JPAPP Google) ——
-const TTS_PROXY_URL = "https://jpapp-tts-proxy.yorkwahaha.workers.dev/tts";
-const TTS_SESSION_URL = "https://jpapp-tts-proxy.yorkwahaha.workers.dev/session";
-const TTS_VOICE = "ja-JP-Neural2-B";
-let sessionTokenData = null, currentTtsAudio = null, currentCloudTtsObjectUrl = null, ttsSessionId = 0;
-const sharedTtsAudio = new Audio();
-function revokeCloudUrl(url = currentCloudTtsObjectUrl) {
-  if (!url) return;
-  if (url === currentCloudTtsObjectUrl) currentCloudTtsObjectUrl = null;
-  try { URL.revokeObjectURL(url); } catch {}
-}
-function stopTts() {
-  ttsSessionId++; revokeCloudUrl();
-  if (currentTtsAudio) {
-    try { currentTtsAudio.pause(); currentTtsAudio.currentTime = 0; currentTtsAudio.onended = null; currentTtsAudio.onerror = null; } catch {}
-    currentTtsAudio = null;
-  }
-}
-async function getSessionToken() {
-  if (sessionTokenData && sessionTokenData.exp > Date.now() + 5000) return sessionTokenData.token;
-  const res = await fetch(TTS_SESSION_URL);
-  if (!res.ok) throw new Error("session");
-  sessionTokenData = await res.json();
-  return sessionTokenData.token;
-}
-async function speakGoogleTts(text, { rate = "1.0" } = {}) {
-  const clean = String(text || "").replace(/<[^>]*>/g, "").trim();
-  if (!clean) return false;
-  stopTts();
-  const my = ttsSessionId;
-  document.getElementById("portrait")?.classList.add("speaking");
-  let res = null;
-  // 取 token／發請求失敗時只回 false，不可 throw：呼叫端會用 await 卡住 busy 狀態
-  try {
-    for (let i = 0; i < 2; i++) {
-      const token = await getSessionToken();
-      res = await fetch(TTS_PROXY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Session-Token": token },
-        body: JSON.stringify({ text: clean, voice: TTS_VOICE, rate: String(rate), pitch: "0.0" }),
-      });
-      if (res.status === 401) { sessionTokenData = null; continue; }
-      break;
-    }
-  } catch { res = null; }
-  if (!res?.ok) {
-    document.getElementById("portrait")?.classList.remove("speaking");
-    setTtsStatus(false, "TTS 失敗" + (res?.status ? " " + res.status : ""));
-    return false;
-  }
-  if (my !== ttsSessionId) { document.getElementById("portrait")?.classList.remove("speaking"); return false; }
-  const url = URL.createObjectURL(await res.blob());
-  revokeCloudUrl(); currentCloudTtsObjectUrl = url;
-  const a = sharedTtsAudio; currentTtsAudio = a;
-  return new Promise((resolve) => {
-    const done = (ok) => {
-      if (currentTtsAudio === a) currentTtsAudio = null;
-      revokeCloudUrl(url);
-      document.getElementById("portrait")?.classList.remove("speaking");
-      resolve(ok);
-    };
-    a.onended = () => done(true);
-    a.onerror = () => done(false);
-    a.src = url;
-    a.play().then(() => setTtsStatus(true, "Google TTS · " + TTS_VOICE)).catch(() => done(false));
-  });
-}
-function setTtsStatus(ok, msg) {
-  const el = document.getElementById("tts-boot");
-  if (!el) return;
-  el.textContent = "TTS：" + msg;
-  el.className = "tts-status " + (ok ? "ok" : "err");
-}
-const sfxCache = new Map();
-const sfxBufCache = new Map();
-const voiceBufCache = new Map();
-let audioCtx = null;
-let sfxDuckFactor = 1;
-let voiceHtml = null;
-let voiceWebSrc = null;
-function stopVoice() {
-  try { if (voiceWebSrc) { voiceWebSrc.onended = null; voiceWebSrc.stop(0); voiceWebSrc.disconnect(); } } catch {}
-  voiceWebSrc = null;
-  if (voiceHtml) {
-    try { voiceHtml.pause(); voiceHtml.removeAttribute("src"); voiceHtml.load(); } catch {}
-    voiceHtml = null;
-  }
-}
-function setSfxDuck(factor) {
-  sfxDuckFactor = Math.max(0, Math.min(1, factor));
-}
-function playSfx(name, volume = 0.45) {
-  try {
-    const vol = Math.min(1, volume * sfxDuckFactor);
-    if (vol <= 0.001) return;
-    if (audioCtx && sfxBufCache.has(name)) {
-      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
-      const src = audioCtx.createBufferSource();
-      const g = audioCtx.createGain();
-      g.gain.value = vol;
-      src.buffer = sfxBufCache.get(name);
-      src.connect(g);
-      g.connect(audioCtx.destination);
-      src.start(0);
-      return;
-    }
-    let a = sfxCache.get(name);
-    if (!a) { a = new Audio("assets/sfx/" + name + ".mp3"); sfxCache.set(name, a); }
-    const c = a.cloneNode(); c.volume = vol; c.play().catch(() => {});
-  } catch {}
-}
-/** Hit 1～5 越打越痛；缺檔退回 sfx_hit。走 Web Audio，大招影片後仍聽得到。 */
-function playHitSfx(hitIndex) {
-  if (sfxDuckFactor <= 0.05) return;
-  const n = Math.max(1, Math.min(5, hitIndex));
-  const vol = 0.32 + n * 0.12;
-  const preferred = "hit" + n;
-  if (audioCtx && (sfxBufCache.has(preferred) || sfxBufCache.has("sfx_hit"))) {
-    playSfx(sfxBufCache.has(preferred) ? preferred : "sfx_hit", vol);
-    return;
-  }
-  try {
-    let a = sfxCache.get(preferred);
-    if (!a) {
-      a = new Audio("assets/sfx/" + preferred + ".mp3");
-      a.addEventListener("error", () => {
-        sfxCache.set(preferred, sfxCache.get("sfx_hit") || new Audio("assets/sfx/sfx_hit.mp3"));
-      }, { once: true });
-      sfxCache.set(preferred, a);
-    }
-    const c = a.cloneNode();
-    c.volume = Math.min(1, vol * sfxDuckFactor);
-    c.play().catch(() => playSfx("sfx_hit", vol));
-  } catch {
-    playSfx("sfx_hit", vol);
-  }
-}
-async function preloadBattleSfx() {
-  const ctx = await ensureAudioCtx();
-  if (!ctx) return;
-  const names = ["hit1", "hit2", "hit3", "hit4", "hit5", "sfx_hit", "sfx_click", "sfx_miss", "ready", "skillpop", "fanfare"];
-  await Promise.all(names.map(async (name) => {
-    if (sfxBufCache.has(name)) return;
-    try {
-      const res = await fetch("assets/sfx/" + name + ".mp3");
-      if (!res.ok) return;
-      const buf = await ctx.decodeAudioData(await res.arrayBuffer());
-      sfxBufCache.set(name, buf);
-    } catch {}
-  }));
-}
-
-// —— 戰鬥 BGM：Web Audio 迴圈播，避免影片搶焦點時被暫停 ——
-const BATTLE_BGM_PATHS = [
-  "assets/bgm/battle-1.ogg",
-  "assets/bgm/battle-2.ogg",
-  "assets/bgm/battle-3.ogg",
-];
-const BATTLE_BGM_VOL = 0.12;
-let bgmGain = null;
-let bgmSource = null;
-let bgmHtmlFallback = null;
-let bgmWatchdog = null;
-
-async function ensureAudioCtx() {
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return null;
-  if (!audioCtx) audioCtx = new AC();
-  if (audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
-  return audioCtx;
-}
-function clearBgmWatchdog() {
-  if (bgmWatchdog) { clearInterval(bgmWatchdog); bgmWatchdog = null; }
-}
-function stopBattleBgm() {
-  clearBgmWatchdog();
-  try { if (bgmSource) { bgmSource.onended = null; bgmSource.stop(0); bgmSource.disconnect(); } } catch {}
-  bgmSource = null;
-  try { if (bgmGain) bgmGain.disconnect(); } catch {}
-  bgmGain = null;
-  if (bgmHtmlFallback) {
-    try { bgmHtmlFallback.pause(); bgmHtmlFallback.src = ""; } catch {}
-    bgmHtmlFallback = null;
-  }
-}
-function applyBgmVolume() {
-  if (bgmGain && audioCtx) {
-    try { bgmGain.gain.setTargetAtTime(BATTLE_BGM_VOL, audioCtx.currentTime, 0.03); } catch { bgmGain.gain.value = BATTLE_BGM_VOL; }
-  }
-  if (bgmHtmlFallback) bgmHtmlFallback.volume = BATTLE_BGM_VOL;
-}
-function keepBattleBgmAlive() {
-  if (!battleOpen) return;
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
-  if (bgmHtmlFallback && bgmHtmlFallback.paused) bgmHtmlFallback.play().catch(() => {});
-  applyBgmVolume();
-}
-async function startBattleBgm() {
-  stopBattleBgm();
-  const src = BATTLE_BGM_PATHS[Math.floor(Math.random() * BATTLE_BGM_PATHS.length)];
-  try {
-    const ctx = await ensureAudioCtx();
-    if (!ctx) throw new Error("no AudioContext");
-    const res = await fetch(src);
-    if (!res.ok) throw new Error("bgm fetch fail");
-    const buf = await ctx.decodeAudioData(await res.arrayBuffer());
-    bgmGain = ctx.createGain();
-    bgmGain.gain.value = BATTLE_BGM_VOL;
-    bgmGain.connect(ctx.destination);
-    const node = ctx.createBufferSource();
-    node.buffer = buf;
-    node.loop = true;
-    node.connect(bgmGain);
-    node.start(0);
-    bgmSource = node;
-  } catch {
-    const a = new Audio(src);
-    a.loop = true;
-    a.volume = BATTLE_BGM_VOL;
-    bgmHtmlFallback = a;
-    a.play().catch(() => {});
-  }
-  clearBgmWatchdog();
-  bgmWatchdog = setInterval(keepBattleBgmAlive, 250);
-  preloadBattleSfx().catch(() => {});
-}
-
-// —— 墨域言靈闘場 · 第 1 期 4 角（v1.0）——
-// voiceHit / voiceDefeat：受擊／敗北語音；大招喊招改由 castVideo 內建音軌
-// castVideo: 約 6 秒大招影片（含喊招＋發動音效）
-const CHARACTERS = [
-  {
-    id: "ao", name: "墨切・蒼", title: "墨刃", skill: "一筆断空",
-    image: "assets/characters/ao.webp",
-    imageAtk: "assets/characters/ao-atk.webp",
-    imageHit: "assets/characters/ao-hit.webp",
-    castVideo: "assets/anim/ao-cast.mp4",
-    voiceHit: "assets/voice/ao/hit.mp3",
-    voiceDefeat: "assets/voice/ao/defeat.mp3",
-    passive: { id: "ink_flow", label: "墨意蓄積", desc: "答對時大招槽 +2", gaugePerCorrect: 2 },
-    active: { id: "ink_seal", label: "墨鎖", desc: "耗 2 COMBO · 鎖對手提交 5 秒", cost: 2 },
-  },
-  {
-    id: "rin", name: "焔詠・燐", title: "焔詠", skill: "焦言劫火",
-    image: "assets/characters/rin.webp",
-    imageAtk: "assets/characters/rin-atk.webp",
-    imageHit: "assets/characters/rin-hit.webp",
-    castVideo: "assets/anim/rin-cast.mp4",
-    voiceHit: "assets/voice/rin/hit.mp3",
-    voiceDefeat: "assets/voice/rin/defeat.mp3",
-    passive: { id: "ember_surge", label: "劫火倍加", desc: "大招 ×1.9，蓄力略慢", specialMult: 1.9, chargeMult: 0.9 },
-    active: { id: "ember_steal", label: "奪焰", desc: "耗 2 COMBO · 偷對手蓄力約 1/5（至少 40）", cost: 2 },
-  },
-  {
-    id: "ya", name: "霜鈴・夜", title: "霜鈴", skill: "千鈴凍結",
-    image: "assets/characters/ya.webp",
-    imageAtk: "assets/characters/ya-atk.webp",
-    imageHit: "assets/characters/ya-hit.webp",
-    castVideo: "assets/anim/ya-cast.mp4",
-    voiceHit: "assets/voice/ya/hit.mp3",
-    voiceDefeat: "assets/voice/ya/defeat.mp3",
-    passive: { id: "frost_clear", label: "霜鈴澄心", desc: "字池少 2 個干擾字", distractorDelta: -2 },
-    active: { id: "frost_seal", label: "霜封", desc: "耗 2 COMBO · 鎖對手攻擊／大招 4 秒", cost: 2 },
-  },
-  {
-    id: "go", name: "雷拳・轟", title: "雷拳", skill: "轟鳴崩拳",
-    image: "assets/characters/go.webp",
-    imageAtk: "assets/characters/go-atk.webp",
-    imageHit: "assets/characters/go-hit.webp",
-    castVideo: "assets/anim/go-cast.mp4",
-    voiceHit: "assets/voice/go/hit.mp3",
-    voiceDefeat: "assets/voice/go/defeat.mp3",
-    passive: { id: "thunder_chain", label: "連崩雷撃", desc: "攻擊連打多 2 下", hitBonus: 2 },
-    active: { id: "thunder_amp", label: "連鳴", desc: "耗 2 COMBO · 下次攻擊再 +5 段", cost: 2 },
-  },
-  {
-    id: "ran", name: "風蹴・嵐", title: "風蹴", skill: "嵐脚千刃",
-    image: "assets/characters/ran.webp",
-    imageAtk: "assets/characters/ran-atk.webp",
-    imageHit: "assets/characters/ran-hit.webp",
-    castVideo: "assets/anim/ran-cast.mp4",
-    voiceHit: "assets/voice/ran/hit.mp3",
-    voiceDefeat: "assets/voice/ran/defeat.mp3",
-    passive: { id: "wind_rush", label: "風迅連脚", desc: "蓄力略快", chargeMult: 1.12 },
-    active: { id: "wind_step", label: "風閃", desc: "耗 2 COMBO · 解除自身封鎖並格擋 3 秒", cost: 2 },
-  },
-  {
-    id: "gen", name: "影刃・玄", title: "影刃", skill: "墨影千刹",
-    image: "assets/characters/gen.webp",
-    imageAtk: "assets/characters/gen-atk.webp",
-    imageHit: "assets/characters/gen-hit.webp",
-    castVideo: "assets/anim/gen-cast.mp4",
-    voiceHit: "assets/voice/gen/hit.mp3",
-    voiceDefeat: "assets/voice/gen/defeat.mp3",
-    passive: { id: "shadow_cut", label: "影刃連斬", desc: "攻擊連打多 1 下", hitBonus: 1 },
-    active: { id: "shadow_bind", label: "影縛", desc: "耗 2 COMBO · 鎖對手提交 5 秒", cost: 2 },
-  },
-  {
-    id: "sho", name: "符筆・章", title: "符筆", skill: "万符封言",
-    image: "assets/characters/sho.webp",
-    imageAtk: "assets/characters/sho-atk.webp",
-    imageHit: "assets/characters/sho-hit.webp",
-    castVideo: "assets/anim/sho-cast.mp4",
-    voiceHit: "assets/voice/sho/hit.mp3",
-    voiceDefeat: "assets/voice/sho/defeat.mp3",
-    passive: { id: "seal_eye", label: "符眼", desc: "字池少 1 個干擾字", distractorDelta: -1 },
-    active: { id: "seal_silence", label: "封言", desc: "耗 2 COMBO · 鎖對手攻擊／大招 4 秒", cost: 2 },
-  },
-  {
-    id: "yo", name: "光扇・陽", title: "光扇", skill: "扇華断空",
-    image: "assets/characters/yo.webp",
-    imageAtk: "assets/characters/yo-atk.webp",
-    imageHit: "assets/characters/yo-hit.webp",
-    castVideo: "assets/anim/yo-cast.mp4",
-    voiceHit: "assets/voice/yo/hit.mp3",
-    voiceDefeat: "assets/voice/yo/defeat.mp3",
-    passive: { id: "light_bloom", label: "光華", desc: "大招 ×1.7，蓄力略慢", specialMult: 1.7, chargeMult: 0.92 },
-    active: { id: "light_drain", label: "奪輝", desc: "耗 2 COMBO · 偷對手蓄力約 1/5（至少 40）", cost: 2 },
-  },
-];
-
-const TYPE_LABEL = {
-  character: "角色名",
-  skill: "招式名",
-  custom_skill: "自創招式",
-  vocab: "詞彙",
-};
-
-/** 從 questions-data.js 載入；練習可抽樣、對戰用完整庫洗牌 */
-function normalizeQuestions(list) {
-  return (list || []).map((q, i) => {
-    const seq = (q.kanaSequence || []).slice(0, 16);
-    return {
-      ...q,
-      id: q.id || ("q_" + i),
-      kanaSequence: seq,
-      speakText: q.speakText || seq.join(""),
-      kanji: q.kanji || null,
-      zh: q.zh || null,
-      // 預設隱藏答案文字（聽音拼字才有練習效果）
-      hideDisplayNameUntilClear: q.hideDisplayNameUntilClear !== false,
-      rewardMode: q.rewardMode || (q.contentType === "skill" || q.contentType === "custom_skill" ? "cast_skill" : "celebrate"),
-      image: q.image || defaultImageFor(q),
-      castVideo: q.castVideo || null,
-    };
-  }).filter((q) => q.kanaSequence.length >= 1);
-}
-function questionPromptTitle(q) {
-  if (!q.hideDisplayNameUntilClear) return q.displayName;
-  return `聽音拼假名（${q.kanaSequence.length} 格）`;
-}
-function defaultImageFor(q) {
-  if (q.contentType === "skill" || q.contentType === "custom_skill") return "assets/characters/rin.webp";
-  if (q.contentType === "character") return "assets/characters/ao.webp";
-  return "assets/characters/ya.webp";
-}
-const ALL_QUESTIONS = normalizeQuestions(window.KANA_QUESTIONS || []);
-let QUESTIONS = ALL_QUESTIONS.slice();
-const PRACTICE_ROUND_SIZE = 12; // 單人一輪題數（從大題庫抽）
-const MAX_HP = 2400;
-const GAUGE_HITS_TO_FULL = 8;
-const SPECIAL_MULT = 1.55;
-const COMBO_DAMAGE_PER_HIT = 0.05; // 每多一段連打 +5% 總傷
-const MAX_ATTACK_SEGMENTS = 8; // 演出段數上限；傷害仍照完整段數計算
-const MISS_SELF_DMG_PER_WRONG = 72; // 答錯每格對自己扣血
-const DRAG_THRESHOLD = 4;
-const BLOCK_COMBO_COST = 1;
-const BLOCK_DURATION_MS = 2000;
-const BLOCK_DAMAGE_MULT = 0.5;
-const HEAL_COMBO_COST = 2;
-const HEAL_AMOUNT = 200;
-const SUBMIT_LOCK_MS = 5000;
-const ATTACK_LOCK_MS = 4000;
-const STEAL_CHARGE_MIN = 40;
-const STEAL_CHARGE_RATIO = 0.2;
-// 發動時已扣 2 COMBO（等於先少 2 段），要淨賺就必須大於成本
-const AMP_HIT_BONUS = 5;
-
-const $ = (id) => document.getElementById(id);
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-function shuffle(a) {
-  const x = a.slice();
-  for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; }
-  return x;
-}
-function diamonds(n) { return n <= 4 ? "◆" : n <= 7 ? "◆◆" : n <= 10 ? "◆◆◆" : "◆◆◆◆"; }
-const KANA_ROMAJI = {
-  あ:"a",い:"i",う:"u",え:"e",お:"o",
-  か:"ka",き:"ki",く:"ku",け:"ke",こ:"ko",
-  さ:"sa",し:"shi",す:"su",せ:"se",そ:"so",
-  た:"ta",ち:"chi",つ:"tsu",て:"te",と:"to",
-  な:"na",に:"ni",ぬ:"nu",ね:"ne",の:"no",
-  は:"ha",ひ:"hi",ふ:"fu",へ:"he",ほ:"ho",
-  ま:"ma",み:"mi",む:"mu",め:"me",も:"mo",
-  や:"ya",ゆ:"yu",よ:"yo",
-  ら:"ra",り:"ri",る:"ru",れ:"re",ろ:"ro",
-  わ:"wa",を:"wo",ん:"n",
-  が:"ga",ぎ:"gi",ぐ:"gu",げ:"ge",ご:"go",
-  ざ:"za",じ:"ji",ず:"zu",ぜ:"ze",ぞ:"zo",
-  だ:"da",ぢ:"ji",づ:"zu",で:"de",ど:"do",
-  ば:"ba",び:"bi",ぶ:"bu",べ:"be",ぼ:"bo",
-  ぱ:"pa",ぴ:"pi",ぷ:"pu",ぺ:"pe",ぽ:"po",
-  きゃ:"kya",きゅ:"kyu",きょ:"kyo",
-  しゃ:"sha",しゅ:"shu",しょ:"sho",
-  ちゃ:"cha",ちゅ:"chu",ちょ:"cho",
-  にゃ:"nya",にゅ:"nyu",にょ:"nyo",
-  ひゃ:"hya",ひゅ:"hyu",ひょ:"hyo",
-  みゃ:"mya",みゅ:"myu",みょ:"myo",
-  りゃ:"rya",りゅ:"ryu",りょ:"ryo",
-  ぎゃ:"gya",ぎゅ:"gyu",ぎょ:"gyo",
-  じゃ:"ja",じゅ:"ju",じょ:"jo",
-  びゃ:"bya",びゅ:"byu",びょ:"byo",
-  ぴゃ:"pya",ぴゅ:"pyu",ぴょ:"pyo",
-  っ:"xtu",ー:"-",
-  ア:"a",イ:"i",ウ:"u",エ:"e",オ:"o",
-  カ:"ka",キ:"ki",ク:"ku",ケ:"ke",コ:"ko",
-  サ:"sa",シ:"shi",ス:"su",セ:"se",ソ:"so",
-  タ:"ta",チ:"chi",ツ:"tsu",テ:"te",ト:"to",
-  ナ:"na",ニ:"ni",ヌ:"nu",ネ:"ne",ノ:"no",
-  ハ:"ha",ヒ:"hi",フ:"fu",ヘ:"he",ホ:"ho",
-  マ:"ma",ミ:"mi",ム:"mu",メ:"me",モ:"mo",
-  ヤ:"ya",ユ:"yu",ヨ:"yo",
-  ラ:"ra",リ:"ri",ル:"ru",レ:"re",ロ:"ro",
-  ワ:"wa",ヲ:"wo",ン:"n",
-  ガ:"ga",ギ:"gi",グ:"gu",ゲ:"ge",ゴ:"go",
-  ザ:"za",ジ:"ji",ズ:"zu",ゼ:"ze",ゾ:"zo",
-  ダ:"da",ヂ:"ji",ヅ:"zu",デ:"de",ド:"do",
-  バ:"ba",ビ:"bi",ブ:"bu",ベ:"be",ボ:"bo",
-  パ:"pa",ピ:"pi",プ:"pu",ペ:"pe",ポ:"po",
-  キャ:"kya",キュ:"kyu",キョ:"kyo",
-  シャ:"sha",シュ:"shu",ショ:"sho",
-  チャ:"cha",チュ:"chu",チョ:"cho",
-  ニャ:"nya",ニュ:"nyu",ニョ:"nyo",
-  ヒャ:"hya",ヒュ:"hyu",ヒョ:"hyo",
-  ミャ:"mya",ミュ:"myu",ミョ:"myo",
-  リャ:"rya",リュ:"ryu",リョ:"ryo",
-  ギャ:"gya",ギュ:"gyu",ギョ:"gyo",
-  ジャ:"ja",ジュ:"ju",ジョ:"jo",
-  ビャ:"bya",ビュ:"byu",ビョ:"byo",
-  ピャ:"pya",ピュ:"pyu",ピョ:"pyo",
-  ファ:"fa",フィ:"fi",フェ:"fe",フォ:"fo",フュ:"fyu",
-  ヴァ:"va",ヴィ:"vi",ヴ:"vu",ヴェ:"ve",ヴォ:"vo",
-  ウィ:"wi",ウェ:"we",ウォ:"wo",
-  ティ:"ti",ディ:"di",トゥ:"tu",ドゥ:"du",
-  チェ:"che",シェ:"she",ジェ:"je",
-  ッ:"xtu",
-};
-function romajiOfKana(kana) {
-  if (KANA_ROMAJI[kana]) return KANA_ROMAJI[kana];
-  return kana;
-}
-function romajiSequence(seq) {
-  return (seq || []).map(romajiOfKana);
-}
-function nearDistractors(k) {
-  const m = { ご:["こ","が","ぐ"],く:["き","ぐ","け"],う:["お","ん","む"],さ:["ざ","し","た"],ら:["り","ろ","な"],りょ:["りゅ","り","よ"],い:["き","え","り"],き:["ぎ","ち","け"],て:["で","た","ち"],ん:["む","の","う"],か:["が","け","こ"] };
-  return m[k] || [];
-}
-function buildPool(seq, distractorDelta = 0, opts = {}) {
-  const correct = seq.map((kana, i) => ({ id: "c"+i+"_"+Math.random().toString(36).slice(2,5), kana, used: false }));
-  if (opts.noDistractors) return shuffle(correct);
-  const extraN = Math.max(1, (seq.length <= 4 ? 3 : 4) + (distractorDelta || 0));
-  const bag = new Set();
-  seq.forEach((k) => nearDistractors(k).forEach((d) => bag.add(d)));
-  ["あ","い","う","ん","き","し","つ","よ"].forEach((d) => bag.add(d));
-  seq.forEach((k) => bag.delete(k));
-  const extras = shuffle([...bag]).slice(0, extraN).map((kana, i) => ({ id: "d"+i+"_"+Math.random().toString(36).slice(2,5), kana, used: false }));
-  return shuffle([...correct, ...extras]);
-}
-
-let battleOpts = { distractors: true, maxLen: 0, script: "all" };
-function readBattleOptsFromUi() {
-  const dist = $("opt-distractors");
-  const maxEl = $("opt-maxlen");
-  const scriptEl = $("opt-script");
-  battleOpts = {
-    distractors: dist ? !!dist.checked : true,
-    maxLen: maxEl ? (Number(maxEl.value) || 0) : 0,
-    script: scriptEl ? (scriptEl.value || "all") : "all",
-  };
-  return battleOpts;
-}
-function scriptOfSeq(seq) {
-  let hira = 0, kata = 0;
-  (seq || []).forEach((k) => {
-    for (const ch of k) {
-      const c = ch.codePointAt(0);
-      if (c >= 0x3041 && c <= 0x3096) hira += 1;
-      else if (c >= 0x30A1 && c <= 0x30FA) kata += 1;
-    }
-  });
-  if (hira && !kata) return "hira";
-  if (kata && !hira) return "kata";
-  return "mixed";
-}
-function buildBattleDeck() {
-  readBattleOptsFromUi();
-  let list = ALL_QUESTIONS.slice();
-  if (battleOpts.maxLen > 0) {
-    list = list.filter((q) => q.kanaSequence.length <= battleOpts.maxLen);
-  }
-  if (battleOpts.script === "hira" || battleOpts.script === "kata") {
-    list = list.filter((q) => scriptOfSeq(q.kanaSequence) === battleOpts.script);
-  }
-  if (!list.length) {
-    // 篩太嚴時回退：只保留字數條件，再不行用全庫
-    list = ALL_QUESTIONS.slice();
-    if (battleOpts.maxLen > 0) {
-      const limited = list.filter((q) => q.kanaSequence.length <= battleOpts.maxLen);
-      if (limited.length) list = limited;
-    }
-  }
-  return shuffle(list);
-}
+/* global $, ALL_QUESTIONS, AMP_HIT_BONUS, ATTACK_LOCK_MS, BLOCK_COMBO_COST */
+/* global BLOCK_DAMAGE_MULT, BLOCK_DURATION_MS, CHARACTERS, COMBO_DAMAGE_PER_HIT */
+/* global DRAG_THRESHOLD, GAUGE_HITS_TO_FULL, HEAL_AMOUNT, HEAL_COMBO_COST */
+/* global MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, PRACTICE_ROUND_SIZE */
+/* global SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO, SUBMIT_LOCK_MS */
+/* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, clearBattleFx */
+/* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf, getSessionToken */
+/* global isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
+/* global playCastBurst, playHitSfx, playSfx, playSpecialAftermath */
+/* global preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi */
+/* global romajiSequence, setSfxDuck, setTtsStatus, shakeBattle, showCombo, shuffle */
+/* global spawnBlockParry, spawnHitBurst, speakGoogleTts, startBattleBgm, stopBattleBgm */
+/* global stopTts, stopVoice, voiceBufCache, wait */
+/* global QUESTIONS:writable, voiceHtml:writable, voiceWebSrc:writable */
+// Main interaction, practice, and battle state runtime.
 function hasKanjiText(t) {
   return /[\u4e00-\u9fff\u3005\u3007\u303B]/.test(t || "");
 }
@@ -535,715 +36,6 @@ function showWordReveal(player, q) {
   el.querySelector("span").textContent = subBits.join(" · ");
   host.appendChild(el);
   setTimeout(() => el.remove(), 2200);
-}
-function showCombo(text, tier) {
-  const el = $("combo-float");
-  el.textContent = text;
-  el.classList.remove("go", "hit-sm", "hit-md", "hit-lg");
-  if (tier === "sm") el.classList.add("hit-sm");
-  else if (tier === "md") el.classList.add("hit-md");
-  else if (tier === "lg") el.classList.add("hit-lg");
-  void el.offsetWidth;
-  el.classList.add("go");
-}
-
-const FX_THEMES = {
-  ao: { id: "ao", name: "ink", color: "#3aa89e", color2: "#b8fff2" },
-  rin: { id: "rin", name: "ember", color: "#e06a3a", color2: "#ffd2a0" },
-  ya: { id: "ya", name: "frost", color: "#7eb8e0", color2: "#eaf6ff" },
-  go: { id: "go", name: "thunder", color: "#a078e8", color2: "#f2e8ff" },
-  // 第 2 期專屬色票
-  ran: { id: "ran", name: "wind", color: "#2ec4a0", color2: "#b8ffe8" },
-  gen: { id: "gen", name: "shadow", color: "#6b5b95", color2: "#d4c4ff" },
-  sho: { id: "sho", name: "seal", color: "#3d9ecc", color2: "#c8f0ff" },
-  yo: { id: "yo", name: "light", color: "#d4a017", color2: "#ffe9a8" },
-};
-function fxThemeOf(player) {
-  const id = charOf(player)?.id || "ao";
-  return FX_THEMES[id] || FX_THEMES.ao;
-}
-function fxLayer() { return $("fx-layer"); }
-function fxPoint(fighterEl, yRatio) {
-  const r = fighterEl.getBoundingClientRect();
-  return { x: r.left + r.width * 0.5, y: r.top + r.height * (yRatio == null ? 0.42 : yRatio) };
-}
-function styleFx(el, theme) {
-  el.style.setProperty("--fx-c1", theme.color);
-  el.style.setProperty("--fx-c2", theme.color2);
-}
-function shakeBattle(heavy) {
-  const stage = document.querySelector(".duel-stage");
-  if (!stage) return;
-  stage.classList.remove("fx-shake", "fx-shake-lg");
-  void stage.offsetWidth;
-  stage.classList.add(heavy ? "fx-shake-lg" : "fx-shake");
-  setTimeout(() => stage.classList.remove("fx-shake", "fx-shake-lg"), heavy ? 520 : 380);
-}
-function spawnImpactBloom(fighterEl, theme, heavy) {
-  const layer = fxLayer();
-  if (!layer || !fighterEl) return;
-  const pt = fxPoint(fighterEl, 0.4);
-  const bloom = document.createElement("div");
-  bloom.className = "fx-bloom" + (heavy ? " heavy" : "");
-  styleFx(bloom, theme);
-  bloom.style.setProperty("--bx", ((pt.x / window.innerWidth) * 100).toFixed(2) + "%");
-  bloom.style.setProperty("--by", ((pt.y / window.innerHeight) * 100).toFixed(2) + "%");
-  // tint bloom with theme color via inline override
-  bloom.style.background =
-    "radial-gradient(circle at var(--bx) var(--by), " + theme.color2 + "cc, " + theme.color + "99 28%, transparent 46%)," +
-    "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.22), transparent 62%)";
-  layer.appendChild(bloom);
-  setTimeout(() => bloom.remove(), heavy ? 650 : 480);
-  if (heavy) {
-    const flash = document.createElement("div");
-    flash.className = "fx-flash heavy";
-    styleFx(flash, theme);
-    layer.appendChild(flash);
-    setTimeout(() => flash.remove(), 420);
-  }
-}
-function spawnThemeShapes(layer, pt, theme, power) {
-  const heavy = power >= 4;
-  const kind = theme.name || "ink";
-  if (kind === "ember") {
-    // 燐：火柱自下往上竄
-    const n = heavy ? 4 : 3;
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-pillar" + (heavy && i === 1 ? " lg" : "");
-      styleFx(el, theme);
-      el.style.left = (pt.x + (i - (n - 1) / 2) * (heavy ? 22 : 16)) + "px";
-      el.style.top = (pt.y + 18) + "px";
-      el.style.animationDelay = (i * 0.04) + "s";
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 620);
-    }
-    for (let i = 0; i < (heavy ? 8 : 5); i++) {
-      const flame = document.createElement("div");
-      flame.className = "fx-flame";
-      styleFx(flame, theme);
-      const ang = -Math.PI / 2 + (Math.random() - 0.5) * 0.9;
-      const dist = 36 + Math.random() * 40;
-      flame.style.left = (pt.x + (Math.random() - 0.5) * 24) + "px";
-      flame.style.top = pt.y + "px";
-      flame.style.setProperty("--dx", Math.cos(ang) * dist * 0.35 + "px");
-      flame.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-      layer.appendChild(flame);
-      setTimeout(() => flame.remove(), 580);
-    }
-    return;
-  }
-  if (kind === "frost") {
-    // 夜：冰晶放射＋霜環
-    const ring = document.createElement("div");
-    ring.className = "fx-frost-ring";
-    styleFx(ring, theme);
-    ring.style.left = pt.x + "px";
-    ring.style.top = pt.y + "px";
-    layer.appendChild(ring);
-    setTimeout(() => ring.remove(), 520);
-    const n = heavy ? 10 : 7;
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-crystal" + (heavy && i % 3 === 0 ? " lg" : "");
-      const ang = (Math.PI * 2 * i) / n;
-      const dist = 44 + Math.random() * (30 + power * 5);
-      styleFx(el, theme);
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-      el.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 600);
-    }
-    return;
-  }
-  if (kind === "thunder") {
-    // 轟：雷鏈／折線電弧
-    const n = heavy ? 8 : 5;
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("div");
-      el.className = i % 2 === 0 ? "fx-chain" : "fx-zap";
-      const ang = (Math.PI * 2 * i) / n + Math.random() * 0.4;
-      const dist = 36 + Math.random() * (40 + power * 6);
-      styleFx(el, theme);
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-      el.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-      el.style.setProperty("--rot", (ang * 180 / Math.PI) + "deg");
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 480);
-    }
-    return;
-  }
-  if (kind === "wind") {
-    // 嵐：風弧＋破風刃
-    const arcs = heavy ? 4 : 3;
-    for (let i = 0; i < arcs; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-gale" + (heavy && i === 0 ? " lg" : "");
-      styleFx(el, theme);
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--rot", (-40 + i * 28) + "deg");
-      el.style.animationDelay = (i * 0.03) + "s";
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 520);
-    }
-    const n = heavy ? 8 : 5;
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-wind-arc";
-      const ang = -Math.PI / 2 + (i - (n - 1) / 2) * 0.35 + Math.random() * 0.15;
-      const dist = 40 + Math.random() * (28 + power * 5);
-      styleFx(el, theme);
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-      el.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-      el.style.setProperty("--rot", (ang * 180 / Math.PI) + "deg");
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 500);
-    }
-    return;
-  }
-  if (kind === "shadow") {
-    // 玄：影分身殘影＋匕首閃
-    const clones = heavy ? 4 : 3;
-    for (let i = 0; i < clones; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-shadow";
-      styleFx(el, theme);
-      const ang = (Math.PI * 2 * i) / clones + 0.4;
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--dx", Math.cos(ang) * (28 + i * 8) + "px");
-      el.style.setProperty("--dy", Math.sin(ang) * (18 + i * 6) + "px");
-      el.style.animationDelay = (i * 0.04) + "s";
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 520);
-    }
-    const n = heavy ? 7 : 5;
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-dagger";
-      const ang = (Math.PI * 2 * i) / n + Math.random() * 0.3;
-      const dist = 38 + Math.random() * (30 + power * 5);
-      styleFx(el, theme);
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-      el.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-      el.style.setProperty("--rot", (ang * 180 / Math.PI + 90) + "deg");
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 480);
-    }
-    return;
-  }
-  if (kind === "seal") {
-    // 章：符紙飛散＋朱印蓋章
-    const stamp = document.createElement("div");
-    stamp.className = "fx-seal-stamp" + (heavy ? " lg" : "");
-    styleFx(stamp, theme);
-    stamp.style.left = pt.x + "px";
-    stamp.style.top = pt.y + "px";
-    layer.appendChild(stamp);
-    setTimeout(() => stamp.remove(), 520);
-    const n = heavy ? 8 : 6;
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-ofuda";
-      const ang = (Math.PI * 2 * i) / n + Math.random() * 0.2;
-      const dist = 42 + Math.random() * (28 + power * 5);
-      styleFx(el, theme);
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-      el.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-      el.style.setProperty("--rot", ((Math.random() - 0.5) * 50) + "deg");
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 560);
-    }
-    return;
-  }
-  if (kind === "light") {
-    // 陽：鐵扇月牙＋金環
-    const ring = document.createElement("div");
-    ring.className = "fx-light-ring";
-    styleFx(ring, theme);
-    ring.style.left = pt.x + "px";
-    ring.style.top = pt.y + "px";
-    layer.appendChild(ring);
-    setTimeout(() => ring.remove(), 500);
-    const n = heavy ? 6 : 4;
-    for (let i = 0; i < n; i++) {
-      const el = document.createElement("div");
-      el.className = "fx-crescent" + (heavy && i % 2 === 0 ? " lg" : "");
-      styleFx(el, theme);
-      el.style.left = pt.x + "px";
-      el.style.top = pt.y + "px";
-      el.style.setProperty("--rot", (-50 + i * 28) + "deg");
-      el.style.animationDelay = (i * 0.035) + "s";
-      layer.appendChild(el);
-      setTimeout(() => el.remove(), 520);
-    }
-    return;
-  }
-  // 蒼：墨點濺散＋筆勢橫斬
-  const strokes = heavy ? 3 : 2;
-  for (let i = 0; i < strokes; i++) {
-    const stroke = document.createElement("div");
-    stroke.className = "fx-ink-stroke" + (heavy && i === 0 ? " lg" : "");
-    styleFx(stroke, theme);
-    stroke.style.left = pt.x + "px";
-    stroke.style.top = (pt.y + (i - 0.5) * 14) + "px";
-    stroke.style.setProperty("--rot", (-32 + i * 28) + "deg");
-    stroke.style.setProperty("--dx", (20 + i * 8) + "px");
-    stroke.style.setProperty("--dy", (-8 + i * 4) + "px");
-    layer.appendChild(stroke);
-    setTimeout(() => stroke.remove(), 420);
-  }
-  const n = heavy ? 9 : 6;
-  for (let i = 0; i < n; i++) {
-    const el = document.createElement("div");
-    el.className = "fx-inkblot" + (i % 3 === 0 ? "" : " sm");
-    const ang = (Math.PI * 2 * i) / n + Math.random() * 0.45;
-    const dist = 34 + Math.random() * (34 + power * 6);
-    styleFx(el, theme);
-    el.style.left = pt.x + "px";
-    el.style.top = pt.y + "px";
-    el.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-    el.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-    layer.appendChild(el);
-    setTimeout(() => el.remove(), 580);
-  }
-}
-function spawnHitBurst(fighterEl, theme, power) {
-  const layer = fxLayer();
-  if (!layer || !fighterEl) return;
-  const pt = fxPoint(fighterEl, 0.4);
-  const heavy = power >= 4;
-  const kind = theme.name || "ink";
-  spawnThemeShapes(layer, pt, theme, power);
-  // 通用火花減少，讓專屬形狀更搶眼
-  const lowSpark = kind === "ember" || kind === "seal" || kind === "light";
-  const sparkN = lowSpark ? (heavy ? 8 : 5) : (heavy ? 12 : 8);
-  for (let i = 0; i < sparkN; i++) {
-    const spark = document.createElement("i");
-    spark.className = "fx-spark" + (heavy && i % 3 === 0 ? " lg" : "");
-    styleFx(spark, theme);
-    const ang = (Math.PI * 2 * i) / sparkN + Math.random() * 0.4;
-    const dist = 42 + Math.random() * (36 + power * 7);
-    spark.style.left = pt.x + "px";
-    spark.style.top = pt.y + "px";
-    spark.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-    spark.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-    layer.appendChild(spark);
-    setTimeout(() => spark.remove(), 580);
-  }
-  if (kind !== "frost" && kind !== "light" && kind !== "seal") {
-    ["", " delay"].forEach((extra, idx) => {
-      const ring = document.createElement("div");
-      ring.className = "fx-ring" + (heavy || idx === 0 ? " lg" : "") + extra;
-      styleFx(ring, theme);
-      ring.style.left = pt.x + "px";
-      ring.style.top = pt.y + "px";
-      layer.appendChild(ring);
-      setTimeout(() => ring.remove(), 520);
-    });
-  }
-  if (kind === "ink" || kind === "thunder" || kind === "ember" || kind === "frost" ||
-      kind === "wind" || kind === "shadow" || kind === "seal" || kind === "light") {
-    const slash = document.createElement("div");
-    slash.className = "fx-slash theme-" + kind + (heavy ? " lg" : "");
-    styleFx(slash, theme);
-    slash.style.left = pt.x + "px";
-    slash.style.top = pt.y + "px";
-    layer.appendChild(slash);
-    setTimeout(() => slash.remove(), kind === "ember" || kind === "light" ? 360 : 380);
-  }
-  spawnImpactBloom(fighterEl, theme, heavy);
-}
-function playCastBurst(fighterEl, theme) {
-  if (!fighterEl) return;
-  let cast = fighterEl.querySelector(".fx-cast");
-  if (!cast) {
-    cast = document.createElement("div");
-    cast.className = "fx-cast";
-    fighterEl.appendChild(cast);
-  }
-  styleFx(cast, theme);
-  cast.classList.remove("go");
-  void cast.offsetWidth;
-  cast.classList.add("go");
-  spawnImpactBloom(fighterEl, theme, false);
-}
-function ensureBlockLayers(fighterEl) {
-  if (!fighterEl) return null;
-  let shield = fighterEl.querySelector(".fx-shield");
-  if (!shield) {
-    shield = document.createElement("div");
-    shield.className = "fx-shield";
-    fighterEl.appendChild(shield);
-  }
-  let flash = fighterEl.querySelector(".fx-block-flash");
-  if (!flash) {
-    flash = document.createElement("div");
-    flash.className = "fx-block-flash";
-    fighterEl.appendChild(flash);
-  }
-  return shield;
-}
-function spawnBlockSparks(layer, pt, count, lgEvery) {
-  for (let i = 0; i < count; i++) {
-    const spark = document.createElement("div");
-    spark.className = "fx-block-spark" + (lgEvery && i % lgEvery === 0 ? " lg" : "");
-    const ang = (Math.PI * 2 * i) / count + Math.random() * 0.3;
-    const dist = 30 + Math.random() * 48;
-    spark.style.left = pt.x + "px";
-    spark.style.top = pt.y + "px";
-    spark.style.setProperty("--dx", Math.cos(ang) * dist + "px");
-    spark.style.setProperty("--dy", Math.sin(ang) * dist + "px");
-    layer.appendChild(spark);
-    setTimeout(function () { spark.remove(); }, 500);
-  }
-}
-function spawnBlockClang(layer, pt, rot, cross) {
-  const clang = document.createElement("div");
-  clang.className = "fx-block-clang" + (cross ? " cross" : "");
-  clang.style.left = pt.x + "px";
-  clang.style.top = pt.y + "px";
-  clang.style.setProperty("--rot", rot);
-  layer.appendChild(clang);
-  setTimeout(function () { clang.remove(); }, 360);
-}
-function playBlockActivate(player) {
-  const fighterEl = $("fighter" + player);
-  if (!fighterEl) return;
-  const shield = ensureBlockLayers(fighterEl);
-  if (shield) {
-    shield.classList.remove("rise");
-    void shield.offsetWidth;
-    shield.classList.add("rise");
-  }
-  const flash = fighterEl.querySelector(".fx-block-flash");
-  if (flash) {
-    flash.classList.remove("go");
-    void flash.offsetWidth;
-    flash.classList.add("go");
-  }
-  const layer = fxLayer();
-  const pt = fxPoint(fighterEl, 0.4);
-  if (!layer) return;
-  ["", " lg"].forEach(function (extra, idx) {
-    const ring = document.createElement("div");
-    ring.className = "fx-block-ring" + extra;
-    ring.style.left = pt.x + "px";
-    ring.style.top = pt.y + "px";
-    layer.appendChild(ring);
-    setTimeout(function () { ring.remove(); }, 520 + idx * 40);
-  });
-  spawnBlockSparks(layer, pt, 14, 4);
-  spawnBlockClang(layer, pt, "-22deg", false);
-  spawnBlockClang(layer, pt, "68deg", true);
-}
-function spawnBlockParry(fighterEl, heavy) {
-  const layer = fxLayer();
-  if (!layer || !fighterEl) return;
-  const pt = fxPoint(fighterEl, 0.4);
-  const flash = fighterEl.querySelector(".fx-block-flash") || ensureBlockLayers(fighterEl) && fighterEl.querySelector(".fx-block-flash");
-  if (flash) {
-    flash.classList.remove("go");
-    void flash.offsetWidth;
-    flash.classList.add("go");
-  }
-  const ring = document.createElement("div");
-  ring.className = "fx-block-ring" + (heavy ? " lg" : "");
-  ring.style.left = pt.x + "px";
-  ring.style.top = pt.y + "px";
-  layer.appendChild(ring);
-  setTimeout(function () { ring.remove(); }, 520);
-  spawnBlockSparks(layer, pt, heavy ? 16 : 10, heavy ? 3 : 0);
-  spawnBlockClang(layer, pt, (Math.random() * 40 - 28) + "deg", false);
-  if (heavy) spawnBlockClang(layer, pt, "72deg", true);
-  fighterEl.classList.remove("block-absorb");
-  void fighterEl.offsetWidth;
-  fighterEl.classList.add("block-absorb");
-  setTimeout(function () { fighterEl.classList.remove("block-absorb"); }, 340);
-}
-function addBoltLine(layer, a, b, theme, cls) {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const dist = Math.max(24, Math.hypot(dx, dy));
-  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-  const bolt = document.createElement("div");
-  bolt.className = "fx-bolt theme-" + (theme.name || "ink") + (cls ? " " + cls : "");
-  styleFx(bolt, theme);
-  bolt.style.left = a.x + "px";
-  bolt.style.top = a.y + "px";
-  bolt.style.width = dist + "px";
-  bolt.style.transform = "rotate(" + angle + "deg)";
-  layer.appendChild(bolt);
-  setTimeout(() => bolt.remove(), 520);
-  return bolt;
-}
-function addZigZagBolt(layer, a, b, theme, cls) {
-  const segs = 6;
-  let prev = { x: a.x, y: a.y };
-  for (let i = 1; i <= segs; i++) {
-    const t = i / segs;
-    const jitter = i < segs ? (i % 2 === 0 ? 1 : -1) * (18 + Math.random() * 16) : 0;
-    const nx = -(b.y - a.y);
-    const ny = b.x - a.x;
-    const len = Math.hypot(nx, ny) || 1;
-    const next = {
-      x: a.x + (b.x - a.x) * t + (nx / len) * jitter,
-      y: a.y + (b.y - a.y) * t + (ny / len) * jitter,
-    };
-    addBoltLine(layer, prev, next, theme, cls);
-    prev = next;
-  }
-}
-function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
-  return new Promise((resolve) => {
-    const layer = fxLayer();
-    const fromEl = $("fighter" + fromPlayer);
-    const toEl = $("fighter" + toPlayer);
-    if (!layer || !fromEl || !toEl) { resolve(); return; }
-    const a = fxPoint(fromEl, 0.4);
-    const b = fxPoint(toEl, 0.4);
-    const dur = heavy ? 460 : 320;
-    const kind = theme.name || "ink";
-    const nx = -(b.y - a.y);
-    const ny = b.x - a.x;
-    const len = Math.hypot(nx, ny) || 1;
-    const ox = (nx / len) * (heavy ? 14 : 8);
-    const oy = (ny / len) * (heavy ? 14 : 8);
-
-    if (kind === "thunder") {
-      // 轟：折線雷鏈
-      addZigZagBolt(layer, a, b, theme, "ghost");
-      addZigZagBolt(layer, a, b, theme, heavy ? "heavy" : "");
-      addZigZagBolt(layer, a, b, theme, "core");
-    } else if (kind === "ink") {
-      // 蒼：墨斬筆勢（單主線＋側翼淡筆）
-      addBoltLine(layer, a, b, theme, "ghost");
-      addBoltLine(layer, a, b, theme, heavy ? "heavy" : "");
-      addBoltLine(layer, a, b, theme, "core");
-      addBoltLine(layer,
-        { x: a.x + ox * 0.7, y: a.y + oy * 0.7 },
-        { x: b.x + ox * 0.25, y: b.y + oy * 0.25 },
-        theme, "");
-    } else if (kind === "ember") {
-      // 燐：粗焰軌＋沿途火星
-      addBoltLine(layer, a, b, theme, "ghost");
-      addBoltLine(layer, a, b, theme, heavy ? "heavy" : "");
-      addBoltLine(layer, a, b, theme, "core");
-      addBoltLine(layer,
-        { x: a.x + ox, y: a.y + oy },
-        { x: b.x + ox * 0.35, y: b.y + oy * 0.35 },
-        theme, "");
-      addBoltLine(layer,
-        { x: a.x - ox, y: a.y - oy },
-        { x: b.x - ox * 0.35, y: b.y - oy * 0.35 },
-        theme, "");
-      const sparks = heavy ? 5 : 3;
-      for (let i = 1; i <= sparks; i++) {
-        const t = i / (sparks + 1);
-        setTimeout(() => {
-          const flame = document.createElement("div");
-          flame.className = "fx-flame";
-          styleFx(flame, theme);
-          flame.style.left = (a.x + (b.x - a.x) * t) + "px";
-          flame.style.top = (a.y + (b.y - a.y) * t) + "px";
-          flame.style.setProperty("--dx", ((Math.random() - 0.5) * 20) + "px");
-          flame.style.setProperty("--dy", (-28 - Math.random() * 24) + "px");
-          layer.appendChild(flame);
-          setTimeout(() => flame.remove(), 520);
-        }, Math.round(dur * t * 0.7));
-      }
-    } else if (kind === "wind") {
-      // 嵐：弧形風軌＋沿途風刃
-      addBoltLine(layer, a, b, theme, "ghost");
-      addBoltLine(layer, a, b, theme, heavy ? "heavy" : "");
-      addBoltLine(layer, a, b, theme, "core");
-      addBoltLine(layer,
-        { x: a.x + ox * 1.2, y: a.y + oy * 1.2 },
-        { x: b.x + ox * 0.4, y: b.y + oy * 0.4 },
-        theme, "");
-      addBoltLine(layer,
-        { x: a.x - ox * 1.2, y: a.y - oy * 1.2 },
-        { x: b.x - ox * 0.4, y: b.y - oy * 0.4 },
-        theme, "");
-      const blades = heavy ? 5 : 3;
-      for (let i = 1; i <= blades; i++) {
-        const t = i / (blades + 1);
-        setTimeout(() => {
-          const gale = document.createElement("div");
-          gale.className = "fx-wind-arc";
-          styleFx(gale, theme);
-          gale.style.left = (a.x + (b.x - a.x) * t) + "px";
-          gale.style.top = (a.y + (b.y - a.y) * t) + "px";
-          gale.style.setProperty("--dx", (ox * 1.5) + "px");
-          gale.style.setProperty("--dy", (oy * 1.5) + "px");
-          gale.style.setProperty("--rot", (Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI) + "deg");
-          layer.appendChild(gale);
-          setTimeout(() => gale.remove(), 480);
-        }, Math.round(dur * t * 0.7));
-      }
-    } else if (kind === "shadow") {
-      // 玄：斷續影斬＋匕首殘影
-      addBoltLine(layer, a, b, theme, "ghost");
-      addBoltLine(layer, a, b, theme, heavy ? "heavy" : "");
-      addBoltLine(layer, a, b, theme, "core");
-      const daggers = heavy ? 5 : 3;
-      for (let i = 1; i <= daggers; i++) {
-        const t = i / (daggers + 1);
-        setTimeout(() => {
-          const dagger = document.createElement("div");
-          dagger.className = "fx-dagger";
-          styleFx(dagger, theme);
-          dagger.style.left = (a.x + (b.x - a.x) * t + ox * (i % 2 ? 1 : -1)) + "px";
-          dagger.style.top = (a.y + (b.y - a.y) * t + oy * (i % 2 ? 1 : -1)) + "px";
-          dagger.style.setProperty("--dx", ((Math.random() - 0.5) * 24) + "px");
-          dagger.style.setProperty("--dy", ((Math.random() - 0.5) * 24) + "px");
-          dagger.style.setProperty("--rot", (Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI + 90) + "deg");
-          layer.appendChild(dagger);
-          setTimeout(() => dagger.remove(), 480);
-        }, Math.round(dur * t * 0.72));
-      }
-    } else if (kind === "seal") {
-      // 章：墨束＋沿途符紙
-      addBoltLine(layer, a, b, theme, "ghost");
-      addBoltLine(layer, a, b, theme, heavy ? "heavy" : "");
-      addBoltLine(layer, a, b, theme, "core");
-      const papers = heavy ? 5 : 3;
-      for (let i = 1; i <= papers; i++) {
-        const t = i / (papers + 1);
-        setTimeout(() => {
-          const ofuda = document.createElement("div");
-          ofuda.className = "fx-ofuda";
-          styleFx(ofuda, theme);
-          ofuda.style.left = (a.x + (b.x - a.x) * t) + "px";
-          ofuda.style.top = (a.y + (b.y - a.y) * t) + "px";
-          ofuda.style.setProperty("--dx", ((Math.random() - 0.5) * 28) + "px");
-          ofuda.style.setProperty("--dy", (-18 - Math.random() * 20) + "px");
-          ofuda.style.setProperty("--rot", ((Math.random() - 0.5) * 40) + "deg");
-          layer.appendChild(ofuda);
-          setTimeout(() => ofuda.remove(), 520);
-        }, Math.round(dur * t * 0.75));
-      }
-    } else if (kind === "light") {
-      // 陽：金光扇軌＋月牙
-      addBoltLine(layer, a, b, theme, "ghost");
-      addBoltLine(layer, a, b, theme, heavy ? "heavy" : "");
-      addBoltLine(layer, a, b, theme, "core");
-      addBoltLine(layer,
-        { x: a.x + ox, y: a.y + oy },
-        { x: b.x + ox * 0.3, y: b.y + oy * 0.3 },
-        theme, "");
-      const fans = heavy ? 4 : 3;
-      for (let i = 1; i <= fans; i++) {
-        const t = i / (fans + 1);
-        setTimeout(() => {
-          const crescent = document.createElement("div");
-          crescent.className = "fx-crescent";
-          styleFx(crescent, theme);
-          crescent.style.left = (a.x + (b.x - a.x) * t) + "px";
-          crescent.style.top = (a.y + (b.y - a.y) * t) + "px";
-          crescent.style.setProperty("--rot", (Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI) + "deg");
-          layer.appendChild(crescent);
-          setTimeout(() => crescent.remove(), 480);
-        }, Math.round(dur * t * 0.7));
-      }
-    } else {
-      // 夜：細冰束＋沿途碎晶
-      addBoltLine(layer, a, b, theme, "ghost");
-      addBoltLine(layer, a, b, theme, heavy ? "heavy" : "");
-      addBoltLine(layer, a, b, theme, "core");
-      const shards = heavy ? 5 : 3;
-      for (let i = 1; i <= shards; i++) {
-        const t = i / (shards + 1);
-        setTimeout(() => {
-          const crystal = document.createElement("div");
-          crystal.className = "fx-crystal";
-          styleFx(crystal, theme);
-          crystal.style.left = (a.x + (b.x - a.x) * t + (Math.random() - 0.5) * 12) + "px";
-          crystal.style.top = (a.y + (b.y - a.y) * t + (Math.random() - 0.5) * 12) + "px";
-          crystal.style.setProperty("--dx", ((Math.random() - 0.5) * 36) + "px");
-          crystal.style.setProperty("--dy", ((Math.random() - 0.5) * 36) + "px");
-          layer.appendChild(crystal);
-          setTimeout(() => crystal.remove(), 520);
-        }, Math.round(dur * t * 0.75));
-      }
-    }
-
-    const orb = document.createElement("div");
-    orb.className = "fx-orb" + (heavy ? " heavy" : "");
-    styleFx(orb, theme);
-    orb.style.left = a.x + "px";
-    orb.style.top = a.y + "px";
-    layer.appendChild(orb);
-    void orb.offsetWidth;
-    orb.classList.add("go");
-    orb.style.transition = "left " + dur + "ms var(--ease), top " + dur + "ms var(--ease)";
-    requestAnimationFrame(() => {
-      orb.style.left = b.x + "px";
-      orb.style.top = b.y + "px";
-    });
-
-    const trailN = heavy ? 6 : 4;
-    for (let i = 1; i <= trailN; i++) {
-      const t = i / (trailN + 1);
-      setTimeout(() => {
-        const trail = document.createElement("div");
-        trail.className = "fx-orb-trail";
-        styleFx(trail, theme);
-        trail.style.left = (a.x + (b.x - a.x) * t) + "px";
-        trail.style.top = (a.y + (b.y - a.y) * t) + "px";
-        layer.appendChild(trail);
-        setTimeout(() => trail.remove(), 420);
-      }, Math.round(dur * t * 0.85));
-    }
-
-    setTimeout(() => {
-      orb.remove();
-      resolve();
-    }, dur + 50);
-  });
-}
-function clearBattleFx() {
-  const layer = fxLayer();
-  if (layer) layer.innerHTML = "";
-  const after = $("special-aftermath");
-  if (after) {
-    after.classList.remove("go");
-    after.setAttribute("aria-hidden", "true");
-  }
-  document.querySelector(".duel-stage")?.classList.remove("fx-shake", "fx-shake-lg");
-}
-async function playSpecialAftermath(themeId) {
-  const el = $("special-aftermath");
-  if (!el) return;
-  el.dataset.theme = themeId || "ao";
-  el.classList.remove("go");
-  void el.offsetWidth;
-  el.classList.add("go");
-  el.setAttribute("aria-hidden", "false");
-  const theme = FX_THEMES[themeId] || FX_THEMES.ao;
-  const layer = fxLayer();
-  if (layer) {
-    const flash = document.createElement("div");
-    flash.className = "fx-flash heavy";
-    styleFx(flash, theme);
-    layer.appendChild(flash);
-    setTimeout(() => flash.remove(), 420);
-  }
-  shakeBattle(true);
-  await wait(980);
-  el.classList.remove("go");
-  el.setAttribute("aria-hidden", "true");
 }
 function showScreen(name) {
   if (name !== "battle" && name !== "practice") {
@@ -1290,7 +82,33 @@ function cancelAllDrags() {
   document.querySelectorAll(".dragging").forEach((n) => n.classList.remove("dragging"));
   document.querySelectorAll(".slot.over").forEach((s) => s.classList.remove("over"));
 }
+function activateBoardSource(info, focusPlacedSlot) {
+  const board = boards[info.boardId];
+  if (!board || board.locked) return;
+  if (info.from === "pool") {
+    const idx = board.place(info.poolId);
+    if (focusPlacedSlot && idx >= 0) {
+      requestAnimationFrame(() => {
+        $(board.slotsId)?.querySelector('[data-index="' + idx + '"]')?.focus();
+      });
+    }
+    return;
+  }
+  if (info.from !== "slot") return;
+  if (board.id === "practice" && board.slots[info.slotIndex] && !busy) {
+    const mora = board.targetSeq?.[info.slotIndex] || board.slots[info.slotIndex].kana;
+    if (mora) speakGoogleTts(mora);
+  } else {
+    board.clearSlot(info.slotIndex);
+  }
+}
 function bindDragSource(el, info) {
+  el.addEventListener("keydown", (e) => {
+    if ((e.key !== "Enter" && e.key !== " ") || e.repeat) return;
+    e.preventDefault();
+    e.stopPropagation();
+    activateBoardSource(info, info.from === "pool");
+  });
   el.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const board = boards[info.boardId];
@@ -1331,7 +149,6 @@ function endDrag(e) {
       else if (cur.from === "slot" && cur.slotIndex !== targetIdx) {
         [board.slots[cur.slotIndex], board.slots[targetIdx]] = [board.slots[targetIdx], board.slots[cur.slotIndex]];
         board.render(); playSfx("sfx_click", 0.25);
-        maybeAutoBattleSubmit(cur.boardId);
       }
     } else if (poolHit && cur.from === "slot" && board) {
       board.clearSlot(cur.slotIndex);
@@ -1340,8 +157,7 @@ function endDrag(e) {
       board.place(cur.poolId);
     }
   } else if (board) {
-    if (cur.from === "pool") board.place(cur.poolId);
-    else if (cur.from === "slot") board.clearSlot(cur.slotIndex);
+    activateBoardSource(cur, false);
   }
   if (cur.ghost) cur.ghost.remove();
   cur.el?.classList.remove("dragging");
@@ -1381,19 +197,23 @@ window.addEventListener("lostpointercapture", (e) => {
 function createBoard(id, slotsId, poolId, feedbackId) {
   return {
     id, slotsId, poolId, feedbackId,
-    slots: [], pool: [], promptRoma: null, locked: false,
+    slots: [], pool: [], promptRoma: null, locked: false, targetSeq: null,
     place(poolItemId, slotIndex) {
-      if (this.locked) return;
+      if (this.locked) return -1;
       const item = this.pool.find((p) => p.id === poolItemId);
-      if (!item || item.used) return;
+      if (!item || item.used) return -1;
       const idx = slotIndex != null ? slotIndex : this.slots.findIndex((v) => !v);
-      if (idx < 0) return;
+      if (idx < 0) return -1;
       if (this.slots[idx]) {
         const old = this.pool.find((p) => p.id === this.slots[idx].poolId);
         if (old) {
           old.used = false;
           const oldTile = $(this.poolId)?.querySelector('[data-pool-id="' + old.id + '"]');
-          if (oldTile) oldTile.classList.remove("used");
+          if (oldTile) {
+            oldTile.classList.remove("used");
+            oldTile.tabIndex = 0;
+            oldTile.setAttribute("aria-disabled", "false");
+          }
         }
       }
       item.used = true;
@@ -1401,14 +221,18 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       playSfx("sfx_click", 0.3);
       this.setFeedback("");
       const tile = $(this.poolId)?.querySelector('[data-pool-id="' + item.id + '"]');
-      if (tile) tile.classList.add("used");
+      if (tile) {
+        tile.classList.add("used");
+        tile.tabIndex = -1;
+        tile.setAttribute("aria-disabled", "true");
+      }
       else this.render();
       if (tile) this.renderSlots();
-      maybeAutoBattleSubmit(this.id);
       if (battleOpen) {
         const pid = Number(this.id);
         if (pid === 1 || pid === 2) updateSkillUi(pid);
       }
+      return idx;
     },
     clearSlot(i) {
       if (this.locked) return;
@@ -1418,7 +242,11 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       this.slots[i] = null;
       playSfx("sfx_miss", 0.3);
       const tile = $(this.poolId)?.querySelector('[data-pool-id="' + val.poolId + '"]');
-      if (tile) tile.classList.remove("used");
+      if (tile) {
+        tile.classList.remove("used");
+        tile.tabIndex = 0;
+        tile.setAttribute("aria-disabled", "false");
+      }
       this.renderSlots();
       if (battleOpen) { const pid = Number(this.id); if (pid === 1 || pid === 2) updateSkillUi(pid); }
     },
@@ -1440,6 +268,7 @@ function createBoard(id, slotsId, poolId, feedbackId) {
     },
     load(seq, opts) {
       cancelDragsForBoard(this.id);
+      this.targetSeq = (seq || []).slice();
       this.slots = seq.map(() => null);
       this.promptRoma = opts?.showRomaji ? romajiSequence(seq) : null;
       this.pool = buildPool(seq, opts?.distractorDelta || 0, {
@@ -1453,11 +282,14 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       const slotsEl = $(this.slotsId);
       if (!slotsEl) return;
       slotsEl.innerHTML = "";
+      const practiceHints = this.id === "practice";
       this.slots.forEach((val, i) => {
         const slot = document.createElement("div");
         const roma = this.promptRoma?.[i];
         slot.className = "slot" + (val ? " filled" : "");
         slot.dataset.index = i;
+        slot.setAttribute("aria-label", `第 ${i + 1} 格，${val ? "假名 " + val.kana : "空格"}`);
+        if (practiceHints && val) slot.title = "點一下聽此格讀音；拖回字池可拿掉";
         slot.innerHTML = `<span class="idx">${i + 1}</span>`;
         if (roma) {
           const r = document.createElement("span");
@@ -1466,10 +298,12 @@ function createBoard(id, slotsId, poolId, feedbackId) {
           slot.appendChild(r);
         }
         if (val) {
+          slot.tabIndex = 0;
+          slot.setAttribute("role", "button");
           const k = document.createElement("span");
           k.className = "kana"; k.textContent = val.kana;
-          bindDragSource(k, { from: "slot", slotIndex: i, kana: val.kana, poolId: val.poolId, boardId: this.id });
           slot.appendChild(k);
+          bindDragSource(slot, { from: "slot", slotIndex: i, kana: val.kana, poolId: val.poolId, boardId: this.id });
         }
         slotsEl.appendChild(slot);
       });
@@ -1485,6 +319,9 @@ function createBoard(id, slotsId, poolId, feedbackId) {
         tile.className = "tile" + (item.used ? " used" : "");
         tile.dataset.poolId = item.id;
         tile.textContent = item.kana;
+        tile.tabIndex = item.used ? -1 : 0;
+        tile.setAttribute("aria-disabled", item.used ? "true" : "false");
+        tile.setAttribute("aria-label", `假名 ${item.kana}，填入下一個空格`);
         // 即使 used 也綁定：之後撤回可立刻再點；place 內會擋 used
         bindDragSource(tile, { from: "pool", poolId: item.id, kana: item.kana, boardId: this.id });
         poolEl.appendChild(tile);
@@ -1495,8 +332,14 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       let wrong = 0;
       this.slots.forEach((v, i) => {
         nodes[i].classList.remove("correct", "wrong", "locked-gold");
-        if (v && v.kana === seq[i]) nodes[i].classList.add("correct");
-        else { nodes[i].classList.add("wrong"); wrong += 1; }
+        if (v && v.kana === seq[i]) {
+          nodes[i].classList.add("correct");
+          nodes[i].setAttribute("aria-label", `第 ${i + 1} 格，${v.kana}，正確`);
+        } else {
+          nodes[i].classList.add("wrong");
+          nodes[i].setAttribute("aria-label", `第 ${i + 1} 格，${v?.kana || "空格"}，錯誤`);
+          wrong += 1;
+        }
       });
       return wrong; // 0 = 全對
     },
@@ -1505,7 +348,12 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       this.locked = true;
       if (this.id === "1" || this.id === "2") $("board" + this.id)?.classList.add("locked");
       $(this.slotsId).querySelectorAll(".slot").forEach((n, i) => {
-        setTimeout(() => { n.classList.remove("correct", "wrong"); n.classList.add("locked-gold"); }, i * 35);
+        setTimeout(() => {
+          n.classList.remove("correct", "wrong");
+          n.classList.add("locked-gold");
+          const value = this.slots[i]?.kana || "";
+          n.setAttribute("aria-label", `第 ${i + 1} 格，${value}，已確認正確`);
+        }, i * 35);
       });
     },
   };
@@ -1523,7 +371,9 @@ let readyP1 = false, readyP2 = false;
 let qi = 0, results = [], busy = false;
 let hp = { 1: MAX_HP, 2: MAX_HP };
 let battleDeck = []; // shared shuffled question order
-let playerQi = { 1: 0, 2: 0 }; // independent progress into battleDeck
+let playerQi = { 1: 0, 2: 0 }; // race: independent progress into battleDeck
+let sharedQi = 0; // listen: shared round index
+let listenRoundClaimed = false; // listen: first fully-correct claim
 let charge = { 1: 0, 2: 0 }; // accumulated attack value
 let combo = { 1: 0, 2: 0 }; // consecutive correct → N COMBO
 let gaugeHits = { 1: 0, 2: 0 }; // correct answers toward special (need GAUGE_HITS_TO_FULL)
@@ -1536,7 +386,9 @@ let battleStats = null;
 let battleOpen = false;
 let battleStartedAt = 0, timerRaf = 0;
 let attackQueue = Promise.resolve();
+let battleEpoch = 0;
 let everMissed = []; // practice: whether the question was missed at least once
+let rewardReturnFocus = null;
 
 // —— Character select UI（旋風式左右滑動；兩端同時選，不可同角）——
 let charFocus = { 1: 0, 2: 0 };
@@ -1589,18 +441,22 @@ function renderCharGrid() {
     CHARACTERS.forEach((c, i) => {
       const offset = wrappedCharOffset(i, focus, n);
       const visualOffset = player === 2 ? -offset : offset;
+      const taken = foe?.id === c.id || (locked && mine?.id !== c.id);
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "char-card " + charOffsetClass(visualOffset);
       btn.dataset.charId = c.id;
       btn.dataset.charIndex = String(i);
-      if (foe?.id === c.id) btn.classList.add("taken");
-      else if (locked && mine?.id !== c.id) btn.classList.add("taken");
+      if (taken) btn.classList.add("taken");
+      btn.tabIndex = !locked && i === focus && !taken ? 0 : -1;
+      btn.setAttribute("aria-current", i === focus ? "true" : "false");
+      btn.setAttribute("aria-pressed", mine?.id === c.id ? "true" : "false");
+      if (taken) btn.setAttribute("aria-disabled", "true");
       btn.innerHTML = `
         <span class="badge">${c.title}</span>
         <img src="${c.image}" alt="${c.name}" draggable="false" />
         <div class="meta"><strong>${c.name}</strong><span>${c.skill}</span><span class="passive">${c.passive?.label || ""}：${c.passive?.desc || ""}${c.active ? " · 主動「" + c.active.label + "」" : ""}</span></div>`;
-      if (!locked) {
+      if (!locked && !taken) {
         bindTap(btn, () => {
           if (performance.now() - (lastCharSwipeAt[player] || 0) < 320) return;
           if (i === focus) onPickChar(player, c);
@@ -1704,6 +560,47 @@ function bindCharCarouselSwipe() {
 }
 
 // —— Practice ——
+const SEGMENT_MIN_LEN = 6;
+const SEGMENT_SIZE = 4;
+let practiceSegIndex = 0;
+
+function practiceSegments(q) {
+  const seq = q?.kanaSequence || [];
+  if (seq.length < SEGMENT_MIN_LEN) return [];
+  const segs = [];
+  for (let i = 0; i < seq.length; i += SEGMENT_SIZE) {
+    segs.push({ from: i, to: Math.min(seq.length, i + SEGMENT_SIZE) });
+  }
+  return segs;
+}
+function updatePracticeListenUi(q) {
+  const segBtn = $("btn-listen-seg");
+  if (!segBtn) return;
+  const segs = practiceSegments(q);
+  if (!segs.length) {
+    segBtn.classList.add("hidden");
+    return;
+  }
+  segBtn.classList.remove("hidden");
+  practiceSegIndex = ((practiceSegIndex % segs.length) + segs.length) % segs.length;
+  const s = segs[practiceSegIndex];
+  segBtn.textContent = `分段 ${practiceSegIndex + 1}/${segs.length}（${s.from + 1}–${s.to}）`;
+}
+function practiceSpeakSegment() {
+  const q = currentQ();
+  if (busy || !q) return;
+  const segs = practiceSegments(q);
+  if (!segs.length) {
+    speakGoogleTts(q.speakText);
+    return;
+  }
+  const s = segs[practiceSegIndex];
+  const text = q.kanaSequence.slice(s.from, s.to).join("");
+  speakGoogleTts(text);
+  practiceSegIndex = (practiceSegIndex + 1) % segs.length;
+  updatePracticeListenUi(q);
+}
+
 function currentQ() { return QUESTIONS[qi]; }
 function startPractice() {
   gameMode = "practice";
@@ -1715,6 +612,7 @@ function startPractice() {
 }
 async function loadPracticeQuestion(autoSpeak) {
   const q = currentQ();
+  practiceSegIndex = 0;
   boards.practice.load(q.kanaSequence);
   $("progress-text").textContent = `${qi + 1} / ${QUESTIONS.length}`;
   $("progress-dots").innerHTML = "";
@@ -1728,11 +626,15 @@ async function loadPracticeQuestion(autoSpeak) {
   title.textContent = questionPromptTitle(q);
   title.classList.add("mystery");
   $("portrait-name").textContent = "聽音練習";
-  $("slots-hint").textContent = `共 ${q.kanaSequence.length} 格 · 請先聽音再拼（不顯示答案）`;
+  const n = q.kanaSequence.length;
+  $("slots-hint").textContent = n >= SEGMENT_MIN_LEN
+    ? `共 ${n} 格 · 點已填格聽單音 · 可分段重聽`
+    : `共 ${n} 格 · 點已填格聽單音 · 拖回字池可拿掉`;
   $("q-diff").textContent = diamonds(q.kanaSequence.length);
   $("reward-tag").textContent = q.rewardMode === "cast_skill" ? "答對 · 喊招" : "答對 · 慶祝";
   $("reward-tag").className = "tag" + (q.rewardMode === "cast_skill" ? " cast" : "");
   $("avatar-img").src = q.image;
+  updatePracticeListenUi(q);
   if (autoSpeak) await speakGoogleTts(q.speakText);
 }
 async function practiceSubmit() {
@@ -1751,14 +653,28 @@ async function practiceSubmit() {
   await playReward(q);
 }
 function hideReward() {
-  $("reward-stage").classList.remove("show");
+  const stage = $("reward-stage");
+  const focusWasInside = !!stage?.contains(document.activeElement);
+  stage?.classList.remove("show");
+  stage?.setAttribute("aria-hidden", "true");
   const vid = $("reward-video");
   try { vid.pause(); vid.removeAttribute("src"); vid.load(); } catch {}
   $("reward-timer-bar").classList.remove("run");
+  if (focusWasInside && rewardReturnFocus?.isConnected) rewardReturnFocus.focus();
+  rewardReturnFocus = null;
 }
 function playCastVideo(q) {
   return new Promise((resolve) => {
     const vid = $("reward-video"), still = $("reward-still"), bar = $("reward-timer-bar");
+    if (prefersReducedMotion()) {
+      bar.classList.remove("run");
+      try { vid.pause(); vid.removeAttribute("src"); } catch {}
+      vid.classList.add("hidden");
+      still.classList.remove("hidden");
+      still.src = q.image;
+      setTimeout(resolve, 600);
+      return;
+    }
     bar.classList.remove("run"); void bar.offsetWidth; bar.classList.add("run");
     let settled = false;
     const finish = () => { if (!settled) { settled = true; resolve(); } };
@@ -1777,9 +693,15 @@ function playCastVideo(q) {
 }
 async function playReward(q) {
   busy = true; boards.practice.lockGold(); playSfx("skillpop", 0.5);
+  rewardReturnFocus = document.activeElement;
+  $("btn-next").disabled = true;
+  $("btn-replay").disabled = true;
   showCombo(q.rewardMode === "cast_skill" ? "詠唱完成" : "完璧！");
   await wait(250);
-  $("reward-stage").classList.add("show");
+  const rewardStage = $("reward-stage");
+  rewardStage.classList.add("show");
+  rewardStage.setAttribute("aria-hidden", "false");
+  rewardStage.querySelector(".reward-panel")?.focus();
   if (q.rewardMode === "cast_skill") {
     $("reward-kicker").textContent = "SKILL CAST · 3s";
     $("reward-title").textContent = "技能發動";
@@ -1798,6 +720,9 @@ async function playReward(q) {
     await Promise.all([playCastVideo(q), speakGoogleTts(q.speakText)]);
   }
   busy = false;
+  $("btn-next").disabled = false;
+  $("btn-replay").disabled = false;
+  $("btn-next").focus();
 }
 function practiceNext() {
   if (busy) return;
@@ -1808,7 +733,9 @@ function practiceNext() {
     setResultScreen("練習結束", `答對 ${ok} / ${QUESTIONS.length} · 一次過關 ${perfect} 題`);
     playSfx("fanfare", 0.4); return;
   }
-  qi++; loadPracticeQuestion(true);
+  qi++;
+  loadPracticeQuestion(true);
+  requestAnimationFrame(() => $("pool")?.querySelector('.tile:not([aria-disabled="true"])')?.focus());
 }
 
 // —— Battle ——
@@ -1833,13 +760,18 @@ function preloadFighterPoses(ch) {
 }
 function playerQ(player) {
   if (!battleDeck.length) return null;
+  if (isListenBattle()) return battleDeck[sharedQi % battleDeck.length];
   return battleDeck[playerQi[player] % battleDeck.length];
 }
 function updateHpUi() {
-  $("hp1-text").textContent = Math.max(0, hp[1]);
-  $("hp2-text").textContent = Math.max(0, hp[2]);
-  $("hp1-bar").style.width = (Math.max(0, hp[1]) / MAX_HP * 100) + "%";
-  $("hp2-bar").style.width = (Math.max(0, hp[2]) / MAX_HP * 100) + "%";
+  const hp1 = Math.max(0, hp[1]);
+  const hp2 = Math.max(0, hp[2]);
+  $("hp1-text").textContent = hp1;
+  $("hp2-text").textContent = hp2;
+  $("hp1-bar").style.width = (hp1 / MAX_HP * 100) + "%";
+  $("hp2-bar").style.width = (hp2 / MAX_HP * 100) + "%";
+  $("hp-meter-1")?.setAttribute("aria-valuenow", String(hp1));
+  $("hp-meter-2")?.setAttribute("aria-valuenow", String(hp2));
   $("hp1-name").textContent = "P1 " + (pickP1?.name || "");
   $("hp2-name").textContent = "P2 " + (pickP2?.name || "");
 }
@@ -1859,7 +791,9 @@ function updatePlayerMeters(player) {
   const gaugePct = Math.min(100, (hits / GAUGE_HITS_TO_FULL) * 100);
   const bar = $("gauge-bar-" + player);
   if (bar) bar.style.width = gaugePct + "%";
-  $("gauge-wrap-" + player)?.classList.toggle("ready", ready);
+  const gaugeWrap = $("gauge-wrap-" + player);
+  gaugeWrap?.classList.toggle("ready", ready);
+  gaugeWrap?.setAttribute("aria-valuenow", String(Math.min(GAUGE_HITS_TO_FULL, hits)));
   const btn = $("btn-attack-" + player);
   if (btn) {
     const atkLocked = isAttackLocked(player);
@@ -2123,6 +1057,7 @@ function syncFighterPassive(player) {
 
 function playVsThenBattle() {
   if (!pickP1 || !pickP2) return;
+  readBattleOptsFromUi();
   document.querySelectorAll('[data-vs="img1"]').forEach((el) => { el.src = pickP1.image; });
   document.querySelectorAll('[data-vs="img2"]').forEach((el) => { el.src = pickP2.image; });
   document.querySelectorAll('[data-vs="name1"]').forEach((el) => {
@@ -2131,7 +1066,9 @@ function playVsThenBattle() {
   document.querySelectorAll('[data-vs="name2"]').forEach((el) => {
     el.textContent = pickP2.name + " · " + (pickP2.passive?.label || pickP2.skill || pickP2.title);
   });
-  document.querySelectorAll('[data-vs="rule"]').forEach((el) => { el.textContent = "INK REALM"; });
+  document.querySelectorAll('[data-vs="rule"]').forEach((el) => {
+    el.textContent = isListenBattle() ? "LISTEN DUEL" : "SPEED DUEL";
+  });
   const stage = $("vs-stage");
   stage.classList.remove("show");
   void stage.offsetWidth;
@@ -2142,20 +1079,23 @@ function playVsThenBattle() {
     stage.classList.remove("show");
     stage.setAttribute("aria-hidden", "true");
     startBattle();
-  }, 4000);
+  }, prefersReducedMotion() ? 600 : 4000);
 }
 
 function startBattle() {
+  battleEpoch += 1;
   gameMode = "battle";
   cancelAllDrags();
   clearBattleFx();
   setSfxDuck(1);
   stopVoice();
+  stopTts();
   hp = { 1: MAX_HP, 2: MAX_HP };
   battleDeck = buildBattleDeck();
+  const listen = isListenBattle();
   const rule = $("rule-chip");
   if (rule) {
-    const bits = ["墨域・言靈対決"];
+    const bits = [listen ? "聽力搶答" : "競速對決"];
     if (!battleOpts.distractors) bits.push("無干擾");
     if (battleOpts.maxLen > 0) bits.push("≤" + battleOpts.maxLen + "字");
     if (battleOpts.script === "hira") bits.push("平假名");
@@ -2163,6 +1103,8 @@ function startBattle() {
     rule.textContent = bits.join(" · ");
   }
   playerQi = { 1: 0, 2: 0 };
+  sharedQi = 0;
+  listenRoundClaimed = false;
   charge = { 1: 0, 2: 0 };
   combo = { 1: 0, 2: 0 };
   gaugeHits = { 1: 0, 2: 0 };
@@ -2177,7 +1119,10 @@ function startBattle() {
   attackQueue = Promise.resolve();
   $("fighter1").classList.remove("defeated", "hit", "hit-strong", "attacking", "blocking");
   $("fighter2").classList.remove("defeated", "hit", "hit-strong", "attacking", "blocking");
-  document.querySelector(".duel-stage")?.classList.remove("ko-hold");
+  const stage = document.querySelector(".duel-stage");
+  stage?.classList.remove("ko-hold");
+  stage?.classList.toggle("listen-mode", listen);
+  $("btn-battle-listen")?.classList.toggle("hidden", !listen);
   $("fighter1-img").src = pickP1.image;
   $("fighter2-img").src = pickP2.image;
   preloadFighterPoses(pickP1);
@@ -2189,58 +1134,65 @@ function startBattle() {
   updatePlayerMeters(1);
   updatePlayerMeters(2);
   showScreen("battle");
-  loadPlayerQuestion(1);
-  loadPlayerQuestion(2);
+  if (listen) loadSharedListenRound(true);
+  else {
+    loadPlayerQuestion(1);
+    loadPlayerQuestion(2);
+  }
   battleStartedAt = performance.now();
   cancelAnimationFrame(timerRaf);
   tickBattleClock();
   startBattleBgm().catch(() => {});
 }
 
-function playVoice(url, volume = 0.88) {
-  return new Promise(async (resolve) => {
-    if (!url) { resolve(false); return; }
-    stopVoice();
-    let settled = false;
-    const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
-    try {
-      const ctx = await ensureAudioCtx();
-      if (ctx) {
-        let buf = voiceBufCache.get(url);
-        if (!buf) {
-          const res = await fetch(url);
-          if (res.ok) {
-            buf = await ctx.decodeAudioData(await res.arrayBuffer());
-            voiceBufCache.set(url, buf);
-          }
-        }
-        if (buf) {
-          const src = ctx.createBufferSource();
-          const g = ctx.createGain();
-          g.gain.value = Math.min(1, volume);
-          src.buffer = buf;
-          src.connect(g);
-          g.connect(ctx.destination);
-          voiceWebSrc = src;
-          src.onended = () => { if (voiceWebSrc === src) voiceWebSrc = null; done(true); };
-          src.start(0);
-          setTimeout(() => done(true), Math.ceil(buf.duration * 1000) + 120);
-          return;
+async function playVoice(url, volume = 0.88) {
+  if (!url) return false;
+  stopVoice();
+  try {
+    const ctx = await ensureAudioCtx();
+    if (ctx) {
+      let buf = voiceBufCache.get(url);
+      if (!buf) {
+        const res = await fetch(url);
+        if (res.ok) {
+          buf = await ctx.decodeAudioData(await res.arrayBuffer());
+          voiceBufCache.set(url, buf);
         }
       }
-    } catch {}
-    try {
-      const a = new Audio(url);
-      voiceHtml = a;
-      a.volume = Math.min(1, volume);
+      if (buf) {
+        const src = ctx.createBufferSource();
+        const g = ctx.createGain();
+        g.gain.value = Math.min(1, volume);
+        src.buffer = buf;
+        src.connect(g);
+        g.connect(ctx.destination);
+        voiceWebSrc = src;
+        await new Promise((resolve) => {
+          let settled = false;
+          const done = () => { if (!settled) { settled = true; resolve(); } };
+          src.onended = () => { if (voiceWebSrc === src) voiceWebSrc = null; done(); };
+          src.start(0);
+          setTimeout(done, Math.ceil(buf.duration * 1000) + 120);
+        });
+        return true;
+      }
+    }
+  } catch {}
+  try {
+    const a = new Audio(url);
+    voiceHtml = a;
+    a.volume = Math.min(1, volume);
+    return await new Promise((resolve) => {
+      let settled = false;
+      const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
       a.onended = () => { if (voiceHtml === a) voiceHtml = null; done(true); };
       a.onerror = () => done(false);
       a.play().then(() => {}).catch(() => done(false));
       setTimeout(() => done(false), 4500);
-    } catch {
-      done(false);
-    }
-  });
+    });
+  } catch {
+    return false;
+  }
 }
 
 function resetBattleStats() {
@@ -2364,8 +1316,10 @@ function setResultScreen(title, summary, withBattleStats) {
 /** 敗北餘韻：先讓灰階／慘叫留在對戰畫面，再進結算 */
 async function finishBattleDefeat(loser, winner, title, summary) {
   battleOpen = false;
+  battleEpoch += 1;
   cancelAnimationFrame(timerRaf);
   cancelAllDrags();
+  stopTts();
   // 壓低連打音效，避免蓋過敗北慘叫
   setSfxDuck(0.04);
   stopVoice();
@@ -2374,6 +1328,8 @@ async function finishBattleDefeat(loser, winner, title, summary) {
   const winnerEl = $("fighter" + winner);
   const loserCh = charOf(loser);
   stage?.classList.add("ko-hold");
+  stage?.classList.remove("listen-mode");
+  $("btn-battle-listen")?.classList.add("hidden");
   if (winnerEl) {
     winnerEl.classList.remove("hit", "hit-strong", "attacking");
     setFighterPose(winner, "idle");
@@ -2409,61 +1365,67 @@ function hideSpecialStage() {
 }
 
 /** 大招：播 6s 影片（內建喊招＋音效），結束後才接連打；畫面朝對手正向 */
-function playSpecialUltimate(player) {
-  return new Promise(async (resolve) => {
-    cancelAllDrags();
-    const ch = charOf(player);
-    const stage = $("special-stage");
-    const vid = $("special-video");
-    const still = $("special-still");
-    if (!ch || !stage) { resolve(false); return; }
+async function playSpecialUltimate(player) {
+  cancelAllDrags();
+  const ch = charOf(player);
+  const stage = $("special-stage");
+  const vid = $("special-video");
+  const still = $("special-still");
+  if (!ch || !stage) return false;
 
-    stage.dataset.theme = ch.id;
-    $("special-name").textContent = ch.name;
-    $("special-skill").textContent = ch.skill || "";
-    stage.classList.remove("portrait-cast", "foe-upright");
-    // P1 放招 → 整層轉 180°，對座 P2 看正面；P2 放招則不轉，P1 看正面
-    stage.classList.toggle("foe-upright", player === 1);
-    stage.classList.add("show");
-    stage.setAttribute("aria-hidden", "false");
-    keepBattleBgmAlive();
+  stage.dataset.theme = ch.id;
+  $("special-name").textContent = ch.name;
+  $("special-skill").textContent = ch.skill || "";
+  stage.classList.remove("portrait-cast", "foe-upright");
+  // P1 放招 → 整層轉 180°，對座 P2 看正面；P2 放招則不轉，P1 看正面
+  stage.classList.toggle("foe-upright", player === 1);
+  stage.classList.add("show");
+  stage.setAttribute("aria-hidden", "false");
+  keepBattleBgmAlive();
 
-    await new Promise((done) => {
-      let settled = false;
-      let pulse = null;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        if (pulse) clearInterval(pulse);
-        done();
-      };
-      const hard = setTimeout(finish, 7000);
-      pulse = setInterval(keepBattleBgmAlive, 120);
-      const usePortrait = () => {
-        if (pulse) { clearInterval(pulse); pulse = null; }
-        still.src = ch.image;
-        stage.classList.add("portrait-cast");
-        setTimeout(() => { clearTimeout(hard); finish(); }, 3000);
-      };
-      vid.onended = () => { clearTimeout(hard); finish(); };
-      vid.onerror = () => { clearTimeout(hard); usePortrait(); };
-      vid.muted = false;
-      vid.volume = 1;
-      vid.setAttribute("playsinline", "");
-      vid.setAttribute("webkit-playsinline", "");
-      vid.src = ch.castVideo;
-      try { vid.currentTime = 0; } catch {}
-      vid.play().then(() => {
-        keepBattleBgmAlive();
-      }).catch(() => { clearTimeout(hard); usePortrait(); });
-    });
-
+  if (prefersReducedMotion()) {
+    still.src = ch.imageAtk || ch.image;
+    stage.classList.add("portrait-cast");
+    await wait(700);
     hideSpecialStage();
-    keepBattleBgmAlive();
-    // 影片後 HTMLAudio 可能被擋；確保 hit 用 Web Audio
-    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
-    resolve(true);
+    return true;
+  }
+
+  await new Promise((done) => {
+    let settled = false;
+    let pulse = null;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      if (pulse) clearInterval(pulse);
+      done();
+    };
+    const hard = setTimeout(finish, 7000);
+    pulse = setInterval(keepBattleBgmAlive, 120);
+    const usePortrait = () => {
+      if (pulse) { clearInterval(pulse); pulse = null; }
+      still.src = ch.image;
+      stage.classList.add("portrait-cast");
+      setTimeout(() => { clearTimeout(hard); finish(); }, 3000);
+    };
+    vid.onended = () => { clearTimeout(hard); finish(); };
+    vid.onerror = () => { clearTimeout(hard); usePortrait(); };
+    vid.muted = false;
+    vid.volume = 1;
+    vid.setAttribute("playsinline", "");
+    vid.setAttribute("webkit-playsinline", "");
+    vid.src = ch.castVideo;
+    try { vid.currentTime = 0; } catch {}
+    vid.play().then(() => {
+      keepBattleBgmAlive();
+    }).catch(() => { clearTimeout(hard); usePortrait(); });
   });
+
+  hideSpecialStage();
+  keepBattleBgmAlive();
+  // 影片後 HTMLAudio 可能被擋；確保 hit 用 Web Audio
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  return true;
 }
 
 function ensureCastLayers() {
@@ -2485,12 +1447,70 @@ function loadPlayerQuestion(player) {
   const ch = charOf(player);
   const noDistractors = !battleOpts.distractors;
   boards[player].load(q.kanaSequence, {
-    showRomaji: true,
+    showRomaji: !isListenBattle(),
     noDistractors,
     distractorDelta: noDistractors ? 0 : (ch?.passive?.distractorDelta || 0),
   });
   noteQuestionOpen(player);
   updatePlayerMeters(player);
+}
+
+/** 聽力搶答：雙方同題、無羅馬音、播一次 TTS */
+function loadSharedListenRound(autoSpeak) {
+  listenRoundClaimed = false;
+  loadPlayerQuestion(1);
+  loadPlayerQuestion(2);
+  const q = playerQ(1);
+  if (autoSpeak && q) speakGoogleTts(q.speakText);
+}
+
+function lockBoardForListen(player, asWinner) {
+  const b = boards[player];
+  if (!b) return;
+  cancelDragsForBoard(String(player));
+  b.locked = true;
+  $("board" + player)?.classList.add("locked");
+  if (asWinner) b.lockGold();
+}
+
+async function resolveListenRoundWin(player) {
+  const roundEpoch = battleEpoch;
+  const foe = player === 1 ? 2 : 1;
+  const q = playerQ(player);
+  lockBoardForListen(foe, false);
+  boards[foe]?.setFeedback("搶答落敗 · 捱打", "bad");
+  if (q) {
+    showWordReveal(player, q);
+    showWordReveal(foe, q);
+  }
+  await wait(350);
+  if (!battleOpen || roundEpoch !== battleEpoch) return;
+
+  combo[foe] = 0;
+  updatePlayerMeters(foe);
+
+  if (charge[player] > 0 && !isAttackLocked(player)) {
+    const { dmg, hits, special: isSpecial } = projectedAttackDamage(player);
+    const segments = Math.min(hits, MAX_ATTACK_SEGMENTS);
+    ampHits[player] = 0;
+    charge[player] = 0;
+    if (isSpecial) {
+      gaugeHits[player] = 0;
+      noteSpecialFired(player);
+    }
+    updatePlayerMeters(player);
+    await applyAttack(player, dmg, isSpecial, segments, hits);
+  } else if (isAttackLocked(player)) {
+    boards[player]?.setFeedback("攻擊被凍結 · 本輪落空", "bad");
+    charge[player] = 0;
+    combo[player] = 0;
+    updatePlayerMeters(player);
+    await wait(700);
+  }
+
+  if (!battleOpen || roundEpoch !== battleEpoch) return;
+  sharedQi += 1;
+  loadSharedListenRound(true);
 }
 
 function tickBattleClock() {
@@ -2527,11 +1547,20 @@ function splitComboDamage(total, hits) {
 }
 
 function enqueueAttack(fn) {
-  attackQueue = attackQueue.then(fn).catch(function () {});
+  const queuedEpoch = battleEpoch;
+  attackQueue = attackQueue.then(function () {
+    if (!battleOpen || queuedEpoch !== battleEpoch) return false;
+    return fn();
+  }).catch(function (error) {
+    console.error("Battle action failed", error);
+    return false;
+  });
   return attackQueue;
 }
 
 async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
+  const actionEpoch = battleEpoch;
+  if (!battleOpen) return false;
   const foe = player === 1 ? 2 : 1;
   const def = $("fighter" + foe);
   const atk = $("fighter" + player);
@@ -2550,7 +1579,9 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     setFighterPose(player, "atk");
     atk.classList.add("attacking");
     await playSpecialUltimate(player);
+    if (!battleOpen || actionEpoch !== battleEpoch) return false;
     await playSpecialAftermath(atkTheme.id);
+    if (!battleOpen || actionEpoch !== battleEpoch) return false;
     if (audioCtx && audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
     await preloadBattleSfx().catch(() => {});
     // 大招開場連射兩道
@@ -2563,6 +1594,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     setFighterPose(player, "atk");
     atk.classList.add("attacking");
     await playAttackBolt(player, foe, atkTheme, hits >= 3);
+    if (!battleOpen || actionEpoch !== battleEpoch) return false;
     if (hits >= 4) {
       playAttackBolt(player, foe, atkTheme, true);
       await wait(70);
@@ -2580,7 +1612,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
   const parts = splitComboDamage(dmg, hits);
   setFighterPose(foe, "hit");
   for (let i = 0; i < parts.length; i++) {
-    if (!battleOpen || hp[foe] <= 0) break;
+    if (!battleOpen || actionEpoch !== battleEpoch || hp[foe] <= 0) break;
     const hitNo = i + 1;
     const sfxNo = Math.min(hitNo, 5);
     let partDmg = parts[i];
@@ -2618,6 +1650,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
       setTimeout(() => playAttackBolt(player, foe, atkTheme, true), 40);
     }
     await wait(230 + Math.min(hitNo, 5) * 18);
+    if (!battleOpen || actionEpoch !== battleEpoch) return false;
     def.classList.remove("hit", "hit-strong", "block-absorb");
     if (hp[foe] <= 0) break;
     await wait(28);
@@ -2652,6 +1685,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
 }
 
 function applySelfMissDamage(player, dmg, wrongCount) {
+  const missEpoch = battleEpoch;
   playSfx("sfx_miss", 0.4);
   playHitSfx(Math.min(Math.max(1, wrongCount), 5));
   const me = $("fighter" + player);
@@ -2674,7 +1708,7 @@ function applySelfMissDamage(player, dmg, wrongCount) {
       flash.classList.add("go");
     }
     setTimeout(() => {
-      if (hp[player] > 0) {
+      if (battleOpen && missEpoch === battleEpoch && hp[player] > 0) {
         me.classList.remove("hit", "hit-strong");
         setFighterPose(player, "idle");
       }
@@ -2694,22 +1728,6 @@ function applySelfMissDamage(player, dmg, wrongCount) {
       );
     });
   }
-}
-
-function maybeAutoBattleSubmit(boardId) {
-  if (!battleOpen || gameMode !== "battle") return;
-  const player = Number(boardId);
-  if (player !== 1 && player !== 2) return;
-  if (isSubmitLocked(player)) return;
-  const b = boards[player];
-  if (!b || b.locked) return;
-  if (b.slots.some(function (v) { return !v; })) return;
-  const q = playerQ(player);
-  if (!q || !q.kanaSequence || q.kanaSequence.length !== b.slots.length) return;
-  // 僅全對才自動提交；排錯仍用手按提交確認
-  const allCorrect = b.slots.every(function (v, i) { return v && v.kana === q.kanaSequence[i]; });
-  if (!allCorrect) return;
-  battleSubmit(player);
 }
 
 function battleSubmit(player) {
@@ -2735,6 +1753,28 @@ function battleSubmit(player) {
     return;
   }
 
+  if (isListenBattle()) {
+    if (listenRoundClaimed) {
+      b.setFeedback("本輪已被搶走", "bad");
+      return;
+    }
+    listenRoundClaimed = true;
+    combo[player] += 1;
+    gaugeHits[player] += gaugeGainOf(player);
+    const gain = calcChargeGain(player, q);
+    charge[player] += gain;
+    noteCorrectAnswer(player);
+    lockBoardForListen(player, true);
+    b.setFeedback("搶答成功 · +" + gain, "ok");
+    updatePlayerMeters(player);
+    playSfx("skillpop", 0.5);
+    showCombo("搶答！", "md");
+    enqueueAttack(async function () {
+      await resolveListenRoundWin(player);
+    });
+    return;
+  }
+
   combo[player] += 1;
   gaugeHits[player] += gaugeGainOf(player);
   const gain = calcChargeGain(player, q);
@@ -2745,16 +1785,21 @@ function battleSubmit(player) {
   updatePlayerMeters(player);
   showWordReveal(player, q);
 
-  // 不等對方：立刻進自己的下一題（略延長讓飄字可讀）
+  // 競速：不等對方，立刻進自己的下一題
   playerQi[player] += 1;
+  const questionEpoch = battleEpoch;
   setTimeout(function () {
-    if (!battleOpen) return;
+    if (!battleOpen || questionEpoch !== battleEpoch) return;
     loadPlayerQuestion(player);
   }, 900);
 }
 
 function battleFireAttack(player) {
   if (!battleOpen) return;
+  if (isListenBattle()) {
+    boards[player]?.setFeedback("聽力搶答由系統自動攻擊", "bad");
+    return;
+  }
   if (isAttackLocked(player)) {
     boards[player]?.setFeedback("攻擊被凍結中", "bad");
     return;
@@ -2778,6 +1823,10 @@ function battleFireAttack(player) {
 
 function battleSkip(player) {
   if (!battleOpen) return;
+  if (isListenBattle()) {
+    boards[player]?.setFeedback("聽力搶答不可跳過", "bad");
+    return;
+  }
   const b = boards[player];
   if (b.locked) return;
   combo[player] = 0;
@@ -2827,6 +1876,26 @@ function bindTap(el, fn) {
 }
 
 // —— Events ——
+$("reward-stage")?.addEventListener("keydown", (e) => {
+  const stage = $("reward-stage");
+  if (e.key !== "Tab" || !stage?.classList.contains("show")) return;
+  const focusable = Array.from(stage.querySelectorAll('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'))
+    .filter((el) => !el.hidden && el.getAttribute("aria-hidden") !== "true");
+  if (!focusable.length) {
+    e.preventDefault();
+    stage.querySelector(".reward-panel")?.focus();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+});
 bindTap($("btn-mode-practice"), () => enterMode("practice"));
 bindTap($("btn-mode-battle"), () => enterMode("battle"));
 document.querySelectorAll(".btn-char-back").forEach((btn) => {
@@ -2843,20 +1912,31 @@ bindCharCarouselSwipe();
 bindTap($("btn-home-p"), () => { stopTts(); hideReward(); cancelAllDrags(); showScreen("start"); });
 bindTap($("btn-home-b"), () => {
   stopTts(); stopBattleBgm(); hideSpecialStage(); cancelAllDrags(); clearBattleFx();
-  battleOpen = false; cancelAnimationFrame(timerRaf);
+  battleOpen = false; battleEpoch += 1; cancelAnimationFrame(timerRaf);
   clearSkillTimers(1); clearSkillTimers(2);
+  document.querySelector(".duel-stage")?.classList.remove("listen-mode");
+  $("btn-battle-listen")?.classList.add("hidden");
   showScreen("start");
+});
+bindTap($("btn-battle-listen"), () => {
+  if (!battleOpen || !isListenBattle() || listenRoundClaimed) return;
+  const q = playerQ(1);
+  if (q) speakGoogleTts(q.speakText);
 });
 document.querySelectorAll(".btn-again-home").forEach((btn) => {
   bindTap(btn, () => {
     cancelAllDrags();
     stopBattleBgm();
+    stopTts();
     hideSpecialStage();
     clearBattleFx();
     battleOpen = false;
+    battleEpoch += 1;
     cancelAnimationFrame(timerRaf);
     clearSkillTimers(1);
     clearSkillTimers(2);
+    document.querySelector(".duel-stage")?.classList.remove("listen-mode");
+    $("btn-battle-listen")?.classList.add("hidden");
     readyP1 = false;
     readyP2 = false;
     if (!pickP1) pickP1 = CHARACTERS[0] || null;
@@ -2896,6 +1976,7 @@ document.addEventListener("dblclick", (e) => e.preventDefault());
 
 bindTap($("portrait"), () => { if (!busy && currentQ()) speakGoogleTts(currentQ().speakText); });
 bindTap($("btn-listen"), () => { if (!busy && currentQ()) speakGoogleTts(currentQ().speakText); });
+bindTap($("btn-listen-seg"), () => practiceSpeakSegment());
 bindTap($("btn-clear"), () => boards.practice.clearAll());
 bindTap($("btn-submit"), () => practiceSubmit());
 bindTap($("btn-next"), () => practiceNext());

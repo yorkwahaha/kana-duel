@@ -1,0 +1,26 @@
+{
+  "name": "kana-voice-match-prototype",
+  "version": "1.0.0",
+  "description": "**v1.0** — 假名聽音拼字對決原型（單人練習／雙人對戰）。",
+  "main": "game.js",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yorkwahaha/kana-voice-match-prototype.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/yorkwahaha/kana-voice-match-prototype/issues"
+  },
+  "homepage": "https://github.com/yorkwahaha/kana-voice-match-prototype#readme",
+  "dependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0"
+  }
+}
