@@ -2526,8 +2526,59 @@ body.online-battle .duel-half.p2 .hp-bar {
   font-size: 0.78rem;
 }
 body.online-battle .duel-half.p1 .duel-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 6px;
   border-color: rgba(47, 143, 134, 0.3);
   background: linear-gradient(180deg, rgba(14, 20, 19, 0.94), rgba(18, 16, 14, 0.98));
+}
+body.online-battle .duel-half.p1 .board {
+  align-self: center;
+  justify-self: center;
+  align-content: center;
+  width: min(100%, 760px);
+  margin: 0;
+  overflow: visible;
+}
+body.online-battle .duel-half.p1 .board .slots,
+body.online-battle .duel-half.p1 .board .pool,
+body.online-battle .duel-half.p1 .board .feedback,
+body.online-battle .duel-half.p1 .board .actions {
+  width: min(100%, 720px);
+  margin-inline: auto;
+}
+body.online-battle .duel-half.p1 .board .slots {
+  align-items: center;
+}
+body.online-battle .duel-half.p1 .board .slot {
+  flex: 0 1 clamp(54px, 12%, 78px);
+  width: clamp(54px, 12%, 78px);
+  max-width: 78px;
+}
+body.online-battle .duel-half.p1 .board .pool {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 78px));
+  justify-content: center;
+  align-content: center;
+}
+body.online-battle .duel-half.p1 .board .tile {
+  max-height: none;
+}
+body.online-battle .duel-half.p1 .board .feedback {
+  text-align: center;
+}
+body.online-battle .duel-half.p1 .board .actions {
+  justify-content: center;
+}
+body.online-battle .duel-half.p1 .board .actions .spacer {
+  display: none;
+}
+body.online-battle .duel-half.p1 .board .actions .btn-submit {
+  flex: 0 1 min(58%, 420px);
+}
+body.online-battle .duel-half.p1 .skill-bar {
+  width: min(100%, 760px);
+  margin-inline: auto;
 }
 body.online-battle .duel-half.p1 .board .actions .btn,
 body.online-battle .duel-half.p1 .skill-bar .btn-skill {
@@ -2537,10 +2588,10 @@ body.online-battle .duel-half.p1 .skill-bar .btn-skill {
 
 @media (orientation: portrait) {
   body.online-battle .duel-stage {
-    grid-template-rows: minmax(116px, 27dvh) auto minmax(0, 1fr);
+    grid-template-rows: minmax(108px, 21dvh) auto minmax(0, 1fr);
   }
   body.online-battle .duel-half.p2 {
-    grid-template-columns: minmax(108px, 34%) minmax(0, 1fr);
+    grid-template-columns: minmax(98px, 32%) minmax(0, 1fr);
   }
   body.online-battle .duel-half.p2 .fighter img {
     object-position: center 12%;
@@ -2567,23 +2618,53 @@ body.online-battle .duel-half.p1 .skill-bar .btn-skill {
     -webkit-backdrop-filter: none;
   }
   body.online-battle .duel-half.p1 .duel-panel {
+    position: relative;
+    inset: auto;
     align-self: stretch;
-    justify-content: flex-end;
-    padding: 10px 7px max(8px, env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(180deg, rgba(8, 10, 9, 0.08) 0%, rgba(10, 12, 11, 0.82) 20%, rgba(14, 14, 12, 0.98) 48%);
+    grid-row: 2;
+    width: auto;
+    padding: 8px 7px max(8px, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(47, 143, 134, 0.3);
+    border-radius: 0;
+    background: linear-gradient(180deg, rgba(10, 17, 16, 0.98), rgba(14, 14, 12, 0.99));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  body.online-battle .duel-half.p1 {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(78px, 15dvh) minmax(0, 1fr);
+  }
+  body.online-battle .duel-half.p1 > .duel-art {
+    position: relative;
+    inset: auto;
+    grid-row: 1;
+  }
+  body.online-battle .duel-half.p1 > .duel-art .fighter img {
+    object-position: center 18%;
+  }
+  body.online-battle .duel-half.p1 .board {
+    width: min(100%, 520px);
   }
   body.online-battle .duel-half.p1 .board .pool {
-    max-height: min(25dvh, 164px);
+    grid-template-columns: repeat(auto-fit, minmax(58px, 78px));
+    max-height: min(24dvh, 164px);
+    padding: 4px;
+    gap: 5px;
+  }
+  body.online-battle .duel-half.p1 .skill-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   body.online-battle .duel-half.p1 .skill-bar .combo-chip {
-    min-width: 100%;
+    grid-column: 1 / -1;
+    min-width: 0;
     font-size: 0.78rem;
   }
 }
 
 @media (orientation: landscape) {
   body.online-battle .duel-stage {
-    grid-template-columns: minmax(220px, 42%) minmax(0, 58%);
+    grid-template-columns: minmax(232px, 38%) minmax(0, 62%);
     grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
   }
   body.online-battle .duel-half.p2 {
@@ -2628,17 +2709,21 @@ body.online-battle .duel-half.p1 .skill-bar .btn-skill {
     -webkit-backdrop-filter: none;
   }
   body.online-battle .duel-half.p1 .board {
-    flex: 1 1 auto;
-    justify-content: center;
+    width: min(100%, 760px);
   }
   body.online-battle .duel-half.p1 .board .pool {
-    max-height: min(36dvh, 190px);
+    grid-template-columns: repeat(auto-fit, minmax(62px, 82px));
+    max-height: min(38dvh, 190px);
   }
   body.online-battle .duel-half.p1 .board .tile {
     max-height: 54px;
   }
   body.online-battle .duel-half.p1 .skill-bar .combo-chip {
     font-size: 0.78rem;
+  }
+  body.online-battle .duel-half.p1 .skill-bar {
+    display: grid;
+    grid-template-columns: auto repeat(3, minmax(0, 1fr));
   }
   body.online-battle .duel-half.p2 .duel-art,
   body.online-battle .duel-half.p2 .duel-panel {
@@ -2668,6 +2753,7 @@ body.online-battle .duel-half.p1 .skill-bar .btn-skill {
     padding-bottom: 5px;
   }
   body.online-battle .duel-half.p1 .board .pool {
+    grid-template-columns: repeat(auto-fit, minmax(50px, 68px));
     max-height: 132px;
   }
   body.online-battle .duel-half.p1 .board .actions .btn,

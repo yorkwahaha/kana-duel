@@ -1377,8 +1377,8 @@ async function playSpecialUltimate(player) {
   $("special-name").textContent = ch.name;
   $("special-skill").textContent = ch.skill || "";
   stage.classList.remove("portrait-cast", "foe-upright");
-  // P1 放招 → 整層轉 180°，對座 P2 看正面；P2 放招則不轉，P1 看正面
-  stage.classList.toggle("foe-upright", player === 1);
+  // 同機對坐時 P1 的演出轉向對手；線上模式每台裝置都保持正向。
+  stage.classList.toggle("foe-upright", !document.body.classList.contains("online-battle") && player === 1);
   stage.classList.add("show");
   stage.setAttribute("aria-hidden", "false");
   keepBattleBgmAlive();

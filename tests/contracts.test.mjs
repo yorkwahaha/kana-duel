@@ -93,7 +93,7 @@ test("split scripts load in dependency order", () => {
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
-  assert.equal((html.match(/\?v=20260819-online-layout-1/g) || []).length, 8, "CSS and scripts must bypass stale release caches");
+  assert.equal((html.match(/\?v=20260819-online-impact-2/g) || []).length, 8, "CSS and scripts must bypass stale release caches");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
@@ -113,14 +113,29 @@ test("online room entry and battle interception stay wired", () => {
   const css = read("styles.css");
   assert.match(html, /id="btn-mode-online"/);
   assert.match(html, /id="screen-online"/);
-  assert.match(html, /src="online\.js\?v=20260819-online-layout-1"/);
-  assert.match(html, /src="game-online\.js\?v=20260819-online-layout-1"/);
+  assert.match(html, /src="online\.js\?v=20260819-online-impact-2"/);
+  assert.match(html, /src="game-online\.js\?v=20260819-online-impact-2"/);
   assert.match(game, /window\.KanaBattleOnline\.handleAction\(p, act\)/);
   assert.match(game, /window\.KanaBattleOnline\.replayQuestion\(\)/);
   assert.match(online, /client\.submit\(localQuestionId/);
   assert.match(online, /room\.currentQuestionId/);
+  assert.match(online, /scheduleGoogleTts\(question\.speakText, \{ delayMs \}\)/);
+  assert.match(online, /playHitSfx\(Math\.min\(hitNo, 5\)\)/);
+  assert.match(online, /shakeBattle\(event\.special \|\| hitNo >= 3/);
+  assert.match(online, /await playSpecialUltimate\(player\)/);
   assert.doesNotMatch(online, /room\.questionIds/);
   assert.match(css, /body\.online-battle \.duel-half\.p2 \{\s*transform: none/);
-  assert.match(css, /@media \(orientation: landscape\)[\s\S]*?grid-template-columns: minmax\(220px, 42%\) minmax\(0, 58%\)/);
-  assert.match(css, /@media \(orientation: portrait\)[\s\S]*?grid-template-rows: minmax\(116px, 27dvh\) auto minmax\(0, 1fr\)/);
+  assert.match(css, /grid-template-columns: repeat\(auto-fit, minmax\(58px, 78px\)\)/);
+  assert.match(css, /@media \(orientation: landscape\)[\s\S]*?grid-template-columns: minmax\(232px, 38%\) minmax\(0, 62%\)/);
+  assert.match(css, /@media \(orientation: portrait\)[\s\S]*?grid-template-rows: minmax\(108px, 21dvh\) auto minmax\(0, 1fr\)/);
+});
+
+test("online listen audio is cached and scheduled from server time", () => {
+  const audio = read("game-audio.js");
+  const worker = read("worker/src/room-core.mjs");
+  assert.match(audio, /const ttsBlobCache = new Map\(\)/);
+  assert.match(audio, /async function prepareGoogleTts/);
+  assert.match(audio, /async function scheduleGoogleTts/);
+  assert.match(worker, /listenCue: null/);
+  assert.match(worker, /playAt: now \+ Math\.max\(0, delayMs\)/);
 });

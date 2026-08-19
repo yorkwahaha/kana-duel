@@ -5,10 +5,12 @@
 /* global pickP1:writable, pickP2:writable, gameMode:writable, playerQi:writable, sharedQi:writable */
 /* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, timerRaf */
 /* global bindTap, cancelAllDrags, clearBattleFx, clearSkillTimers, hideSpecialStage, noteQuestionOpen */
-/* global fxThemeOf, playAttackBolt, playBlockActivate, playHitSfx, playSfx, setFighterPose, setResultScreen */
+/* global ensureAudioCtx, getSessionToken, preloadBattleSfx, prepareGoogleTts, scheduleGoogleTts */
+/* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
 /* global showCombo, showDmgFloat, showScreen, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, ensureCastLayers, preloadFighterPoses */
-/* global speakGoogleTts */
+/* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
+/* global spawnBlockParry, speakGoogleTts, splitComboDamage, wait */
 (() => {
   const client = window.KanaBattleOnlineClient;
   if (!client) return;
@@ -17,6 +19,7 @@
   let active = false;
   let lastEventId = 0;
   let localQuestionId = "";
+  let lastListenCueSeq = 0;
   let connectionStatus = "idle";
   let battleResultShown = false;
 
@@ -133,8 +136,18 @@
       boards[1].locked = false;
       $("board1")?.classList.remove("locked");
       noteQuestionOpen(1);
-      if (room.config.mode === "listen") speakGoogleTts(localQ.speakText);
     }
+  }
+
+  function syncListenCue() {
+    const cue = room?.battle?.listenCue;
+    if (room?.config?.mode !== "listen" || !cue || cue.seq <= lastListenCueSeq) return;
+    const question = questionById(cue.questionId);
+    if (!question) return;
+    lastListenCueSeq = cue.seq;
+    const delayMs = Math.max(0, Number(cue.playAt) - Number(room.serverNow || Date.now()));
+    prepareGoogleTts(question.speakText).catch(() => {});
+    scheduleGoogleTts(question.speakText, { delayMs }).catch(() => {});
   }
 
   function updateOpponentStatus() {
@@ -174,6 +187,7 @@
     document.querySelectorAll('[data-p="2"]').forEach((button) => { button.disabled = true; });
     updateOpponentStatus();
     loadOnlineQuestion();
+    syncListenCue();
   }
 
   function beginOnlineBattle() {
@@ -181,6 +195,7 @@
     battleResultShown = false;
     lastEventId = 0;
     localQuestionId = "";
+    lastListenCueSeq = 0;
     document.body.classList.add("online-battle");
     gameMode = "online";
     battleOpts = { ...room.config };
@@ -213,6 +228,94 @@
 
   function displaySeat(serverSeat) { return serverSeat === localSeat() ? 1 : 2; }
 
+  function pulseDeviceImpact(heavy = false) {
+    if (prefersReducedMotion() || typeof navigator.vibrate !== "function") return;
+    try { navigator.vibrate(heavy ? [34, 24, 46] : 24); } catch {}
+  }
+
+  function queueOnlineAnimation(task) {
+    const queuedEpoch = battleEpoch;
+    attackQueue = Promise.resolve(attackQueue).then(() => {
+      if (!active || queuedEpoch !== battleEpoch) return false;
+      return task(queuedEpoch);
+    }).catch((error) => {
+      console.error("Online battle animation failed", error);
+      return false;
+    });
+    return attackQueue;
+  }
+
+  async function animateMiss(event, player, actionEpoch) {
+    const fighter = $("fighter" + player);
+    const wrong = Math.max(1, event.wrong || 1);
+    setFighterPose(player, "hit");
+    playHitSfx(Math.min(5, wrong));
+    showDmgFloat(player, event.damage, wrong);
+    spawnHitBurst(fighter, fxThemeOf(player === 1 ? 2 : 1), wrong + 1);
+    shakeBattle(wrong >= 2);
+    pulseDeviceImpact(wrong >= 2);
+    fighter?.classList.remove("hit", "hit-strong");
+    void fighter?.offsetWidth;
+    fighter?.classList.add(wrong >= 2 ? "hit-strong" : "hit");
+    await wait(330);
+    fighter?.classList.remove("hit", "hit-strong");
+    if (active && actionEpoch === battleEpoch && (hp[player] || 0) > 0) setFighterPose(player, "idle");
+  }
+
+  async function animateAttack(event, player, foe, actionEpoch) {
+    const attacker = $("fighter" + player);
+    const defender = $("fighter" + foe);
+    const theme = fxThemeOf(player);
+    const hits = Math.max(1, Math.min(Number(event.hits) || 1, MAX_ATTACK_SEGMENTS));
+    const parts = splitComboDamage(Math.max(1, Number(event.damage) || 1), hits);
+    const comboSize = event.hits >= 5 ? "lg" : event.hits >= 3 ? "md" : "sm";
+    showCombo(`${event.special ? "大招" : "攻擊"} · ${event.hits} COMBO`, comboSize);
+    playSfx("skillpop", 0.48);
+    setFighterPose(player, "atk");
+    attacker?.classList.add("attacking");
+
+    if (event.special) {
+      await playSpecialUltimate(player);
+      if (!active || actionEpoch !== battleEpoch) return false;
+      await playSpecialAftermath(theme.id);
+      if (!active || actionEpoch !== battleEpoch) return false;
+      await preloadBattleSfx().catch(() => {});
+      playAttackBolt(player, foe, theme, true);
+      await wait(90);
+      playAttackBolt(player, foe, theme, true);
+    } else {
+      playCastBurst(attacker, theme);
+      await playAttackBolt(player, foe, theme, hits >= 3);
+    }
+
+    if (event.guarded) {
+      showCombo("格擋!", "sm");
+      spawnBlockParry(defender, true);
+      playSfx("ready", 0.5);
+    }
+    setFighterPose(foe, "hit");
+    for (let index = 0; index < parts.length; index += 1) {
+      if (!active || actionEpoch !== battleEpoch) return false;
+      const hitNo = index + 1;
+      playHitSfx(Math.min(hitNo, 5));
+      showDmgFloat(foe, parts[index], hitNo);
+      if (event.guarded) spawnBlockParry(defender, hitNo === 1 || hitNo === parts.length);
+      else spawnHitBurst(defender, theme, hitNo + (event.special ? 2 : 0));
+      playAttackBolt(player, foe, theme, event.special || hitNo >= 3 || hitNo === parts.length);
+      shakeBattle(event.special || hitNo >= 3 || hitNo === parts.length);
+      pulseDeviceImpact(event.special || hitNo === parts.length);
+      defender?.classList.remove("hit", "hit-strong", "block-absorb");
+      void defender?.offsetWidth;
+      defender?.classList.add(event.guarded ? "block-absorb" : (event.special || hitNo >= 4 ? "hit-strong" : "hit"));
+      await wait(210 + Math.min(hitNo, 5) * 16);
+    }
+    defender?.classList.remove("hit", "hit-strong", "block-absorb");
+    attacker?.classList.remove("attacking");
+    setFighterPose(player, "idle");
+    if ((hp[foe] || 0) > 0) setFighterPose(foe, "idle");
+    return true;
+  }
+
   function renderEvent(event) {
     if (!event || event.id <= lastEventId) return;
     lastEventId = event.id;
@@ -222,22 +325,10 @@
       playSfx("skillpop", 0.4);
     } else if (event.type === "miss") {
       boards[player]?.setFeedback(`${player === 1 ? "答錯" : "對手答錯"} · -${event.damage}`, "bad");
-      showDmgFloat(player, event.damage, event.wrong);
-      playHitSfx(Math.min(5, event.wrong || 1));
-      spawnHitBurst($("fighter" + player), fxThemeOf(player), event.wrong || 1);
+      queueOnlineAnimation((actionEpoch) => animateMiss(event, player, actionEpoch));
     } else if (event.type === "attack") {
       const foe = displaySeat(event.foeSeat);
-      showCombo(`${event.special ? "大招" : "攻擊"} · ${event.hits} COMBO`, event.hits >= 5 ? "lg" : "md");
-      showDmgFloat(foe, event.damage, event.hits);
-      playSfx(event.special ? "fanfare" : "skillpop", 0.5);
-      setFighterPose(player, "atk");
-      setFighterPose(foe, "hit");
-      playAttackBolt(player, foe, fxThemeOf(player), event.special || event.hits >= 3);
-      setTimeout(() => {
-        if (!active) return;
-        setFighterPose(player, "idle");
-        if ((hp[foe] || 0) > 0) setFighterPose(foe, "idle");
-      }, 520);
+      queueOnlineAnimation((actionEpoch) => animateAttack(event, player, foe, actionEpoch));
     } else if (event.type === "skill") {
       showCombo(event.skill === "block" ? "格擋" : event.skill === "heal" ? "回墨" : "專屬技能", "sm");
       if (event.skill === "block") playBlockActivate(player);
@@ -287,7 +378,7 @@
       if (room.battle) syncBattleState();
       renderEvent(room.lastEvent);
       pauseOverlay(false);
-      finishOnlineBattle();
+      Promise.resolve(attackQueue).then(finishOnlineBattle);
     } else {
       if (active && priorPhase !== "lobby") {
         battleOpen = false;
@@ -362,6 +453,9 @@
   bindTap($("btn-online-leave"), leaveRoom);
   bindTap($("btn-online-ready"), () => {
     const mine = localPlayer();
+    ensureAudioCtx().catch(() => {});
+    preloadBattleSfx().catch(() => {});
+    getSessionToken().catch(() => {});
     client.ready($("online-character")?.value || "ao", !mine?.ready);
   });
   ["online-mode", "online-maxlen", "online-script", "online-distractors"].forEach((id) => {

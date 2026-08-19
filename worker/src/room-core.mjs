@@ -3,6 +3,9 @@ export const MAX_HP = 2400;
 
 const MAX_NAME_LENGTH = 16;
 const MAX_DECK_SIZE = 240;
+const LISTEN_START_LEAD_MS = 3200;
+const LISTEN_NEXT_LEAD_MS = 2200;
+const LISTEN_SPECIAL_LEAD_MS = 10800;
 const VALID_CHARACTERS = new Set(["ao", "rin", "ya", "go", "ran", "gen", "sho", "yo"]);
 const CHARACTER_RULES = {
   ao: { gaugePerCorrect: 2, active: "submit_lock" },
@@ -85,7 +88,10 @@ function startBattle(room, now = Date.now()) {
     startedAt: now,
     completedAt: null,
     winnerSeat: null,
+    listenCueSeq: 0,
+    listenCue: null,
   };
+  scheduleListenCue(room, now, LISTEN_START_LEAD_MS);
   room.eventSeq += 1;
   room.lastEvent = { id: room.eventSeq, type: "start", at: now };
 }
@@ -219,6 +225,18 @@ function questionAt(room, seat) {
   return room.deck[index % room.deck.length];
 }
 
+function scheduleListenCue(room, now, delayMs) {
+  if (room.config.mode !== "listen" || !room.battle) return;
+  const question = questionAt(room, 0);
+  if (!question) return;
+  room.battle.listenCueSeq += 1;
+  room.battle.listenCue = {
+    seq: room.battle.listenCueSeq,
+    questionId: question.id,
+    playAt: now + Math.max(0, delayMs),
+  };
+}
+
 function chargeGain(room, seat, answerLength) {
   const fighter = room.battle.fighters[seat];
   const base = 58 + answerLength * 6;
@@ -266,9 +284,10 @@ function performAttack(room, seat, now, automatic = false) {
   fighter.ampHits = 0;
   if (special) fighter.gauge = 0;
   foe.hp = Math.max(0, foe.hp - damage);
-  setEvent(room, { type: "attack", seat, foeSeat, damage, hits, special, guarded, automatic }, now);
+  const event = { type: "attack", seat, foeSeat, damage, hits, special, guarded, automatic };
+  setEvent(room, event, now);
   finishIfNeeded(room, now);
-  return { ok: true };
+  return { ok: true, event };
 }
 
 export function applySubmit(room, seat, { questionId, answer }, now = Date.now()) {
@@ -304,6 +323,10 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
     if (room.phase === "playing") {
       room.battle.sharedQi += 1;
       room.battle.listenClaimed = false;
+      const cueDelay = attack.event.special
+        ? LISTEN_SPECIAL_LEAD_MS
+        : Math.max(LISTEN_NEXT_LEAD_MS, 900 + Math.min(8, attack.event.hits) * 280);
+      scheduleListenCue(room, now, cueDelay);
     }
   } else {
     fighter.qi += 1;

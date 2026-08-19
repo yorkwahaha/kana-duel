@@ -40,6 +40,7 @@ test("two connected players choose unique characters and start a room", () => {
   assert.equal(publicState.youSeat, 0);
   assert.equal(publicState.players[0].token, undefined);
   assert.equal(publicState.currentQuestionId, "q1");
+  assert.equal(publicState.battle.listenCue, null);
   assert.equal(publicState.questionIds, undefined);
   assert.equal(publicState.battle.fighters[1].qi, undefined);
   assert.equal(publicState.battle.fighters[0].qi, 0);
@@ -70,11 +71,17 @@ test("the server validates answers and owns damage state", () => {
 
 test("listen mode preserves the winner streak across automatic attacks", () => {
   const room = createPlayingRoom("listen");
+  assert.equal(room.battle.listenCue.questionId, "q1");
+  assert.equal(room.battle.listenCue.playAt, 4250);
+  const firstCue = room.battle.listenCue.seq;
   assert.equal(applySubmit(room, 0, { questionId: "q1", answer: ["か", "な"] }, 1100).correct, true);
   assert.equal(room.battle.sharedQi, 1);
   assert.equal(room.battle.fighters[0].combo, 1);
   assert.equal(room.lastEvent.type, "attack");
   assert.equal(room.lastEvent.automatic, true);
+  assert.equal(room.battle.listenCue.questionId, "q2");
+  assert.equal(room.battle.listenCue.seq, firstCue + 1);
+  assert.ok(room.battle.listenCue.playAt >= 3300);
 });
 
 test("disconnect pauses commands and explicit leave transfers the host", () => {

@@ -5,6 +5,9 @@ const TTS_PROXY_URL = "https://jpapp-tts-proxy.yorkwahaha.workers.dev/tts";
 const TTS_SESSION_URL = "https://jpapp-tts-proxy.yorkwahaha.workers.dev/session";
 const TTS_VOICE = "ja-JP-Neural2-B";
 let sessionTokenData = null, currentTtsAudio = null, currentCloudTtsObjectUrl = null, ttsSessionId = 0;
+let ttsStartTimer = null, ttsStartResolve = null;
+const ttsBlobCache = new Map();
+const ttsRequestCache = new Map();
 const sharedTtsAudio = new Audio();
 function revokeCloudUrl(url = currentCloudTtsObjectUrl) {
   if (!url) return;
@@ -13,6 +16,10 @@ function revokeCloudUrl(url = currentCloudTtsObjectUrl) {
 }
 function stopTts() {
   ttsSessionId++; revokeCloudUrl();
+  if (ttsStartTimer) clearTimeout(ttsStartTimer);
+  ttsStartTimer = null;
+  if (ttsStartResolve) ttsStartResolve(false);
+  ttsStartResolve = null;
   if (currentTtsAudio) {
     try { currentTtsAudio.pause(); currentTtsAudio.currentTime = 0; currentTtsAudio.onended = null; currentTtsAudio.onerror = null; } catch {}
     currentTtsAudio = null;
@@ -25,33 +32,60 @@ async function getSessionToken() {
   sessionTokenData = await res.json();
   return sessionTokenData.token;
 }
-async function speakGoogleTts(text, { rate = "1.0" } = {}) {
-  const clean = String(text || "").replace(/<[^>]*>/g, "").trim();
-  if (!clean) return false;
-  stopTts();
-  const my = ttsSessionId;
-  document.getElementById("portrait")?.classList.add("speaking");
-  let res = null;
-  // 取 token／發請求失敗時只回 false，不可 throw：呼叫端會用 await 卡住 busy 狀態
-  try {
-    for (let i = 0; i < 2; i++) {
-      const token = await getSessionToken();
-      res = await fetch(TTS_PROXY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Session-Token": token },
-        body: JSON.stringify({ text: clean, voice: TTS_VOICE, rate: String(rate), pitch: "0.0" }),
-      });
-      if (res.status === 401) { sessionTokenData = null; continue; }
-      break;
-    }
-  } catch { res = null; }
-  if (!res?.ok) {
-    document.getElementById("portrait")?.classList.remove("speaking");
-    setTtsStatus(false, "TTS 失敗" + (res?.status ? " " + res.status : ""));
-    return false;
+function cleanTtsText(text) {
+  return String(text || "").replace(/<[^>]*>/g, "").trim();
+}
+function rememberTtsBlob(key, blob) {
+  if (ttsBlobCache.has(key)) ttsBlobCache.delete(key);
+  ttsBlobCache.set(key, blob);
+  while (ttsBlobCache.size > 24) ttsBlobCache.delete(ttsBlobCache.keys().next().value);
+  return blob;
+}
+async function prepareGoogleTts(text, { rate = "1.0" } = {}) {
+  const clean = cleanTtsText(text);
+  if (!clean) return null;
+  const key = `${TTS_VOICE}|${rate}|${clean}`;
+  if (ttsBlobCache.has(key)) return { key, blob: ttsBlobCache.get(key) };
+  if (!ttsRequestCache.has(key)) {
+    ttsRequestCache.set(key, (async () => {
+      let res = null;
+      try {
+        for (let i = 0; i < 2; i++) {
+          const token = await getSessionToken();
+          res = await fetch(TTS_PROXY_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Session-Token": token },
+            body: JSON.stringify({ text: clean, voice: TTS_VOICE, rate: String(rate), pitch: "0.0" }),
+          });
+          if (res.status === 401) { sessionTokenData = null; continue; }
+          break;
+        }
+      } catch { res = null; }
+      if (!res?.ok) throw new Error("TTS " + (res?.status || "network"));
+      return rememberTtsBlob(key, await res.blob());
+    })().finally(() => ttsRequestCache.delete(key)));
   }
-  if (my !== ttsSessionId) { document.getElementById("portrait")?.classList.remove("speaking"); return false; }
-  const url = URL.createObjectURL(await res.blob());
+  try {
+    return { key, blob: await ttsRequestCache.get(key) };
+  } catch {
+    return null;
+  }
+}
+function waitForTtsStart(delayMs, my) {
+  if (delayMs <= 4) return Promise.resolve(my === ttsSessionId);
+  return new Promise((resolve) => {
+    ttsStartResolve = resolve;
+    ttsStartTimer = setTimeout(() => {
+      ttsStartTimer = null;
+      ttsStartResolve = null;
+      resolve(my === ttsSessionId);
+    }, delayMs);
+  });
+}
+function playPreparedGoogleTts(prepared, my) {
+  if (!prepared?.blob || my !== ttsSessionId) return Promise.resolve(false);
+  document.getElementById("portrait")?.classList.add("speaking");
+  const url = URL.createObjectURL(prepared.blob);
   revokeCloudUrl(); currentCloudTtsObjectUrl = url;
   const a = sharedTtsAudio; currentTtsAudio = a;
   return new Promise((resolve) => {
@@ -66,6 +100,23 @@ async function speakGoogleTts(text, { rate = "1.0" } = {}) {
     a.src = url;
     a.play().then(() => setTtsStatus(true, "Google TTS · " + TTS_VOICE)).catch(() => done(false));
   });
+}
+async function scheduleGoogleTts(text, { rate = "1.0", delayMs = 0 } = {}) {
+  const clean = cleanTtsText(text);
+  if (!clean) return false;
+  stopTts();
+  const my = ttsSessionId;
+  const target = performance.now() + Math.max(0, Number(delayMs) || 0);
+  const prepared = await prepareGoogleTts(clean, { rate });
+  if (!prepared) {
+    if (my === ttsSessionId) setTtsStatus(false, "TTS 失敗");
+    return false;
+  }
+  if (!await waitForTtsStart(Math.max(0, target - performance.now()), my)) return false;
+  return playPreparedGoogleTts(prepared, my);
+}
+async function speakGoogleTts(text, { rate = "1.0" } = {}) {
+  return scheduleGoogleTts(text, { rate, delayMs: 0 });
 }
 function setTtsStatus(ok, msg) {
   const el = document.getElementById("tts-boot");
