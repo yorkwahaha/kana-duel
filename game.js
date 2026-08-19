@@ -42,7 +42,7 @@ function showScreen(name) {
     cancelAllDrags();
     clearBattleFx();
   }
-  ["start","chars","practice","battle","result"].forEach((n) => {
+  ["start","online","chars","practice","battle","result"].forEach((n) => {
     $("screen-" + n)?.classList.toggle("hidden", name !== n);
   });
   document.querySelector(".app")?.classList.toggle("battle-mode", name === "battle");
@@ -1911,6 +1911,10 @@ bindCharCarouselSwipe();
 
 bindTap($("btn-home-p"), () => { stopTts(); hideReward(); cancelAllDrags(); showScreen("start"); });
 bindTap($("btn-home-b"), () => {
+  if (window.KanaBattleOnline?.isActive()) {
+    window.KanaBattleOnline.leaveBattle();
+    return;
+  }
   stopTts(); stopBattleBgm(); hideSpecialStage(); cancelAllDrags(); clearBattleFx();
   battleOpen = false; battleEpoch += 1; cancelAnimationFrame(timerRaf);
   clearSkillTimers(1); clearSkillTimers(2);
@@ -1919,12 +1923,20 @@ bindTap($("btn-home-b"), () => {
   showScreen("start");
 });
 bindTap($("btn-battle-listen"), () => {
+  if (window.KanaBattleOnline?.isActive()) {
+    window.KanaBattleOnline.replayQuestion();
+    return;
+  }
   if (!battleOpen || !isListenBattle() || listenRoundClaimed) return;
   const q = playerQ(1);
   if (q) speakGoogleTts(q.speakText);
 });
 document.querySelectorAll(".btn-again-home").forEach((btn) => {
   bindTap(btn, () => {
+    if (window.KanaBattleOnline?.isActive()) {
+      window.KanaBattleOnline.returnToLobby();
+      return;
+    }
     cancelAllDrags();
     stopBattleBgm();
     stopTts();
@@ -1951,6 +1963,10 @@ document.querySelectorAll(".btn-again-home").forEach((btn) => {
 });
 document.querySelectorAll(".btn-again").forEach((btn) => {
   bindTap(btn, () => {
+    if (window.KanaBattleOnline?.isActive()) {
+      window.KanaBattleOnline.readyRematch();
+      return;
+    }
     if (gameMode === "battle") {
       if (pickP1 && pickP2) startBattle();
       else showScreen("chars");
@@ -1985,6 +2001,10 @@ document.querySelectorAll("[data-act]").forEach((btn) => {
   bindTap(btn, () => {
     if (btn.disabled) return;
     const p = Number(btn.dataset.p), act = btn.dataset.act;
+    if (window.KanaBattleOnline?.isActive()) {
+      window.KanaBattleOnline.handleAction(p, act);
+      return;
+    }
     if (act === "clear") boards[p].clearAll();
     else if (act === "submit") battleSubmit(p);
     else if (act === "skip") battleSkip(p);

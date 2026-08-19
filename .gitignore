@@ -5,3 +5,4 @@ Desktop.ini
 .vscode/
 .idea/
 node_modules/
+worker/.wrangler/

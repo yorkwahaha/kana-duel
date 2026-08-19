@@ -1,0 +1,19 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "kana-voice-match-online",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOMS", "class_name": "RoomObject" }
+    ]
+  },
+  "exports": {
+    "RoomObject": { "type": "durable-object", "storage": "sqlite" }
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://yorkwahaha.github.io,http://127.0.0.1:8001,http://localhost:8001"
+  },
+  "observability": { "enabled": true }
+}

@@ -93,7 +93,7 @@ test("split scripts load in dependency order", () => {
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
-  assert.equal((html.match(/\?v=20260818-manual-submit/g) || []).length, 6, "CSS and scripts must bypass stale release caches");
+  assert.equal((html.match(/\?v=20260819-online-layout-1/g) || []).length, 8, "CSS and scripts must bypass stale release caches");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
@@ -103,5 +103,24 @@ test("local two-player zoom protection and accessibility contracts remain presen
   assert.match(game, /gesturestart/);
   assert.match(game, /touchend/);
   assert.match(html, /id="reward-stage"[^>]*role="dialog"[^>]*aria-modal="true"/);
-  assert.equal((html.match(/role="status" aria-live="polite"/g) || []).length, 3);
+  assert.equal((html.match(/role="status" aria-live="polite"/g) || []).length, 4);
+});
+
+test("online room entry and battle interception stay wired", () => {
+  const html = read("index.html");
+  const game = read("game.js");
+  const online = read("game-online.js");
+  const css = read("styles.css");
+  assert.match(html, /id="btn-mode-online"/);
+  assert.match(html, /id="screen-online"/);
+  assert.match(html, /src="online\.js\?v=20260819-online-layout-1"/);
+  assert.match(html, /src="game-online\.js\?v=20260819-online-layout-1"/);
+  assert.match(game, /window\.KanaBattleOnline\.handleAction\(p, act\)/);
+  assert.match(game, /window\.KanaBattleOnline\.replayQuestion\(\)/);
+  assert.match(online, /client\.submit\(localQuestionId/);
+  assert.match(online, /room\.currentQuestionId/);
+  assert.doesNotMatch(online, /room\.questionIds/);
+  assert.match(css, /body\.online-battle \.duel-half\.p2 \{\s*transform: none/);
+  assert.match(css, /@media \(orientation: landscape\)[\s\S]*?grid-template-columns: minmax\(220px, 42%\) minmax\(0, 58%\)/);
+  assert.match(css, /@media \(orientation: portrait\)[\s\S]*?grid-template-rows: minmax\(116px, 27dvh\) auto minmax\(0, 1fr\)/);
 });
