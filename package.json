@@ -1,5 +1,5 @@
 {
-  "name": "kana-voice-match-prototype",
+  "name": "kana-duel",
   "version": "1.0.0",
   "description": "**v1.0** — 假名聽音拼字對決原型（單人練習／雙人對戰）。",
   "main": "game.js",
@@ -9,16 +9,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yorkwahaha/kana-voice-match-prototype.git"
+    "url": "git+https://github.com/yorkwahaha/kana-duel.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/yorkwahaha/kana-voice-match-prototype/issues"
+    "url": "https://github.com/yorkwahaha/kana-duel/issues"
   },
-  "homepage": "https://github.com/yorkwahaha/kana-voice-match-prototype#readme",
+  "homepage": "https://yorkwahaha.github.io/kana-duel/",
   "dependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.8.0"

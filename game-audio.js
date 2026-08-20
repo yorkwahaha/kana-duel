@@ -16,6 +16,7 @@ function revokeCloudUrl(url = currentCloudTtsObjectUrl) {
 }
 function stopTts() {
   ttsSessionId++; revokeCloudUrl();
+  stopQuestionAudio();
   if (ttsStartTimer) clearTimeout(ttsStartTimer);
   ttsStartTimer = null;
   if (ttsStartResolve) ttsStartResolve(false);
@@ -118,6 +119,87 @@ async function scheduleGoogleTts(text, { rate = "1.0", delayMs = 0 } = {}) {
 async function speakGoogleTts(text, { rate = "1.0" } = {}) {
   return scheduleGoogleTts(text, { rate, delayMs: 0 });
 }
+
+// —— 題目語音：優先使用可預載的靜態 MP3，缺檔才退回雲端 TTS ——
+let questionAudioManifestPromise = null;
+const questionAudioBufferCache = new Map();
+let questionAudioSessionId = 0;
+let currentQuestionAudioSource = null;
+let currentQuestionAudioResolve = null;
+function stopQuestionAudio() {
+  questionAudioSessionId += 1;
+  if (currentQuestionAudioSource) {
+    try { currentQuestionAudioSource.onended = null; currentQuestionAudioSource.stop(0); currentQuestionAudioSource.disconnect(); } catch {}
+    currentQuestionAudioSource = null;
+  }
+  if (currentQuestionAudioResolve) currentQuestionAudioResolve(false);
+  currentQuestionAudioResolve = null;
+}
+async function loadQuestionAudioManifest() {
+  if (!questionAudioManifestPromise) {
+    questionAudioManifestPromise = fetch("assets/audio/questions/manifest.json")
+      .then((response) => response.ok ? response.json() : null)
+      .then((manifest) => {
+        if (!manifest?.records || !Array.isArray(manifest.records)) return null;
+        return new Map(manifest.records.map((record) => [record.id, record]));
+      })
+      .catch(() => null);
+  }
+  return questionAudioManifestPromise;
+}
+async function prepareQuestionAudio(question) {
+  if (!question?.id) return null;
+  if (questionAudioBufferCache.has(question.id)) return questionAudioBufferCache.get(question.id);
+  const manifest = await loadQuestionAudioManifest();
+  const record = manifest?.get(question.id);
+  if (!record?.file) return null;
+  try {
+    const ctx = await ensureAudioCtx();
+    if (!ctx) return null;
+    const response = await fetch(record.file);
+    if (!response.ok) return null;
+    const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+    questionAudioBufferCache.set(question.id, buffer);
+    return buffer;
+  } catch {
+    return null;
+  }
+}
+async function scheduleQuestionAudio(question, { delayMs = 0 } = {}) {
+  if (!question) return false;
+  stopTts();
+  const my = questionAudioSessionId;
+  const target = performance.now() + Math.max(0, Number(delayMs) || 0);
+  const buffer = await prepareQuestionAudio(question);
+  if (!buffer || my !== questionAudioSessionId) {
+    if (my !== questionAudioSessionId) return false;
+    return scheduleGoogleTts(question.speakText, { delayMs: Math.max(0, target - performance.now()) });
+  }
+  const ctx = await ensureAudioCtx();
+  if (!ctx || my !== questionAudioSessionId) return false;
+  const source = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  gain.gain.value = 1;
+  source.buffer = buffer;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  currentQuestionAudioSource = source;
+  return new Promise((resolve) => {
+    const done = (ok) => {
+      if (currentQuestionAudioSource === source) currentQuestionAudioSource = null;
+      if (currentQuestionAudioResolve === done) currentQuestionAudioResolve = null;
+      try { source.disconnect(); gain.disconnect(); } catch {}
+      resolve(ok);
+    };
+    currentQuestionAudioResolve = done;
+    source.onended = () => done(true);
+    source.start(ctx.currentTime + Math.max(0, target - performance.now()) / 1000);
+    setTtsStatus(true, "題目 MP3 · " + TTS_VOICE);
+  });
+}
+async function speakQuestionAudio(question) {
+  return scheduleQuestionAudio(question, { delayMs: 0 });
+}
 function setTtsStatus(ok, msg) {
   const el = document.getElementById("tts-boot");
   if (!el) return;
@@ -210,10 +292,12 @@ const BATTLE_BGM_PATHS = [
   "assets/bgm/battle-3.ogg",
 ];
 const BATTLE_BGM_VOL = 0.12;
+const battleBgmBufferCache = new Map();
 let bgmGain = null;
 let bgmSource = null;
 let bgmHtmlFallback = null;
 let bgmWatchdog = null;
+let bgmSessionId = 0;
 
 async function ensureAudioCtx() {
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -226,6 +310,7 @@ function clearBgmWatchdog() {
   if (bgmWatchdog) { clearInterval(bgmWatchdog); bgmWatchdog = null; }
 }
 function stopBattleBgm() {
+  bgmSessionId += 1;
   clearBgmWatchdog();
   try { if (bgmSource) { bgmSource.onended = null; bgmSource.stop(0); bgmSource.disconnect(); } } catch {}
   bgmSource = null;
@@ -235,6 +320,19 @@ function stopBattleBgm() {
     try { bgmHtmlFallback.pause(); bgmHtmlFallback.src = ""; } catch {}
     bgmHtmlFallback = null;
   }
+}
+async function loadBattleBgmBuffer(src) {
+  if (battleBgmBufferCache.has(src)) return battleBgmBufferCache.get(src);
+  const ctx = await ensureAudioCtx();
+  if (!ctx) return null;
+  const response = await fetch(src);
+  if (!response.ok) return null;
+  const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+  battleBgmBufferCache.set(src, buffer);
+  return buffer;
+}
+async function preloadBattleBgm() {
+  await Promise.all(BATTLE_BGM_PATHS.map((src) => loadBattleBgmBuffer(src).catch(() => null)));
 }
 function applyBgmVolume() {
   if (bgmGain && audioCtx) {
@@ -250,13 +348,14 @@ function keepBattleBgmAlive() {
 }
 async function startBattleBgm() {
   stopBattleBgm();
+  const my = bgmSessionId;
   const src = BATTLE_BGM_PATHS[Math.floor(Math.random() * BATTLE_BGM_PATHS.length)];
   try {
     const ctx = await ensureAudioCtx();
     if (!ctx) throw new Error("no AudioContext");
-    const res = await fetch(src);
-    if (!res.ok) throw new Error("bgm fetch fail");
-    const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+    const buf = await loadBattleBgmBuffer(src);
+    if (!buf) throw new Error("bgm fetch fail");
+    if (my !== bgmSessionId || !battleOpen) return false;
     bgmGain = ctx.createGain();
     bgmGain.gain.value = BATTLE_BGM_VOL;
     bgmGain.connect(ctx.destination);
@@ -267,6 +366,7 @@ async function startBattleBgm() {
     node.start(0);
     bgmSource = node;
   } catch {
+    if (my !== bgmSessionId || !battleOpen) return false;
     const a = new Audio(src);
     a.loop = true;
     a.volume = BATTLE_BGM_VOL;
@@ -276,6 +376,18 @@ async function startBattleBgm() {
   clearBgmWatchdog();
   bgmWatchdog = setInterval(keepBattleBgmAlive, 250);
   preloadBattleSfx().catch(() => {});
+  return true;
+}
+async function primeBattleAudio() {
+  const ctx = await ensureAudioCtx();
+  if (ctx) {
+    const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0);
+  }
+  await Promise.allSettled([preloadBattleSfx(), preloadBattleBgm()]);
 }
 
 // —— 墨域言靈闘場 · 第 1 期 4 角（v1.0）——

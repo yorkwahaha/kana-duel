@@ -1,16 +1,16 @@
-/* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, boards */
+/* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, boards, categoryLabelOf */
 /* global battleOpts:writable, battleDeck:writable, battleOpen:writable, battleEpoch:writable */
 /* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable */
 /* global ampHits:writable, blockUntil:writable, submitLockUntil:writable, attackLockUntil:writable */
 /* global pickP1:writable, pickP2:writable, gameMode:writable, playerQi:writable, sharedQi:writable */
 /* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, timerRaf */
 /* global bindTap, cancelAllDrags, clearBattleFx, clearSkillTimers, hideSpecialStage, noteQuestionOpen */
-/* global ensureAudioCtx, getSessionToken, preloadBattleSfx, prepareGoogleTts, scheduleGoogleTts */
+/* global getSessionToken, playQuestionAudio, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio */
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
 /* global showCombo, showDmgFloat, showScreen, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, ensureCastLayers, preloadFighterPoses */
 /* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
-/* global spawnBlockParry, speakGoogleTts, splitComboDamage, wait */
+/* global spawnBlockParry, splitComboDamage, wait */
 (() => {
   const client = window.KanaBattleOnlineClient;
   if (!client) return;
@@ -34,11 +34,13 @@
       distractors: !!$("online-distractors")?.checked,
       maxLen: Number($("online-maxlen")?.value) || 0,
       script: $("online-script")?.value || "all",
+      category: $("online-category")?.value || "all",
     };
   }
 
   function deckForConfig(config) {
     let list = ALL_QUESTIONS.slice();
+    if (config.category !== "all") list = list.filter((q) => q.category === config.category);
     if (config.maxLen > 0) list = list.filter((q) => q.kanaSequence.length <= config.maxLen);
     if (config.script === "hira" || config.script === "kata") {
       list = list.filter((q) => {
@@ -80,10 +82,11 @@
     $("online-lobby")?.classList.remove("hidden");
     if ($("online-room-code")) $("online-room-code").textContent = room.roomCode;
     const host = room.youSeat === room.hostSeat;
-    const settings = ["online-mode", "online-maxlen", "online-script", "online-distractors"];
+    const settings = ["online-mode", "online-category", "online-maxlen", "online-script", "online-distractors"];
     settings.forEach((id) => { if ($(id)) $(id).disabled = !host || room.phase !== "lobby"; });
     if (document.activeElement?.closest?.(".online-settings") == null) {
       if ($("online-mode")) $("online-mode").value = room.config.mode;
+      if ($("online-category")) $("online-category").value = room.config.category || "all";
       if ($("online-maxlen")) $("online-maxlen").value = String(room.config.maxLen);
       if ($("online-script")) $("online-script").value = room.config.script;
       if ($("online-distractors")) $("online-distractors").checked = room.config.distractors;
@@ -146,8 +149,8 @@
     if (!question) return;
     lastListenCueSeq = cue.seq;
     const delayMs = Math.max(0, Number(cue.playAt) - Number(room.serverNow || Date.now()));
-    prepareGoogleTts(question.speakText).catch(() => {});
-    scheduleGoogleTts(question.speakText, { delayMs }).catch(() => {});
+    prepareQuestionAudio(question).catch(() => {});
+    scheduleQuestionAudio(question, { delayMs }).catch(() => {});
   }
 
   function updateOpponentStatus() {
@@ -218,7 +221,7 @@
     $("board2")?.setAttribute("aria-hidden", "true");
     document.querySelector(".duel-stage")?.classList.toggle("listen-mode", room.config.mode === "listen");
     $("btn-battle-listen")?.classList.toggle("hidden", room.config.mode !== "listen");
-    if ($("rule-chip")) $("rule-chip").textContent = `線上 · ${room.config.mode === "listen" ? "聽力搶答" : "競速對決"} · ${room.roomCode}`;
+    if ($("rule-chip")) $("rule-chip").textContent = `線上 · ${room.config.mode === "listen" ? "聽力搶答" : "競速對決"} · ${categoryLabelOf(room.config.category)} · ${room.roomCode}`;
     showScreen("battle");
     syncBattleState();
     battleStartedAt = performance.now() - Math.max(0, Number(room.serverNow) - Number(room.battle.startedAt));
@@ -359,9 +362,33 @@
     stopBattleBgm();
     const won = room.battle.winnerSeat === localSeat();
     const winner = won ? localPlayer() : remotePlayer();
+    const mine = room.battle.fighters[localSeat()];
+    const foe = room.battle.fighters[remoteSeat()];
+    const seconds = Math.max(0, (Number(room.battle.completedAt) - Number(room.battle.startedAt)) / 1000);
+    const answerSeconds = (fighter, average = false) => {
+      const ms = average
+        ? (fighter.corrects > 0 ? fighter.totalAnswerMs / fighter.corrects : null)
+        : fighter.bestAnswerMs;
+      return Number.isFinite(ms) ? `${(ms / 1000).toFixed(1)} 秒` : "—";
+    };
+    const statRow = (label, mineValue, foeValue) => `<li><span>${label}</span><b><span class="tag-p1">你</span> ${mineValue} · <span class="tag-p2">對手</span> ${foeValue}</b></li>`;
+    const firstSpecial = room.battle.firstSpecialSeat == null
+      ? "本場未開大招"
+      : (room.battle.firstSpecialSeat === localSeat() ? "你先開大招" : "對手先開大招");
+    const resultRows = [
+      statRow("最大連段", mine.maxCombo, foe.maxCombo),
+      statRow("最快答題", answerSeconds(mine), answerSeconds(foe)),
+      statRow("平均答題", answerSeconds(mine, true), answerSeconds(foe, true)),
+      `<li><span>先開大招</span><b>${firstSpecial}</b></li>`,
+    ].join("");
     document.querySelectorAll(".btn-again-home").forEach((button) => { button.textContent = "回到房間"; });
     document.querySelectorAll(".btn-again").forEach((button) => { button.textContent = "準備再戰"; });
-    setResultScreen(won ? "你獲勝！" : "對手獲勝", `${winner?.name || "玩家"} 贏得線上對戰 · 房號 ${room.roomCode}`, false);
+    setResultScreen(
+      won ? "你獲勝！" : "你落敗",
+      `${escapeHtml(winner?.name || "玩家")} 贏得對戰 · ${escapeHtml(localPlayer()?.name || "你")} VS ${escapeHtml(remotePlayer()?.name || "對手")} · ${seconds.toFixed(1)} 秒`,
+      false,
+      resultRows
+    );
     playSfx("fanfare", 0.55);
   }
 
@@ -453,12 +480,11 @@
   bindTap($("btn-online-leave"), leaveRoom);
   bindTap($("btn-online-ready"), () => {
     const mine = localPlayer();
-    ensureAudioCtx().catch(() => {});
-    preloadBattleSfx().catch(() => {});
+    primeBattleAudio().catch(() => {});
     getSessionToken().catch(() => {});
     client.ready($("online-character")?.value || "ao", !mine?.ready);
   });
-  ["online-mode", "online-maxlen", "online-script", "online-distractors"].forEach((id) => {
+  ["online-mode", "online-category", "online-maxlen", "online-script", "online-distractors"].forEach((id) => {
     $(id)?.addEventListener("change", () => {
       if (!room || room.youSeat !== room.hostSeat || room.phase !== "lobby") return;
       const config = configFromUi();
@@ -493,12 +519,13 @@
     readyRematch() {
       if (!room) return leaveRoom();
       battleResultShown = false;
+      primeBattleAudio().catch(() => {});
       showScreen("online");
       client.ready($("online-character")?.value || localPlayer()?.characterId || "ao", true);
     },
     replayQuestion() {
       const q = questionById(room?.currentQuestionId);
-      if (active && room?.config.mode === "listen" && q) speakGoogleTts(q.speakText);
+      if (active && room?.config.mode === "listen" && q) playQuestionAudio(q);
     },
   };
 

@@ -2,11 +2,12 @@ export const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 export const MAX_HP = 2400;
 
 const MAX_NAME_LENGTH = 16;
-const MAX_DECK_SIZE = 240;
+const MAX_DECK_SIZE = 500;
 const LISTEN_START_LEAD_MS = 3200;
 const LISTEN_NEXT_LEAD_MS = 2200;
 const LISTEN_SPECIAL_LEAD_MS = 10800;
 const VALID_CHARACTERS = new Set(["ao", "rin", "ya", "go", "ran", "gen", "sho", "yo"]);
+const VALID_CATEGORIES = new Set(["all", "daily", "action", "school_work", "food", "household", "clothing", "health", "places_transport", "shopping_numbers", "time_nature", "animals", "description", "loanword", "anime", "fantasy_battle"]);
 const CHARACTER_RULES = {
   ao: { gaugePerCorrect: 2, active: "submit_lock" },
   rin: { chargeMult: 0.9, specialMult: 1.9, active: "steal" },
@@ -34,7 +35,8 @@ export function sanitizeConfig(input = {}) {
   const mode = input.mode === "listen" ? "listen" : "race";
   const script = ["all", "hira", "kata"].includes(input.script) ? input.script : "all";
   const maxLen = [0, 4, 5, 8].includes(Number(input.maxLen)) ? Number(input.maxLen) : 0;
-  return { mode, script, maxLen, distractors: input.distractors !== false };
+  const category = VALID_CATEGORIES.has(input.category) ? input.category : "all";
+  return { mode, script, maxLen, category, distractors: input.distractors !== false };
 }
 
 export function sanitizeDeck(input) {
@@ -63,7 +65,7 @@ function hostSeat(room) {
   return room.players.findIndex(Boolean);
 }
 
-function blankFighter() {
+function blankFighter(now) {
   return {
     hp: MAX_HP,
     qi: 0,
@@ -76,18 +78,22 @@ function blankFighter() {
     attackLockUntil: 0,
     corrects: 0,
     maxCombo: 0,
+    bestAnswerMs: null,
+    totalAnswerMs: 0,
+    questionStartedAt: now,
   };
 }
 
 function startBattle(room, now = Date.now()) {
   room.phase = "playing";
   room.battle = {
-    fighters: [blankFighter(), blankFighter()],
+    fighters: [blankFighter(now), blankFighter(now)],
     sharedQi: 0,
     listenClaimed: false,
     startedAt: now,
     completedAt: null,
     winnerSeat: null,
+    firstSpecialSeat: null,
     listenCueSeq: 0,
     listenCue: null,
   };
@@ -270,6 +276,7 @@ function performAttack(room, seat, now, automatic = false) {
   if (fighter.charge <= 0) return { ok: false, error: "NO_CHARGE" };
   const rules = rulesFor(room, seat);
   const special = fighter.gauge >= 8;
+  if (special && room.battle.firstSpecialSeat == null) room.battle.firstSpecialSeat = seat;
   let damage = fighter.charge;
   if (special) damage = Math.round(damage * (rules.specialMult || 1.55));
   const hits = Math.max(1, fighter.combo + (rules.hitBonus || 0) + fighter.ampHits);
@@ -313,6 +320,12 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
   fighter.combo += 1;
   fighter.maxCombo = Math.max(fighter.maxCombo, fighter.combo);
   fighter.corrects += 1;
+  const answerStartedAt = room.config.mode === "listen"
+    ? Number(room.battle.listenCue?.playAt)
+    : Number(fighter.questionStartedAt);
+  const answerMs = Math.max(0, now - (Number.isFinite(answerStartedAt) ? answerStartedAt : now));
+  fighter.bestAnswerMs = fighter.bestAnswerMs == null ? answerMs : Math.min(fighter.bestAnswerMs, answerMs);
+  fighter.totalAnswerMs += answerMs;
   fighter.gauge += rulesFor(room, seat).gaugePerCorrect || 1;
   const gain = chargeGain(room, seat, question.answer.length);
   fighter.charge += gain;
@@ -330,6 +343,7 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
     }
   } else {
     fighter.qi += 1;
+    fighter.questionStartedAt = now;
     setEvent(room, { type: "correct", seat, gain, questionId: question.id }, now);
   }
   bump(room, now);
@@ -343,6 +357,7 @@ export function applySkip(room, seat, now = Date.now()) {
   const fighter = room.battle.fighters[seat];
   fighter.combo = 0;
   fighter.qi += 1;
+  fighter.questionStartedAt = now;
   setEvent(room, { type: "skip", seat }, now);
   bump(room, now);
   return { ok: true };

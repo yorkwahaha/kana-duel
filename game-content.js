@@ -97,7 +97,7 @@ const TYPE_LABEL = {
   vocab: "詞彙",
 };
 
-/** 從 questions-data.js 載入；練習可抽樣、對戰用完整庫洗牌 */
+/** 從 questions-data.js 與擴充檔載入；練習可抽樣、對戰用完整庫洗牌 */
 function normalizeQuestions(list) {
   return (list || []).map((q, i) => {
     const seq = (q.kanaSequence || []).slice(0, 16);
@@ -126,6 +126,17 @@ function defaultImageFor(q) {
   return "assets/characters/ya.webp";
 }
 const ALL_QUESTIONS = normalizeQuestions(window.KANA_QUESTIONS || []);
+const CATEGORY_OPTIONS = window.KANA_CATEGORY_OPTIONS || [{ value: "all", label: "全部類別" }];
+function categoryLabelOf(value) {
+  return CATEGORY_OPTIONS.find((option) => option.value === value)?.label || "全部類別";
+}
+function populateCategorySelect(id) {
+  const select = document.getElementById(id);
+  if (!select) return;
+  select.innerHTML = CATEGORY_OPTIONS.map((option) => `<option value="${option.value}">${option.label}</option>`).join("");
+}
+populateCategorySelect("opt-category");
+populateCategorySelect("online-category");
 let QUESTIONS = ALL_QUESTIONS.slice();
 const PRACTICE_ROUND_SIZE = 12; // 單人一輪題數（從大題庫抽）
 const MAX_HP = 2400;
@@ -275,7 +286,10 @@ function nearDistractors(k) {
 function buildPool(seq, distractorDelta = 0, opts = {}) {
   const correct = seq.map((kana, i) => ({ id: "c"+i+"_"+Math.random().toString(36).slice(2,5), kana, used: false }));
   if (opts.noDistractors) return shuffle(correct);
-  const extraN = Math.max(1, (seq.length <= 4 ? 3 : 4) + (distractorDelta || 0));
+  // 手機需保留至少 52px 的觸控寬度：總字池最多 12 格（5×2 或 6×2）。
+  // 長題保留所有正確假名，只縮減干擾字。
+  const desiredExtras = Math.max(1, (seq.length <= 4 ? 3 : 4) + (distractorDelta || 0));
+  const extraN = Math.min(desiredExtras, Math.max(0, 12 - correct.length));
   const bag = new Set();
   seq.forEach((k) => nearDistractors(k).forEach((d) => bag.add(d)));
   ["あ","い","う","ん","き","し","つ","よ"].forEach((d) => bag.add(d));
@@ -284,18 +298,20 @@ function buildPool(seq, distractorDelta = 0, opts = {}) {
   return shuffle([...correct, ...extras]);
 }
 
-let battleOpts = { mode: "race", distractors: true, maxLen: 0, script: "all" };
+let battleOpts = { mode: "race", distractors: true, maxLen: 0, script: "all", category: "all" };
 function isListenBattle() { return battleOpts.mode === "listen"; }
 function readBattleOptsFromUi() {
   const dist = $("opt-distractors");
   const maxEl = $("opt-maxlen");
   const scriptEl = $("opt-script");
+  const categoryEl = $("opt-category");
   const modeEl = $("opt-battle-mode");
   battleOpts = {
     mode: modeEl && modeEl.value === "listen" ? "listen" : "race",
     distractors: dist ? !!dist.checked : true,
     maxLen: maxEl ? (Number(maxEl.value) || 0) : 0,
     script: scriptEl ? (scriptEl.value || "all") : "all",
+    category: categoryEl ? (categoryEl.value || "all") : "all",
   };
   return battleOpts;
 }
@@ -315,6 +331,9 @@ function scriptOfSeq(seq) {
 function buildBattleDeck() {
   readBattleOptsFromUi();
   let list = ALL_QUESTIONS.slice();
+  if (battleOpts.category !== "all") {
+    list = list.filter((q) => q.category === battleOpts.category);
+  }
   if (battleOpts.maxLen > 0) {
     list = list.filter((q) => q.kanaSequence.length <= battleOpts.maxLen);
   }
@@ -322,8 +341,8 @@ function buildBattleDeck() {
     list = list.filter((q) => scriptOfSeq(q.kanaSequence) === battleOpts.script);
   }
   if (!list.length) {
-    // 篩太嚴時回退：只保留字數條件，再不行用全庫
-    list = ALL_QUESTIONS.slice();
+    // 篩太嚴時回退：保留類別、放寬假名條件，再不行用全庫
+    list = battleOpts.category === "all" ? ALL_QUESTIONS.slice() : ALL_QUESTIONS.filter((q) => q.category === battleOpts.category);
     if (battleOpts.maxLen > 0) {
       const limited = list.filter((q) => q.kanaSequence.length <= battleOpts.maxLen);
       if (limited.length) list = limited;

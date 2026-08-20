@@ -8,6 +8,8 @@ import {
   joinRoom,
   leaveRoom,
   publicRoomState,
+  sanitizeConfig,
+  sanitizeDeck,
   setConnected,
   setReady,
 } from "../worker/src/room-core.mjs";
@@ -17,7 +19,7 @@ function createPlayingRoom(mode = "race") {
     roomCode: "AB2C3D",
     hostName: "Host",
     hostToken: "host-token",
-    config: { mode, distractors: true, maxLen: 0, script: "all" },
+    config: { mode, distractors: true, maxLen: 0, script: "all", category: "all" },
     deck: [
       { id: "q1", answer: ["か", "な"] },
       { id: "q2", answer: ["こ", "え"] },
@@ -31,6 +33,14 @@ function createPlayingRoom(mode = "race") {
   assert.equal(setReady(room, 1, { ready: true, characterId: "rin" }, 1050).started, true);
   return room;
 }
+
+test("online rooms accept categorized banks up to the 500-question limit", () => {
+  assert.equal(sanitizeConfig({ category: "loanword" }).category, "loanword");
+  assert.equal(sanitizeConfig({ category: "unknown" }).category, "all");
+  const deck = Array.from({ length: 380 }, (_, index) => ({ id: `q${index}`, answer: ["あ"] }));
+  assert.equal(sanitizeDeck(deck).length, 380);
+  assert.throws(() => sanitizeDeck(Array.from({ length: 501 }, (_, index) => ({ id: `q${index}`, answer: ["あ"] }))), /INVALID_DECK/);
+});
 
 test("two connected players choose unique characters and start a room", () => {
   const room = createPlayingRoom();
@@ -53,6 +63,8 @@ test("the server validates answers and owns damage state", () => {
   assert.equal(room.battle.fighters[0].qi, 1);
   assert.equal(room.battle.fighters[0].combo, 1);
   assert.ok(room.battle.fighters[0].charge > 0);
+  assert.equal(room.battle.fighters[0].bestAnswerMs, 50);
+  assert.equal(room.battle.fighters[0].totalAnswerMs, 50);
   const hostView = publicRoomState(room, 0);
   const guestView = publicRoomState(room, 1);
   assert.equal(hostView.currentQuestionId, "q2");

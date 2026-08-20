@@ -8,7 +8,7 @@
 
 部署於 GitHub Pages（推送後約 1 分鐘生效）：
 
-**https://yorkwahaha.github.io/kana-voice-match-prototype/**
+**https://yorkwahaha.github.io/kana-duel/**
 
 ## 本機啟動
 
@@ -21,7 +21,7 @@ python -m http.server 8001
 
 ## 線上雙人
 
-首頁選擇「線上對戰」後，可建立六碼匿名房間或輸入房號加入。房主設定競速／聽力、題目長度、假名種類與干擾項；雙方各自選角並準備後自動開戰。
+首頁選擇「線上對戰」後，可建立六碼匿名房間或輸入房號加入。房主設定競速／聽力、題庫類別、題目長度、假名種類與干擾項；雙方各自選角並準備後自動開戰。
 
 線上模式比照 JP Match 的房間架構，採 Cloudflare Worker + Durable Objects + WebSocket：
 

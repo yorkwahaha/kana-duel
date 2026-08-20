@@ -3,11 +3,11 @@
 /* global DRAG_THRESHOLD, GAUGE_HITS_TO_FULL, HEAL_AMOUNT, HEAL_COMBO_COST */
 /* global MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, PRACTICE_ROUND_SIZE */
 /* global SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO, SUBMIT_LOCK_MS */
-/* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, clearBattleFx */
+/* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, categoryLabelOf, clearBattleFx */
 /* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf, getSessionToken */
 /* global isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
 /* global playCastBurst, playHitSfx, playSfx, playSpecialAftermath */
-/* global preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi */
+/* global preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi, speakQuestionAudio */
 /* global romajiSequence, setSfxDuck, setTtsStatus, shakeBattle, showCombo, shuffle */
 /* global spawnBlockParry, spawnHitBurst, speakGoogleTts, startBattleBgm, stopBattleBgm */
 /* global stopTts, stopVoice, voiceBufCache, wait */
@@ -313,6 +313,9 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       if (!poolEl) return;
       this.renderSlots();
       poolEl.innerHTML = "";
+      const poolLayout = this.pool.length <= 10 ? "five" : "six";
+      poolEl.dataset.layout = poolLayout;
+      poolEl.dataset.count = String(this.pool.length);
       this.pool.forEach((item) => {
         const tile = document.createElement("button");
         tile.type = "button";
@@ -591,7 +594,7 @@ function practiceSpeakSegment() {
   if (busy || !q) return;
   const segs = practiceSegments(q);
   if (!segs.length) {
-    speakGoogleTts(q.speakText);
+    speakQuestionAudio(q);
     return;
   }
   const s = segs[practiceSegIndex];
@@ -635,7 +638,7 @@ async function loadPracticeQuestion(autoSpeak) {
   $("reward-tag").className = "tag" + (q.rewardMode === "cast_skill" ? " cast" : "");
   $("avatar-img").src = q.image;
   updatePracticeListenUi(q);
-  if (autoSpeak) await speakGoogleTts(q.speakText);
+  if (autoSpeak) await speakQuestionAudio(q);
 }
 async function practiceSubmit() {
   if (busy) return;
@@ -717,7 +720,7 @@ async function playReward(q) {
     $("reward-sub").textContent = `記住了「${q.displayName}」`;
     $("btn-replay").style.display = "none";
     playSfx("win", 0.4);
-    await Promise.all([playCastVideo(q), speakGoogleTts(q.speakText)]);
+    await Promise.all([playCastVideo(q), speakQuestionAudio(q)]);
   }
   busy = false;
   $("btn-next").disabled = false;
@@ -1100,6 +1103,7 @@ function startBattle() {
     if (battleOpts.maxLen > 0) bits.push("≤" + battleOpts.maxLen + "字");
     if (battleOpts.script === "hira") bits.push("平假名");
     if (battleOpts.script === "kata") bits.push("片假名");
+    if (battleOpts.category !== "all") bits.push(categoryLabelOf(battleOpts.category));
     rule.textContent = bits.join(" · ");
   }
   playerQi = { 1: 0, 2: 0 };
@@ -1297,10 +1301,10 @@ function colorizePlayerTags(text) {
     .replace(/P2/g, '<span class="tag-p2">P2</span>');
 }
 
-function setResultScreen(title, summary, withBattleStats) {
+function setResultScreen(title, summary, withBattleStats, customRows = "") {
   document.querySelectorAll(".result-title").forEach((el) => { el.innerHTML = colorizePlayerTags(title); });
   document.querySelectorAll(".result-summary").forEach((el) => { el.innerHTML = colorizePlayerTags(summary || "—"); });
-  const rows = withBattleStats ? buildBattleStatsRows() : "";
+  const rows = customRows || (withBattleStats ? buildBattleStatsRows() : "");
   document.querySelectorAll("[data-result-stats]").forEach((el) => {
     if (rows) {
       el.innerHTML = rows;
@@ -1461,7 +1465,7 @@ function loadSharedListenRound(autoSpeak) {
   loadPlayerQuestion(1);
   loadPlayerQuestion(2);
   const q = playerQ(1);
-  if (autoSpeak && q) speakGoogleTts(q.speakText);
+  if (autoSpeak && q) speakQuestionAudio(q);
 }
 
 function lockBoardForListen(player, asWinner) {
@@ -1929,7 +1933,7 @@ bindTap($("btn-battle-listen"), () => {
   }
   if (!battleOpen || !isListenBattle() || listenRoundClaimed) return;
   const q = playerQ(1);
-  if (q) speakGoogleTts(q.speakText);
+  if (q) speakQuestionAudio(q);
 });
 document.querySelectorAll(".btn-again-home").forEach((btn) => {
   bindTap(btn, () => {
@@ -1990,8 +1994,8 @@ document.addEventListener("touchend", (e) => {
 }, { passive: false });
 document.addEventListener("dblclick", (e) => e.preventDefault());
 
-bindTap($("portrait"), () => { if (!busy && currentQ()) speakGoogleTts(currentQ().speakText); });
-bindTap($("btn-listen"), () => { if (!busy && currentQ()) speakGoogleTts(currentQ().speakText); });
+bindTap($("portrait"), () => { if (!busy && currentQ()) speakQuestionAudio(currentQ()); });
+bindTap($("btn-listen"), () => { if (!busy && currentQ()) speakQuestionAudio(currentQ()); });
 bindTap($("btn-listen-seg"), () => practiceSpeakSegment());
 bindTap($("btn-clear"), () => boards.practice.clearAll());
 bindTap($("btn-submit"), () => practiceSubmit());
