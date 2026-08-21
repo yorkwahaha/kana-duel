@@ -104,7 +104,9 @@ test("split scripts load in dependency order", () => {
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
-  assert.equal((html.match(/\?v=20260821-audio-response/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
+  const releaseVersions = [...html.matchAll(/(?:src|href)="[^"]+\?v=([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(releaseVersions.length, 9, "all CSS and scripts need a release cache version");
+  assert.equal(new Set(releaseVersions).size, 1, "CSS and scripts must share one release cache version");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
@@ -124,8 +126,8 @@ test("online room entry and battle interception stay wired", () => {
   const css = read("styles.css");
   assert.match(html, /id="btn-mode-online"/);
   assert.match(html, /id="screen-online"/);
-  assert.match(html, /src="online\.js\?v=20260821-audio-response"/);
-  assert.match(html, /src="game-online\.js\?v=20260821-audio-response"/);
+  assert.match(html, /src="online\.js\?v=[^"]+"/);
+  assert.match(html, /src="game-online\.js\?v=[^"]+"/);
   assert.match(html, /id="online-category"/);
   assert.match(online, /q\.category === config\.category/);
   assert.match(html, /id="online-character-image"/);
@@ -147,6 +149,30 @@ test("online room entry and battle interception stay wired", () => {
   assert.match(css, /grid-template-columns: repeat\(auto-fit, minmax\(58px, 78px\)\)/);
   assert.match(css, /@media \(orientation: landscape\)[\s\S]*?grid-template-columns: minmax\(232px, 38%\) minmax\(0, 62%\)/);
   assert.match(css, /@media \(orientation: portrait\)[\s\S]*?grid-template-rows: minmax\(108px, 21dvh\) auto minmax\(0, 1fr\)/);
+});
+
+test("online invite, lobby, and VS intro use the phone-first interaction contract", () => {
+  const html = read("index.html");
+  const game = read("game-online.js");
+  const client = read("online.js");
+  const css = read("styles.css");
+  assert.doesNotMatch(html, /id="btn-online-back"/);
+  assert.match(html, /class="sr-only" id="online-connection"/);
+  assert.match(html, /id="btn-online-invite-exit"[^>]*>離開遊戲</);
+  assert.match(game, /function setInviteMode\(enabled, code = ""\)/);
+  assert.match(game, /\$\("btn-online-create"\)\.disabled = inviteMode/);
+  assert.match(game, /\$\("online-code-input"\)\.disabled = inviteMode/);
+  assert.match(game, /if \(!client\.resume\(invitedRoom\)\) setInviteMode\(true, invitedRoom\)/);
+  assert.match(css, /#screen-online:not\(\.hidden\)[\s\S]*?touch-action: pan-y/);
+  assert.match(html, /<span>複製房號<\/span>[\s\S]*?id="btn-online-copy"/);
+  assert.match(client, /async copyRoomCode\(\)[\s\S]*?writeText\(roomCode\)/);
+  assert.match(game, /playerLabel = `\$\{player\.name\}\$\{seat === room\.hostSeat \? "（房主）" : ""\}`/);
+  assert.match(css, /\.online-players \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.online-lobby-actions \{[\s\S]*?position: fixed/);
+  assert.match(game, /function playOnlineVsIntro\(\)/);
+  assert.match(game, /priorPhase === "lobby"\) playOnlineVsIntro\(\)/);
+  assert.match(css, /\.vs-stage\.online-vs > \.vs-face\.p2 \{ display: none; \}/);
+  assert.match(css, /\.vs-stage\.online-vs \.vs-inner \{[\s\S]*?grid-template-rows: minmax\(0, 1fr\) auto minmax\(0, 1fr\)/);
 });
 
 test("online listen audio prefers static MP3 and remains server scheduled", () => {
@@ -215,7 +241,9 @@ test("online result uses one upright, aligned comparison view", () => {
   const online = read("game-online.js");
   const css = read("styles.css");
   assert.match(game, /customRows \|\| \(withBattleStats \? buildBattleStatsRows\(\) : ""\)/);
-  assert.match(online, /readyRematch\(\)[\s\S]*?primeBattleAudio\(\)/);
+  assert.match(online, /button\.textContent = "離開對戰"/);
+  assert.match(game, /KanaBattleOnline\?\.isActive\(\)[\s\S]*?KanaBattleOnline\.leaveBattle\(\)/);
+  assert.match(game, /document\.querySelectorAll\("\.btn-again"\)[\s\S]*?KanaBattleOnline\.returnToLobby\(\)/);
   assert.match(online, /statRow\("最快答題"/);
   assert.match(online, /statRow\("平均答題"/);
   assert.match(online, /statRow\("錯誤次數"/);
@@ -229,6 +257,20 @@ test("online result uses one upright, aligned comparison view", () => {
   assert.match(css, /grid-template-columns: minmax\(5\.5rem, 1fr\) minmax\(4\.5rem, 0\.78fr\) minmax\(4\.5rem, 0\.78fr\)/);
   assert.match(css, /html \{ font-size: 18px; \}/);
   assert.match(css, /linear-gradient\(155deg, #d9cfbf 0%, #f2eadc 48%, #cbbba4 100%\)/);
+});
+
+test("correct answer feedback floats without moving controls and long romaji scales down", () => {
+  const game = read("game.js");
+  const online = read("game-online.js");
+  const css = read("styles.css");
+  assert.match(game, /function showAnswerGain\(player, text\)/);
+  assert.match(game, /showAnswerGain\(player, "答對 · \+" \+ gain\)/);
+  assert.match(online, /showAnswerGain\(player, player === 1 \? `答對 · \+\$\{event\.gain\}`/);
+  assert.match(css, /\.answer-gain-float \{[\s\S]*?position: absolute/);
+  assert.match(css, /animation: answerGainDrop 2s/);
+  assert.match(css, /prefers-reduced-motion: reduce[\s\S]*?\.answer-gain-float \{ animation: none !important/);
+  assert.match(game, /roma\.length >= 3\) slot\.classList\.add\("roma-wide"\)/);
+  assert.match(css, /\.slot\.roma-wide \.roma \{[\s\S]*?font-size: clamp/);
 });
 
 test("mobile audio restores after returning to the browser and on the next gesture", () => {

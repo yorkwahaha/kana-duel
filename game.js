@@ -303,6 +303,7 @@ function createBoard(id, slotsId, poolId, feedbackId) {
           const r = document.createElement("span");
           r.className = "roma";
           r.textContent = roma;
+          if (roma.length >= 3) slot.classList.add("roma-wide");
           slot.appendChild(r);
         }
         if (val) {
@@ -368,6 +369,20 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       });
     },
   };
+}
+
+function showAnswerGain(player, text) {
+  const board = $("board" + player);
+  if (!board || !text) return;
+  const float = document.createElement("div");
+  float.className = "answer-gain-float";
+  float.setAttribute("role", "status");
+  float.setAttribute("aria-live", "polite");
+  float.textContent = text;
+  board.querySelectorAll(".answer-gain-float").forEach((node) => node.remove());
+  board.appendChild(float);
+  float.addEventListener("animationend", () => float.remove(), { once: true });
+  setTimeout(() => float.remove(), 2100);
 }
 const boards = {
   practice: createBoard("practice", "slots", "pool", "feedback"),
@@ -1082,6 +1097,7 @@ function playVsThenBattle() {
     el.textContent = isListenBattle() ? "LISTEN DUEL" : "SPEED DUEL";
   });
   const stage = $("vs-stage");
+  stage.classList.remove("online-vs");
   stage.classList.remove("show");
   void stage.offsetWidth;
   stage.classList.add("show");
@@ -1782,7 +1798,8 @@ function battleSubmit(player) {
     charge[player] += gain;
     noteCorrectAnswer(player);
     lockBoardForListen(player, true);
-    b.setFeedback("搶答成功 · +" + gain, "ok");
+    b.setFeedback("");
+    showAnswerGain(player, "答對 · +" + gain);
     updatePlayerMeters(player);
     playSfx("skillpop", 0.5);
     showCombo("搶答！", "md");
@@ -1798,7 +1815,8 @@ function battleSubmit(player) {
   charge[player] += gain;
   noteCorrectAnswer(player);
   b.lockGold();
-  b.setFeedback("+" + gain + " · " + combo[player] + " COMBO", "ok");
+  b.setFeedback("");
+  showAnswerGain(player, "答對 · +" + gain);
   updatePlayerMeters(player);
   showWordReveal(player, q);
 
@@ -1951,7 +1969,7 @@ bindTap($("btn-battle-listen"), () => {
 document.querySelectorAll(".btn-again-home").forEach((btn) => {
   bindTap(btn, () => {
     if (window.KanaBattleOnline?.isActive()) {
-      window.KanaBattleOnline.returnToLobby();
+      window.KanaBattleOnline.leaveBattle();
       return;
     }
     cancelAllDrags();
@@ -1981,7 +1999,7 @@ document.querySelectorAll(".btn-again-home").forEach((btn) => {
 document.querySelectorAll(".btn-again").forEach((btn) => {
   bindTap(btn, () => {
     if (window.KanaBattleOnline?.isActive()) {
-      window.KanaBattleOnline.readyRematch();
+      window.KanaBattleOnline.returnToLobby();
       return;
     }
     if (gameMode === "battle") {

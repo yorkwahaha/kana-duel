@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260821-audio-response" />
+  <link rel="stylesheet" href="styles.css?v=20260822-online-lobby" />
 </head>
 <body>
   <div class="combo-float" id="combo-float"></div>
@@ -95,25 +95,25 @@
     <section class="screen hidden" id="screen-online">
       <div class="online-shell">
         <header class="online-head">
-          <button class="btn btn-ghost btn-sm" id="btn-online-back" type="button">返回</button>
           <div><span class="online-kicker">ONLINE DUEL</span><h2>線上對戰</h2></div>
-          <span class="online-connection" id="online-connection" role="status" aria-live="polite">尚未連線</span>
+          <span class="sr-only" id="online-connection" role="status" aria-live="polite">尚未連線</span>
         </header>
 
         <div class="online-entry" id="online-entry">
-          <label class="online-field"><span>你的名稱</span><input id="online-name" maxlength="16" autocomplete="nickname" value="玩家" /></label>
+          <label class="online-field"><span id="online-name-label">你的名稱</span><input id="online-name" maxlength="16" autocomplete="nickname" value="玩家" /></label>
           <div class="online-entry-actions">
             <button class="btn btn-primary" id="btn-online-create" type="button">建立房間</button>
             <span>或</span>
             <label class="online-field room-code-field"><span>輸入房號</span><input id="online-code-input" maxlength="6" inputmode="text" autocomplete="off" placeholder="ABC234" /></label>
-            <button class="btn btn-soft" id="btn-online-join" type="button">加入房間</button>
+            <button class="btn btn-primary" id="btn-online-join" type="button">加入房間</button>
+            <button class="btn btn-ghost invite-only hidden" id="btn-online-invite-exit" type="button">離開遊戲</button>
           </div>
         </div>
 
         <div class="online-lobby hidden" id="online-lobby">
           <div class="online-room-card">
-            <span>房號</span><strong id="online-room-code">——</strong>
-            <button class="btn btn-ghost btn-sm" id="btn-online-copy" type="button">複製邀請連結</button>
+            <span>複製房號</span>
+            <button class="btn btn-ghost btn-sm" id="btn-online-copy" type="button" aria-label="複製房號">——</button>
           </div>
           <div class="online-players" id="online-players"></div>
           <section class="online-character-picker" aria-labelledby="online-character-heading">
@@ -405,13 +405,13 @@
     </div>
   </div>
 
-  <script src="questions-data.js?v=20260821-audio-response"></script>
-  <script src="questions-expansion-data.js?v=20260821-audio-response"></script>
-  <script src="game-content.js?v=20260821-audio-response"></script>
-  <script src="game-audio.js?v=20260821-audio-response"></script>
-  <script src="game-vfx.js?v=20260821-audio-response"></script>
-  <script src="online.js?v=20260821-audio-response"></script>
-  <script src="game.js?v=20260821-audio-response"></script>
-  <script src="game-online.js?v=20260821-audio-response"></script>
+  <script src="questions-data.js?v=20260822-online-lobby"></script>
+  <script src="questions-expansion-data.js?v=20260822-online-lobby"></script>
+  <script src="game-content.js?v=20260822-online-lobby"></script>
+  <script src="game-audio.js?v=20260822-online-lobby"></script>
+  <script src="game-vfx.js?v=20260822-online-lobby"></script>
+  <script src="online.js?v=20260822-online-lobby"></script>
+  <script src="game.js?v=20260822-online-lobby"></script>
+  <script src="game-online.js?v=20260822-online-lobby"></script>
 </body>
 </html>

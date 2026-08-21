@@ -255,6 +255,10 @@ window.KanaBattleOnlineClient = (() => {
       const url = new URL(location.href); url.searchParams.set("room", roomCode);
       try { await navigator.clipboard.writeText(url.toString()); return true; } catch { return false; }
     },
+    async copyRoomCode() {
+      if (!roomCode) return false;
+      try { await navigator.clipboard.writeText(roomCode); return true; } catch { return false; }
+    },
     getRoom() { return room; },
   };
 })();

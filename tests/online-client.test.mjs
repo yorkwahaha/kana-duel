@@ -8,6 +8,7 @@ const source = fs.readFileSync(new URL("../online.js", import.meta.url), "utf8")
 
 function harness() {
   const sockets = [];
+  const clipboardWrites = [];
   const timers = new Map();
   let timerId = 0;
   class FakeWebSocket {
@@ -36,7 +37,7 @@ function harness() {
     WebSocket: FakeWebSocket,
     document: { querySelector: () => ({ content: "https://api.example.test" }) },
     fetch: async () => { throw new Error("not used"); },
-    navigator: { clipboard: { writeText: async () => {} } },
+    navigator: { clipboard: { writeText: async (value) => { clipboardWrites.push(value); } } },
     location,
     history: window.history,
     localStorage: window.localStorage,
@@ -48,6 +49,7 @@ function harness() {
   return {
     online: window.KanaBattleOnlineClient,
     sockets,
+    clipboardWrites,
     runTimer(delay) {
       const found = [...timers.entries()].find(([, timer]) => timer.delay === delay);
       assert.ok(found, `missing ${delay}ms timer`);
@@ -56,6 +58,13 @@ function harness() {
     },
   };
 }
+
+test("room code copy writes only the six-character code", async () => {
+  const { online, clipboardWrites } = harness();
+  online.resume("AB2C3D");
+  assert.equal(await online.copyRoomCode(), true);
+  assert.deepEqual(clipboardWrites, ["AB2C3D"]);
+});
 
 test("a stale socket close cannot discard the replacement connection", () => {
   const { online, sockets } = harness();

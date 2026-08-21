@@ -1,6 +1,6 @@
 /* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, boards, categoryLabelOf */
 /* global battleOpts:writable, battleDeck:writable, battleOpen:writable, battleEpoch:writable */
-/* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable */
+/* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable, showAnswerGain */
 /* global ampHits:writable, blockUntil:writable, submitLockUntil:writable, attackLockUntil:writable */
 /* global pickP1:writable, pickP2:writable, gameMode:writable, playerQi:writable, sharedQi:writable */
 /* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, timerRaf */
@@ -24,6 +24,8 @@
   let battleResultShown = false;
   let submitPending = false;
   let pendingCharacterId = "";
+  let battleIntroPending = false;
+  let battleIntroTimer = 0;
 
   const CHARACTER_INTROS = {
     ao: "快速累積大招，擅長封鎖對手提交。",
@@ -114,11 +116,27 @@
     renderCharacterCard(next.id);
   }
 
+  function setInviteMode(enabled, code = "") {
+    const inviteMode = !!enabled;
+    $("screen-online")?.classList.toggle("invite-mode", inviteMode);
+    if ($("online-name-label")) $("online-name-label").textContent = inviteMode ? "輸入你的名稱" : "你的名稱";
+    if ($("btn-online-create")) $("btn-online-create").disabled = inviteMode;
+    if ($("online-code-input")) {
+      if (code) $("online-code-input").value = code.toUpperCase();
+      $("online-code-input").disabled = inviteMode;
+    }
+    $("btn-online-invite-exit")?.classList.toggle("hidden", !inviteMode);
+  }
+
   function renderLobby() {
     if (!room) return;
+    setInviteMode(false);
     $("online-entry")?.classList.add("hidden");
     $("online-lobby")?.classList.remove("hidden");
-    if ($("online-room-code")) $("online-room-code").textContent = room.roomCode;
+    if ($("btn-online-copy")) {
+      $("btn-online-copy").textContent = room.roomCode;
+      $("btn-online-copy").setAttribute("aria-label", `複製房號 ${room.roomCode}`);
+    }
     const host = room.youSeat === room.hostSeat;
     const settings = ["online-mode", "online-category", "online-maxlen", "online-script", "online-distractors"];
     settings.forEach((id) => { if ($(id)) $(id).disabled = !host || room.phase !== "lobby"; });
@@ -132,10 +150,11 @@
     const players = $("online-players");
     if (players) {
       players.innerHTML = room.players.map((player, seat) => {
-        if (!player) return `<div class="online-player online-player-empty"><div><strong>等待玩家</strong><span>分享房號或邀請連結</span></div></div>`;
+        if (!player) return `<div class="online-player online-player-empty"><div><strong>等待玩家</strong><span>尚未選角</span><span>等待加入</span></div></div>`;
         const character = characterById(player.characterId, seat);
-        const flags = [seat === room.hostSeat ? "房主" : "玩家", player.connected ? "已連線" : "重新連線中", player.ready ? "已準備" : "未準備"];
-        return `<div class="online-player${player.ready ? " ready" : ""}"><img src="${escapeHtml(character?.image || "assets/characters/ao.webp")}" alt="" /><div><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(character?.name || "未選角")}</span><span>${flags.join(" · ")}</span></div><b>${player.ready ? "✓ 已準備" : "選角中"}</b></div>`;
+        const playerLabel = `${player.name}${seat === room.hostSeat ? "（房主）" : ""}`;
+        const status = player.connected ? (player.ready ? "✓ 已準備" : "選角中") : "重新連線中";
+        return `<div class="online-player${player.ready ? " ready" : ""}"><img src="${escapeHtml(character?.image || "assets/characters/ao.webp")}" alt="" /><div><strong>${escapeHtml(playerLabel)}</strong><span>${escapeHtml(character?.name || "未選角")}</span><span>${status}</span></div></div>`;
       }).join("");
     }
     const mine = localPlayer();
@@ -247,6 +266,7 @@
   }
 
   function beginOnlineBattle() {
+    battleIntroPending = false;
     active = true;
     battleResultShown = false;
     lastEventId = 0;
@@ -284,6 +304,44 @@
     battleStartedAt = performance.now() - Math.max(0, Number(room.serverNow) - Number(room.battle.startedAt));
     cancelAnimationFrame(timerRaf); tickBattleClock();
     startBattleBgm().catch(() => {});
+  }
+
+  function clearOnlineBattleIntro() {
+    clearTimeout(battleIntroTimer);
+    battleIntroTimer = 0;
+    battleIntroPending = false;
+    const stage = $("vs-stage");
+    stage?.classList.remove("show", "online-vs");
+    stage?.setAttribute("aria-hidden", "true");
+  }
+
+  function playOnlineVsIntro() {
+    if (!room || battleIntroPending || active) return;
+    battleIntroPending = true;
+    const mineCharacter = characterById(localPlayer()?.characterId, 0);
+    const foeCharacter = characterById(remotePlayer()?.characterId, 1);
+    document.querySelectorAll('[data-vs="img1"]').forEach((el) => { el.src = mineCharacter?.image || ""; });
+    document.querySelectorAll('[data-vs="img2"]').forEach((el) => { el.src = foeCharacter?.image || ""; });
+    document.querySelectorAll('[data-vs="name1"]').forEach((el) => {
+      el.textContent = `${localPlayer()?.name || "我方"} · ${mineCharacter?.name || ""}`;
+    });
+    document.querySelectorAll('[data-vs="name2"]').forEach((el) => {
+      el.textContent = `${remotePlayer()?.name || "對手"} · ${foeCharacter?.name || ""}`;
+    });
+    document.querySelectorAll('[data-vs="rule"]').forEach((el) => {
+      el.textContent = room.config.mode === "listen" ? "LISTEN DUEL" : "SPEED DUEL";
+    });
+    const stage = $("vs-stage");
+    stage?.classList.remove("show");
+    stage?.classList.add("online-vs");
+    void stage?.offsetWidth;
+    stage?.classList.add("show");
+    stage?.setAttribute("aria-hidden", "false");
+    playSfx("fanfare", 0.35);
+    battleIntroTimer = setTimeout(() => {
+      clearOnlineBattleIntro();
+      if (room?.phase === "playing") beginOnlineBattle();
+    }, prefersReducedMotion() ? 600 : 3000);
   }
 
   function displaySeat(serverSeat) { return serverSeat === localSeat() ? 1 : 2; }
@@ -381,7 +439,8 @@
     lastEventId = event.id;
     const player = displaySeat(event.seat);
     if (event.type === "correct") {
-      boards[player]?.setFeedback(player === 1 ? `答對 · +${event.gain}` : "對手答對", "ok");
+      boards[player]?.setFeedback("");
+      showAnswerGain(player, player === 1 ? `答對 · +${event.gain}` : "對手答對");
       showWordReveal(player, questionById(event.questionId));
       playSfx("skillpop", 0.4);
     } else if (event.type === "miss") {
@@ -441,7 +500,7 @@
     } catch (error) {
       console.error("Online defeat outro failed", error);
     }
-    document.querySelectorAll(".btn-again-home").forEach((button) => { button.textContent = "回到房間"; });
+    document.querySelectorAll(".btn-again-home").forEach((button) => { button.textContent = "離開對戰"; });
     document.querySelectorAll(".btn-again").forEach((button) => { button.textContent = "準備再戰"; });
     setResultScreen(
       won ? "你獲勝！" : "你落敗",
@@ -457,10 +516,14 @@
     room = nextRoom;
     setError("");
     if (room.phase === "playing") {
-      if (!active || priorPhase !== "playing") beginOnlineBattle();
-      else syncBattleState();
-      renderEvent(room.lastEvent);
-      pauseOverlay(!room.players.every((player) => player?.connected));
+      if (!active && !battleIntroPending) {
+        if (priorPhase === "lobby") playOnlineVsIntro();
+        else beginOnlineBattle();
+      } else if (active) syncBattleState();
+      if (active) {
+        renderEvent(room.lastEvent);
+        pauseOverlay(!room.players.every((player) => player?.connected));
+      }
     } else if (room.phase === "complete") {
       if (room.battle) syncBattleState();
       renderEvent(room.lastEvent);
@@ -482,6 +545,7 @@
   }
 
   function leaveRoom() {
+    clearOnlineBattleIntro();
     client.leave();
     room = null;
     active = false;
@@ -497,6 +561,7 @@
     document.querySelectorAll(".btn-again").forEach((button) => { button.textContent = "再玩一次"; });
     $("online-lobby")?.classList.add("hidden");
     $("online-entry")?.classList.remove("hidden");
+    setInviteMode(false);
     showScreen("start");
   }
 
@@ -528,8 +593,7 @@
   }
   bindTap($("btn-online-character-prev"), () => stepCharacter(-1));
   bindTap($("btn-online-character-next"), () => stepCharacter(1));
-  bindTap($("btn-mode-online"), enterOnline);
-  bindTap($("btn-online-back"), () => { if (room) leaveRoom(); else showScreen("start"); });
+  bindTap($("btn-mode-online"), () => { setInviteMode(false); enterOnline(); });
   bindTap($("btn-online-create"), async () => {
     setError("");
     const config = configFromUi();
@@ -540,8 +604,18 @@
     try { await client.join({ playerName: $("online-name")?.value || "玩家", code: $("online-code-input")?.value || "" }); } catch {}
   });
   bindTap($("btn-online-copy"), async () => {
-    const ok = await client.copyInvite();
-    if ($("btn-online-copy")) $("btn-online-copy").textContent = ok ? "已複製" : "請手動複製房號";
+    const ok = await client.copyRoomCode();
+    const button = $("btn-online-copy");
+    if (button) {
+      button.classList.toggle("copied", ok);
+      button.setAttribute("aria-label", ok ? `房號 ${room?.roomCode || ""} 已複製` : "無法複製房號");
+      setTimeout(() => button.classList.remove("copied"), 1200);
+    }
+  });
+  bindTap($("btn-online-invite-exit"), () => {
+    client.leave();
+    setInviteMode(false);
+    showScreen("start");
   });
   bindTap($("btn-online-leave"), leaveRoom);
   bindTap($("btn-online-ready"), () => {
@@ -587,13 +661,6 @@
       client.ready(pendingCharacterId || $("online-character")?.value || localPlayer()?.characterId || "ao", false);
       showScreen("online");
     },
-    readyRematch() {
-      if (!room) return leaveRoom();
-      battleResultShown = false;
-      primeBattleAudio().catch(() => {});
-      showScreen("online");
-      client.ready(pendingCharacterId || $("online-character")?.value || localPlayer()?.characterId || "ao", true);
-    },
     replayQuestion() {
       const q = questionById(room?.currentQuestionId);
       if (active && room?.config.mode === "listen" && q) speakQuestionAudio(q);
@@ -603,6 +670,6 @@
   const invitedRoom = new URL(location.href).searchParams.get("room");
   if (invitedRoom) {
     enterOnline();
-    if (!client.resume(invitedRoom)) $("online-code-input").value = invitedRoom.toUpperCase();
+    if (!client.resume(invitedRoom)) setInviteMode(true, invitedRoom);
   }
 })();
