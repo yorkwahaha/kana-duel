@@ -263,7 +263,7 @@
     $("board2")?.setAttribute("aria-hidden", "true");
     document.querySelector(".duel-stage")?.classList.toggle("listen-mode", room.config.mode === "listen");
     $("btn-battle-listen")?.classList.toggle("hidden", room.config.mode !== "listen");
-    if ($("rule-chip")) $("rule-chip").textContent = `線上 · ${room.config.mode === "listen" ? "聽力搶答" : "競速對決"} · ${categoryLabelOf(room.config.category)} · ${room.roomCode}`;
+    if ($("rule-chip")) $("rule-chip").textContent = `${room.config.mode === "listen" ? "聽力搶答" : "競速"} · ${categoryLabelOf(room.config.category)}`;
     showScreen("battle");
     syncBattleState();
     battleStartedAt = performance.now() - Math.max(0, Number(room.serverNow) - Number(room.battle.startedAt));
@@ -409,7 +409,6 @@
     cancelAnimationFrame(timerRaf);
     stopBattleBgm();
     const won = room.battle.winnerSeat === localSeat();
-    const winner = won ? localPlayer() : remotePlayer();
     const mine = room.battle.fighters[localSeat()];
     const foe = room.battle.fighters[remoteSeat()];
     const seconds = Math.max(0, (Number(room.battle.completedAt) - Number(room.battle.startedAt)) / 1000);
@@ -419,21 +418,18 @@
         : fighter.bestAnswerMs;
       return Number.isFinite(ms) ? `${(ms / 1000).toFixed(1)} 秒` : "—";
     };
-    const statRow = (label, mineValue, foeValue) => `<li><span>${label}</span><b><span class="tag-p1">你</span> ${mineValue} · <span class="tag-p2">對手</span> ${foeValue}</b></li>`;
-    const firstSpecial = room.battle.firstSpecialSeat == null
-      ? "本場未開大招"
-      : (room.battle.firstSpecialSeat === localSeat() ? "你先開大招" : "對手先開大招");
+    const statRow = (label, mineValue, foeValue) => `<li><span class="stat-label">${label}</span><span class="stat-value stat-mine"><small>你</small><b>${escapeHtml(String(mineValue))}</b></span><span class="stat-value stat-foe"><small>對手</small><b>${escapeHtml(String(foeValue))}</b></span></li>`;
     const resultRows = [
       statRow("最大連段", mine.maxCombo, foe.maxCombo),
       statRow("最快答題", answerSeconds(mine), answerSeconds(foe)),
       statRow("平均答題", answerSeconds(mine, true), answerSeconds(foe, true)),
-      `<li><span>先開大招</span><b>${firstSpecial}</b></li>`,
+      statRow("錯誤次數", mine.mistakes || 0, foe.mistakes || 0),
     ].join("");
     document.querySelectorAll(".btn-again-home").forEach((button) => { button.textContent = "回到房間"; });
     document.querySelectorAll(".btn-again").forEach((button) => { button.textContent = "準備再戰"; });
     setResultScreen(
       won ? "你獲勝！" : "你落敗",
-      `${escapeHtml(winner?.name || "玩家")} 贏得對戰 · ${escapeHtml(localPlayer()?.name || "你")} VS ${escapeHtml(remotePlayer()?.name || "對手")} · ${seconds.toFixed(1)} 秒`,
+      `對戰時間 ${seconds.toFixed(1)} 秒`,
       false,
       resultRows
     );

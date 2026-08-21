@@ -2954,14 +2954,60 @@ body.online-battle #screen-result .result-card {
   background: rgba(255, 252, 244, 0.92);
   box-shadow: 0 22px 56px rgba(55, 40, 25, 0.24), inset 0 1px 0 #fff;
 }
-body.online-battle #screen-result .result-title { color: #9a6b05; }
-body.online-battle #screen-result .result-summary { color: #594c40; }
+body.online-battle #screen-result .result-title {
+  margin-bottom: 4px;
+  color: #9a6b05;
+  text-align: center;
+}
+body.online-battle #screen-result .result-summary {
+  margin-bottom: 16px;
+  color: #594c40;
+  text-align: center;
+}
 body.online-battle #screen-result .result-stats {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
   border-color: rgba(83, 63, 42, 0.24);
   background: rgba(218, 205, 185, 0.46);
 }
-body.online-battle #screen-result .result-stats li { color: #5f5144; }
-body.online-battle #screen-result .result-stats li b { color: #30271f; }
+body.online-battle #screen-result .result-stats li {
+  display: grid;
+  grid-template-columns: minmax(5.5rem, 1fr) minmax(4.5rem, 0.78fr) minmax(4.5rem, 0.78fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 58px;
+  padding: 8px 12px;
+  color: #5f5144;
+  border-bottom: 1px solid rgba(83, 63, 42, 0.16);
+  text-align: left;
+}
+body.online-battle #screen-result .result-stats li:last-child { border-bottom: 0; }
+body.online-battle #screen-result .result-stats .stat-label { min-width: 0; }
+body.online-battle #screen-result .result-stats .stat-value {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  min-width: 0;
+  padding-left: 8px;
+  border-left: 1px solid rgba(83, 63, 42, 0.16);
+  text-align: left;
+}
+body.online-battle #screen-result .result-stats .stat-value small {
+  font-size: 0.68em;
+  font-weight: 800;
+  color: #77695c;
+}
+body.online-battle #screen-result .result-stats .stat-mine small { color: #217f78; }
+body.online-battle #screen-result .result-stats .stat-foe small { color: #b84b31; }
+body.online-battle #screen-result .result-stats .stat-value b {
+  min-width: 0;
+  color: #30271f;
+  font-size: 0.95em;
+  line-height: 1.15;
+  overflow-wrap: normal;
+  word-break: keep-all;
+}
 body.online-battle #screen-result .btn-ghost {
   color: #3b3027;
   border-color: rgba(80, 61, 42, 0.32);
@@ -2996,14 +3042,40 @@ body.online-battle #screen-result .btn-ghost {
   body.online-battle .duel-half.p1 .utility-actions .combo-chip { font-size: 0.88rem; }
   body.online-battle .duel-half.p1 .board .actions .btn,
   body.online-battle .duel-half.p1 .skill-bar .btn-skill { font-size: 0.94rem; }
-  body.online-battle #screen-result .result-card .row .btn { font-size: 1.06rem; }
+  body.online-battle #screen-result .result-card {
+    width: calc(100% - 20px);
+    padding: 22px 16px 18px;
+  }
+  body.online-battle #screen-result .result-title { font-size: 2rem; }
+  body.online-battle #screen-result .result-summary {
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+  body.online-battle #screen-result .result-stats li {
+    grid-template-columns: minmax(4.6rem, 1.08fr) minmax(3.8rem, 0.8fr) minmax(3.8rem, 0.8fr);
+    gap: 5px;
+    min-height: 56px;
+    padding: 7px 9px;
+    font-size: 1rem;
+  }
+  body.online-battle #screen-result .result-stats .stat-value { padding-left: 6px; }
+  body.online-battle #screen-result .result-card .row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  body.online-battle #screen-result .result-card .row .btn {
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 1.06rem;
+  }
 }
 
 /* Phone online duel · enemy vitals, paired full portraits, local vitals, settings, answers. */
 @media (orientation: portrait) and (max-width: 640px) {
   body.online-battle .duel-stage {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-rows: auto minmax(180px, 25dvh) auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(230px, 34dvh) auto auto minmax(0, 1fr) auto;
     align-content: stretch;
   }
   body.online-battle .duel-half.p1,
@@ -3032,8 +3104,8 @@ body.online-battle #screen-result .btn-ghost {
     border-left: 1px solid rgba(196, 90, 58, 0.36);
   }
   body.online-battle .duel-art .fighter img {
-    object-fit: contain;
-    object-position: center top;
+    object-fit: cover;
+    object-position: center 12%;
   }
   body.online-battle .duel-half.p1 .duel-vitals,
   body.online-battle .duel-half.p2 .duel-vitals {
@@ -3095,6 +3167,8 @@ body.online-battle #screen-result .btn-ghost {
     padding: 6px 7px 4px;
     overflow: hidden;
     background: #0c1211;
+    position: relative;
+    justify-content: flex-end;
   }
   body.online-battle .duel-half.p1 .board .slots,
   body.online-battle .duel-half.p1 .board .pool,
@@ -3167,16 +3241,40 @@ body.online-battle #screen-result .btn-ghost {
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
   }
+  body.online-battle .duel-half.p1 .board .word-reveal {
+    top: auto;
+    bottom: 72px;
+    width: calc(100% - 24px);
+    max-width: 360px;
+    padding: 9px 12px;
+    border: 1px solid rgba(224, 184, 74, 0.42);
+    border-radius: 10px;
+    background: rgba(15, 13, 11, 0.94);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
+    animation: wordRevealDock 2.1s var(--ease) forwards;
+  }
+  body.online-battle .duel-half.p1 .board .word-reveal strong {
+    font-size: clamp(1.35rem, 7vw, 1.75rem);
+  }
+  body.online-battle .duel-half.p1 .board .word-reveal span {
+    margin-top: 2px;
+    font-size: 0.9rem;
+  }
 }
 
 @media (orientation: portrait) and (max-width: 640px) and (max-height: 720px) {
   body.online-battle .duel-stage {
-    grid-template-rows: auto minmax(142px, 21dvh) auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(190px, 28dvh) auto auto minmax(0, 1fr) auto;
   }
   body.online-battle .duel-half.p1 .board .pool .tile {
     height: 44px;
   }
   body.online-battle .online-opponent-status span { display: none; }
+}
+@keyframes wordRevealDock {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.96); }
+  16%, 78% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -6px) scale(0.98); }
 }
 .char-mid .opt-toggle {
   display: inline-flex; align-items: center; gap: 5px;

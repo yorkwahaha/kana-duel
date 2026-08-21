@@ -229,7 +229,7 @@ function playSfx(name, volume = 0.45) {
     const vol = Math.min(1, volume * sfxDuckFactor);
     if (vol <= 0.001) return;
     if (audioCtx && sfxBufCache.has(name)) {
-      if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+      if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
       const src = audioCtx.createBufferSource();
       const g = audioCtx.createGain();
       g.gain.value = vol;
@@ -302,8 +302,8 @@ let bgmSessionId = 0;
 async function ensureAudioCtx() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
-  if (!audioCtx) audioCtx = new AC();
-  if (audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
+  if (!audioCtx || audioCtx.state === "closed") audioCtx = new AC();
+  if (audioCtx.state !== "running") await audioCtx.resume().catch(() => {});
   return audioCtx;
 }
 function clearBgmWatchdog() {
@@ -342,7 +342,7 @@ function applyBgmVolume() {
 }
 function keepBattleBgmAlive() {
   if (!battleOpen) return;
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
   if (bgmHtmlFallback && bgmHtmlFallback.paused) bgmHtmlFallback.play().catch(() => {});
   applyBgmVolume();
 }
@@ -389,6 +389,38 @@ async function primeBattleAudio() {
   }
   await Promise.allSettled([preloadBattleSfx(), preloadBattleBgm()]);
 }
+
+let lastBattleAudioRestoreAt = 0;
+async function restoreBattleAudio() {
+  if (!battleOpen) return false;
+  const priorCtx = audioCtx;
+  const ctx = await ensureAudioCtx();
+  if (ctx && ctx.state === "running") {
+    if (ctx !== priorCtx || (!bgmSource && !bgmHtmlFallback)) {
+      await startBattleBgm();
+    } else {
+      keepBattleBgmAlive();
+    }
+    return true;
+  }
+  keepBattleBgmAlive();
+  return !!(bgmHtmlFallback && !bgmHtmlFallback.paused);
+}
+function requestBattleAudioRestore(force = false) {
+  if (!battleOpen) return;
+  const now = performance.now();
+  if (!force && now - lastBattleAudioRestoreAt < 350) return;
+  lastBattleAudioRestoreAt = now;
+  restoreBattleAudio().catch(() => {});
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) requestBattleAudioRestore(true);
+});
+window.addEventListener("pageshow", () => requestBattleAudioRestore(true));
+window.addEventListener("focus", () => requestBattleAudioRestore());
+["pointerdown", "touchend", "keydown"].forEach((type) => {
+  document.addEventListener(type, () => requestBattleAudioRestore(true), { capture: true, passive: true });
+});
 
 // —— 墨域言靈闘場 · 第 1 期 4 角（v1.0）——
 // voiceHit / voiceDefeat：受擊／敗北語音；大招喊招改由 castVideo 內建音軌

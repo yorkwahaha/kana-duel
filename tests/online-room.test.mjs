@@ -79,6 +79,8 @@ test("the server validates answers and owns damage state", () => {
   assert.equal(applySubmit(room, 1, { questionId: "q1", answer: ["か", "え"] }, 1120).correct, false);
   assert.equal(room.lastEvent.type, "miss");
   assert.equal(room.battle.fighters[1].hp, beforeMiss - 72);
+  assert.equal(room.battle.fighters[1].mistakes, 1);
+  assert.equal(publicRoomState(room, 0).battle.fighters[1].mistakes, 1);
 });
 
 test("listen mode preserves the winner streak across automatic attacks", () => {

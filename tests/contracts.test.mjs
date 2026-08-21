@@ -104,7 +104,7 @@ test("split scripts load in dependency order", () => {
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
-  assert.equal((html.match(/\?v=20260821-mobile-duel/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
+  assert.equal((html.match(/\?v=20260821-mobile-polish/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
@@ -124,8 +124,8 @@ test("online room entry and battle interception stay wired", () => {
   const css = read("styles.css");
   assert.match(html, /id="btn-mode-online"/);
   assert.match(html, /id="screen-online"/);
-  assert.match(html, /src="online\.js\?v=20260821-mobile-duel"/);
-  assert.match(html, /src="game-online\.js\?v=20260821-mobile-duel"/);
+  assert.match(html, /src="online\.js\?v=20260821-mobile-polish"/);
+  assert.match(html, /src="game-online\.js\?v=20260821-mobile-polish"/);
   assert.match(html, /id="online-category"/);
   assert.match(online, /q\.category === config\.category/);
   assert.match(html, /id="online-character-image"/);
@@ -172,8 +172,10 @@ test("correct answers reveal kanji, reading, and Chinese in every mode", () => {
   assert.match(game, /\$\("reward-title"\)\.textContent = reveal\.title/);
   assert.match(online, /showWordReveal\(player, questionById\(event\.questionId\)\)/);
   assert.match(online, /showWordReveal\(1, question\);\s*showWordReveal\(2, question\)/);
+  assert.match(game, /document\.body\.classList\.contains\("online-battle"\)[\s\S]*?\$\("board1"\)/);
   assert.match(worker, /performAttack\(room, seat, now, true, question\.id\)/);
   assert.match(css, /\.word-reveal \{ animation: none !important; opacity: 1 !important/);
+  assert.match(css, /\.board \.word-reveal \{[\s\S]*?bottom: 72px/);
 });
 
 test("phone battle pools cap at twelve readable options in two rows", () => {
@@ -194,12 +196,14 @@ test("desktop media and phone online duel keep full artwork and compact actions"
   assert.equal((html.match(/class="duel-vitals"/g) || []).length, 2);
   assert.equal((html.match(/class="utility-actions"/g) || []).length, 2);
   assert.match(css, /Phone online duel[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(css, /grid-template-rows: auto minmax\(180px, 25dvh\) auto auto minmax\(0, 1fr\) auto/);
+  assert.match(css, /grid-template-rows: auto minmax\(230px, 34dvh\) auto auto minmax\(0, 1fr\) auto/);
+  assert.match(css, /\.duel-art \.fighter img \{[\s\S]*?object-fit: cover/);
+  assert.match(css, /\.duel-half\.p1 \.board \{[\s\S]*?justify-content: flex-end/);
   assert.match(css, /\.board \.actions \{[\s\S]*?grid-template-columns: minmax\(100px, 0\.88fr\) minmax\(106px, 1\.15fr\) minmax\(76px, 0\.82fr\)/);
   assert.match(css, /\.board \.actions \.btn \{[\s\S]*?min-height: 46px/);
 });
 
-test("online rematch primes audio and uses one upright result view", () => {
+test("online result uses one upright, aligned comparison view", () => {
   const game = read("game.js");
   const online = read("game-online.js");
   const css = read("styles.css");
@@ -207,8 +211,20 @@ test("online rematch primes audio and uses one upright result view", () => {
   assert.match(online, /readyRematch\(\)[\s\S]*?primeBattleAudio\(\)/);
   assert.match(online, /statRow\("最快答題"/);
   assert.match(online, /statRow\("平均答題"/);
-  assert.match(online, /firstSpecialSeat/);
+  assert.match(online, /statRow\("錯誤次數"/);
+  assert.doesNotMatch(online.slice(online.indexOf("function finishOnlineBattle")), /先開大招/);
+  assert.match(online, /`對戰時間 \$\{seconds\.toFixed\(1\)\} 秒`/);
   assert.match(css, /body\.online-battle #screen-result \.result-face\.p2 \{ display: none; \}/);
+  assert.match(css, /grid-template-columns: minmax\(5\.5rem, 1fr\) minmax\(4\.5rem, 0\.78fr\) minmax\(4\.5rem, 0\.78fr\)/);
   assert.match(css, /html \{ font-size: 18px; \}/);
   assert.match(css, /linear-gradient\(155deg, #d9cfbf 0%, #f2eadc 48%, #cbbba4 100%\)/);
+});
+
+test("mobile audio restores after returning to the browser and on the next gesture", () => {
+  const audio = read("game-audio.js");
+  assert.match(audio, /async function restoreBattleAudio\(\)/);
+  assert.match(audio, /document\.addEventListener\("visibilitychange"/);
+  assert.match(audio, /window\.addEventListener\("pageshow"/);
+  assert.match(audio, /\["pointerdown", "touchend", "keydown"\]/);
+  assert.match(audio, /audioCtx\.state !== "running"/);
 });

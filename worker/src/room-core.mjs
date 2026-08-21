@@ -77,6 +77,7 @@ function blankFighter(now) {
     submitLockUntil: 0,
     attackLockUntil: 0,
     corrects: 0,
+    mistakes: 0,
     maxCombo: 0,
     bestAnswerMs: null,
     totalAnswerMs: 0,
@@ -311,6 +312,7 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
     const totalWrong = Math.max(wrong, Math.abs(submitted.length - question.answer.length), 1);
     const damage = totalWrong * 72;
     fighter.combo = 0;
+    fighter.mistakes = (fighter.mistakes || 0) + 1;
     fighter.hp = Math.max(0, fighter.hp - damage);
     setEvent(room, { type: "miss", seat, damage, wrong: totalWrong, questionId: question.id }, now);
     finishIfNeeded(room, now);
