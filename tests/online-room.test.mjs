@@ -91,6 +91,7 @@ test("listen mode preserves the winner streak across automatic attacks", () => {
   assert.equal(room.battle.fighters[0].combo, 1);
   assert.equal(room.lastEvent.type, "attack");
   assert.equal(room.lastEvent.automatic, true);
+  assert.equal(room.lastEvent.questionId, "q1");
   assert.equal(room.battle.listenCue.questionId, "q2");
   assert.equal(room.battle.listenCue.seq, firstCue + 1);
   assert.ok(room.battle.listenCue.playAt >= 3300);

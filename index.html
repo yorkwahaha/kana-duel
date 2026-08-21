@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260821-character-cards" />
+  <link rel="stylesheet" href="styles.css?v=20260821-mobile-duel" />
 </head>
 <body>
   <div class="combo-float" id="combo-float"></div>
@@ -267,13 +267,15 @@
             </div>
           </div>
           <div class="duel-panel">
-            <div class="duel-hp">
-              <div class="hp-label"><span class="name-p2" id="hp2-name">P2</span><span id="hp2-text">2400</span></div>
-              <div class="hp-bar p2" id="hp-meter-2" role="progressbar" aria-label="P2 體力" aria-valuemin="0" aria-valuemax="2400" aria-valuenow="2400"><i id="hp2-bar"></i></div>
-            </div>
-            <div class="duel-meters">
-              <div class="duel-meter gauge" id="gauge-wrap-2" role="progressbar" aria-label="P2 大招槽" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0">
-                <div class="bar"><i id="gauge-bar-2"></i></div>
+            <div class="duel-vitals">
+              <div class="duel-hp">
+                <div class="hp-label"><span class="name-p2" id="hp2-name">P2</span><span id="hp2-text">2400</span></div>
+                <div class="hp-bar p2" id="hp-meter-2" role="progressbar" aria-label="P2 體力" aria-valuemin="0" aria-valuemax="2400" aria-valuenow="2400"><i id="hp2-bar"></i></div>
+              </div>
+              <div class="duel-meters">
+                <div class="duel-meter gauge" id="gauge-wrap-2" role="progressbar" aria-label="P2 大招槽" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0">
+                  <div class="bar"><i id="gauge-bar-2"></i></div>
+                </div>
               </div>
             </div>
             <div class="board p2" id="board2">
@@ -281,15 +283,18 @@
               <div class="pool" id="pool2"></div>
               <div class="feedback" id="feedback2" role="status" aria-live="polite" aria-atomic="true"></div>
               <div class="actions">
-                <button class="btn btn-ghost btn-sm" data-act="clear" data-p="2" type="button">清空</button>
-                <button class="btn btn-ghost btn-sm" data-act="skip" data-p="2" type="button">跳過</button>
-                <div class="spacer"></div>
+                <div class="utility-actions">
+                  <span class="combo-chip" id="combo-chip-2" aria-live="polite">COMBO 0</span>
+                  <div class="utility-buttons">
+                    <button class="btn btn-ghost btn-sm" data-act="clear" data-p="2" type="button">清空</button>
+                    <button class="btn btn-ghost btn-sm" data-act="skip" data-p="2" type="button">跳過</button>
+                  </div>
+                </div>
                 <button class="btn btn-attack btn-p2 btn-sm" data-act="attack" data-p="2" type="button" id="btn-attack-2" disabled>攻擊 0</button>
                 <button class="btn btn-submit btn-p2 btn-sm" data-act="submit" data-p="2" type="button" id="btn-submit-2" title="排好後手動提交答案">提交</button>
               </div>
             </div>
             <div class="skill-bar" id="skill-bar-2">
-              <span class="combo-chip" id="combo-chip-2" aria-live="polite">COMBO 0</span>
               <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="2" type="button" id="btn-skill-block-2" disabled title="耗 1 COMBO · 2 秒窗：期間內被按下的攻擊／大招整包傷半（含長動畫）">格擋</button>
               <button class="btn btn-skill btn-sm" data-act="skill-heal" data-p="2" type="button" id="btn-skill-heal-2" disabled title="耗 2 COMBO · 回復 200 HP">回墨</button>
               <button class="btn btn-skill btn-sm" data-act="skill-unique" data-p="2" type="button" id="btn-skill-unique-2" disabled>專屬</button>
@@ -317,13 +322,15 @@
             </div>
           </div>
           <div class="duel-panel">
-            <div class="duel-hp">
-              <div class="hp-label"><span class="name-p1" id="hp1-name">P1</span><span id="hp1-text">2400</span></div>
-              <div class="hp-bar p1" id="hp-meter-1" role="progressbar" aria-label="P1 體力" aria-valuemin="0" aria-valuemax="2400" aria-valuenow="2400"><i id="hp1-bar"></i></div>
-            </div>
-            <div class="duel-meters">
-              <div class="duel-meter gauge" id="gauge-wrap-1" role="progressbar" aria-label="P1 大招槽" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0">
-                <div class="bar"><i id="gauge-bar-1"></i></div>
+            <div class="duel-vitals">
+              <div class="duel-hp">
+                <div class="hp-label"><span class="name-p1" id="hp1-name">P1</span><span id="hp1-text">2400</span></div>
+                <div class="hp-bar p1" id="hp-meter-1" role="progressbar" aria-label="P1 體力" aria-valuemin="0" aria-valuemax="2400" aria-valuenow="2400"><i id="hp1-bar"></i></div>
+              </div>
+              <div class="duel-meters">
+                <div class="duel-meter gauge" id="gauge-wrap-1" role="progressbar" aria-label="P1 大招槽" aria-valuemin="0" aria-valuemax="8" aria-valuenow="0">
+                  <div class="bar"><i id="gauge-bar-1"></i></div>
+                </div>
               </div>
             </div>
             <div class="board p1" id="board1">
@@ -331,15 +338,18 @@
               <div class="pool" id="pool1"></div>
               <div class="feedback" id="feedback1" role="status" aria-live="polite" aria-atomic="true"></div>
               <div class="actions">
-                <button class="btn btn-ghost btn-sm" data-act="clear" data-p="1" type="button">清空</button>
-                <button class="btn btn-ghost btn-sm" data-act="skip" data-p="1" type="button">跳過</button>
-                <div class="spacer"></div>
+                <div class="utility-actions">
+                  <span class="combo-chip" id="combo-chip-1" aria-live="polite">COMBO 0</span>
+                  <div class="utility-buttons">
+                    <button class="btn btn-ghost btn-sm" data-act="clear" data-p="1" type="button">清空</button>
+                    <button class="btn btn-ghost btn-sm" data-act="skip" data-p="1" type="button">跳過</button>
+                  </div>
+                </div>
                 <button class="btn btn-attack btn-p1 btn-sm" data-act="attack" data-p="1" type="button" id="btn-attack-1" disabled>攻擊 0</button>
                 <button class="btn btn-submit btn-p1 btn-sm" data-act="submit" data-p="1" type="button" id="btn-submit-1" title="排好後手動提交答案">提交</button>
               </div>
             </div>
             <div class="skill-bar" id="skill-bar-1">
-              <span class="combo-chip" id="combo-chip-1" aria-live="polite">COMBO 0</span>
               <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="1" type="button" id="btn-skill-block-1" disabled title="耗 1 COMBO · 2 秒窗：期間內被按下的攻擊／大招整包傷半（含長動畫）">格擋</button>
               <button class="btn btn-skill btn-sm" data-act="skill-heal" data-p="1" type="button" id="btn-skill-heal-1" disabled title="耗 2 COMBO · 回復 200 HP">回墨</button>
               <button class="btn btn-skill btn-sm" data-act="skill-unique" data-p="1" type="button" id="btn-skill-unique-1" disabled>專屬</button>
@@ -395,13 +405,13 @@
     </div>
   </div>
 
-  <script src="questions-data.js?v=20260821-character-cards"></script>
-  <script src="questions-expansion-data.js?v=20260821-character-cards"></script>
-  <script src="game-content.js?v=20260821-character-cards"></script>
-  <script src="game-audio.js?v=20260821-character-cards"></script>
-  <script src="game-vfx.js?v=20260821-character-cards"></script>
-  <script src="online.js?v=20260821-character-cards"></script>
-  <script src="game.js?v=20260821-character-cards"></script>
-  <script src="game-online.js?v=20260821-character-cards"></script>
+  <script src="questions-data.js?v=20260821-mobile-duel"></script>
+  <script src="questions-expansion-data.js?v=20260821-mobile-duel"></script>
+  <script src="game-content.js?v=20260821-mobile-duel"></script>
+  <script src="game-audio.js?v=20260821-mobile-duel"></script>
+  <script src="game-vfx.js?v=20260821-mobile-duel"></script>
+  <script src="online.js?v=20260821-mobile-duel"></script>
+  <script src="game.js?v=20260821-mobile-duel"></script>
+  <script src="game-online.js?v=20260821-mobile-duel"></script>
 </body>
 </html>

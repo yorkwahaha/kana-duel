@@ -104,7 +104,7 @@ test("split scripts load in dependency order", () => {
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
-  assert.equal((html.match(/\?v=20260821-character-cards/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
+  assert.equal((html.match(/\?v=20260821-mobile-duel/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
@@ -124,8 +124,8 @@ test("online room entry and battle interception stay wired", () => {
   const css = read("styles.css");
   assert.match(html, /id="btn-mode-online"/);
   assert.match(html, /id="screen-online"/);
-  assert.match(html, /src="online\.js\?v=20260821-character-cards"/);
-  assert.match(html, /src="game-online\.js\?v=20260821-character-cards"/);
+  assert.match(html, /src="online\.js\?v=20260821-mobile-duel"/);
+  assert.match(html, /src="game-online\.js\?v=20260821-mobile-duel"/);
   assert.match(html, /id="online-category"/);
   assert.match(online, /q\.category === config\.category/);
   assert.match(html, /id="online-character-image"/);
@@ -162,6 +162,20 @@ test("online listen audio prefers static MP3 and remains server scheduled", () =
   assert.match(worker, /playAt: now \+ Math\.max\(0, delayMs\)/);
 });
 
+test("correct answers reveal kanji, reading, and Chinese in every mode", () => {
+  const game = read("game.js");
+  const online = read("game-online.js");
+  const worker = read("worker/src/room-core.mjs");
+  const css = read("styles.css");
+  assert.match(game, /function wordRevealCopy\(q\)/);
+  assert.match(game, /if \(q\.zh\) subBits\.push\(q\.zh\)/);
+  assert.match(game, /\$\("reward-title"\)\.textContent = reveal\.title/);
+  assert.match(online, /showWordReveal\(player, questionById\(event\.questionId\)\)/);
+  assert.match(online, /showWordReveal\(1, question\);\s*showWordReveal\(2, question\)/);
+  assert.match(worker, /performAttack\(room, seat, now, true, question\.id\)/);
+  assert.match(css, /\.word-reveal \{ animation: none !important; opacity: 1 !important/);
+});
+
 test("phone battle pools cap at twelve readable options in two rows", () => {
   const content = read("game-content.js");
   const game = read("game.js");
@@ -170,6 +184,19 @@ test("phone battle pools cap at twelve readable options in two rows", () => {
   assert.match(game, /this\.pool\.length <= 10 \? "five" : "six"/);
   assert.match(css, /pool\[data-layout="six"\][\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(css, /height: 54px/);
+});
+
+test("desktop media and phone online duel keep full artwork and compact actions", () => {
+  const html = read("index.html");
+  const css = read("styles.css");
+  assert.match(css, /\.cover-art \{[\s\S]*?object-fit: contain/);
+  assert.match(css, /\.special-stage video, \.special-stage \.special-still \{[\s\S]*?object-fit: contain/);
+  assert.equal((html.match(/class="duel-vitals"/g) || []).length, 2);
+  assert.equal((html.match(/class="utility-actions"/g) || []).length, 2);
+  assert.match(css, /Phone online duel[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /grid-template-rows: auto minmax\(180px, 25dvh\) auto auto minmax\(0, 1fr\) auto/);
+  assert.match(css, /\.board \.actions \{[\s\S]*?grid-template-columns: minmax\(100px, 0\.88fr\) minmax\(106px, 1\.15fr\) minmax\(76px, 0\.82fr\)/);
+  assert.match(css, /\.board \.actions \.btn \{[\s\S]*?min-height: 46px/);
 });
 
 test("online rematch primes audio and uses one upright result view", () => {

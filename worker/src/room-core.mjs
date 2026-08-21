@@ -268,7 +268,7 @@ function setEvent(room, event, now) {
   room.lastEvent = { id: room.eventSeq, at: now, ...event };
 }
 
-function performAttack(room, seat, now, automatic = false) {
+function performAttack(room, seat, now, automatic = false, questionId = "") {
   const fighter = room.battle.fighters[seat];
   const foeSeat = seat === 0 ? 1 : 0;
   const foe = room.battle.fighters[foeSeat];
@@ -292,6 +292,7 @@ function performAttack(room, seat, now, automatic = false) {
   if (special) fighter.gauge = 0;
   foe.hp = Math.max(0, foe.hp - damage);
   const event = { type: "attack", seat, foeSeat, damage, hits, special, guarded, automatic };
+  if (questionId) event.questionId = questionId;
   setEvent(room, event, now);
   finishIfNeeded(room, now);
   return { ok: true, event };
@@ -331,7 +332,7 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
   fighter.charge += gain;
   if (room.config.mode === "listen") {
     room.battle.listenClaimed = true;
-    const attack = performAttack(room, seat, now, true);
+    const attack = performAttack(room, seat, now, true, question.id);
     if (!attack.ok) return attack;
     if (room.phase === "playing") {
       room.battle.sharedQi += 1;

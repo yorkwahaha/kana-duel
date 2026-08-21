@@ -16,11 +16,7 @@
 function hasKanjiText(t) {
   return /[\u4e00-\u9fff\u3005\u3007\u303B]/.test(t || "");
 }
-function showWordReveal(player, q) {
-  if (!q) return;
-  const host = $("duel-half-" + player) || $("board" + player);
-  if (!host) return;
-  host.querySelectorAll(".word-reveal").forEach((n) => n.remove());
+function wordRevealCopy(q) {
   const reading = (q.kanaSequence || []).join("");
   // 優先漢字表記；沒有漢字時用 displayName；再附假名與中文詞義
   const kanji = (q.kanji && hasKanjiText(q.kanji)) ? q.kanji
@@ -29,11 +25,19 @@ function showWordReveal(player, q) {
   const subBits = [];
   if (reading && reading !== title) subBits.push(reading);
   if (q.zh) subBits.push(q.zh);
+  return { title, sub: subBits.join(" · ") };
+}
+function showWordReveal(player, q) {
+  if (!q) return;
+  const host = $("duel-half-" + player) || $("board" + player);
+  if (!host) return;
+  host.querySelectorAll(".word-reveal").forEach((n) => n.remove());
+  const copy = wordRevealCopy(q);
   const el = document.createElement("div");
   el.className = "word-reveal";
   el.innerHTML = "<strong></strong><span></span>";
-  el.querySelector("strong").textContent = title;
-  el.querySelector("span").textContent = subBits.join(" · ");
+  el.querySelector("strong").textContent = copy.title;
+  el.querySelector("span").textContent = copy.sub;
   host.appendChild(el);
   setTimeout(() => el.remove(), 2200);
 }
@@ -715,9 +719,10 @@ async function playReward(q) {
     await Promise.all([playCastVideo(q), speakGoogleTts(q.castSpeakText || q.speakText + "！", { rate: "0.95" })]);
   } else {
     $("reward-kicker").textContent = "CELEBRATE · 3s";
-    $("reward-title").textContent = "完璧！";
+    const reveal = wordRevealCopy(q);
+    $("reward-title").textContent = reveal.title;
     $("cast-name").textContent = ""; $("cast-kana").textContent = "";
-    $("reward-sub").textContent = `記住了「${q.displayName}」`;
+    $("reward-sub").textContent = reveal.sub || `記住了「${q.displayName}」`;
     $("btn-replay").style.display = "none";
     playSfx("win", 0.4);
     await Promise.all([playCastVideo(q), speakQuestionAudio(q)]);

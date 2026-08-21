@@ -7,7 +7,7 @@
 /* global bindTap, cancelAllDrags, clearBattleFx, clearSkillTimers, hideSpecialStage, noteQuestionOpen */
 /* global getSessionToken, playQuestionAudio, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio */
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
-/* global showCombo, showDmgFloat, showScreen, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
+/* global showCombo, showDmgFloat, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, ensureCastLayers, preloadFighterPoses */
 /* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
 /* global spawnBlockParry, splitComboDamage, wait */
@@ -367,12 +367,18 @@
     const player = displaySeat(event.seat);
     if (event.type === "correct") {
       boards[player]?.setFeedback(player === 1 ? `答對 · +${event.gain}` : "對手答對", "ok");
+      showWordReveal(player, questionById(event.questionId));
       playSfx("skillpop", 0.4);
     } else if (event.type === "miss") {
       boards[player]?.setFeedback(`${player === 1 ? "答錯" : "對手答錯"} · -${event.damage}`, "bad");
       queueOnlineAnimation((actionEpoch) => animateMiss(event, player, actionEpoch));
     } else if (event.type === "attack") {
       const foe = displaySeat(event.foeSeat);
+      if (event.automatic && event.questionId) {
+        const question = questionById(event.questionId);
+        showWordReveal(1, question);
+        showWordReveal(2, question);
+      }
       queueOnlineAnimation((actionEpoch) => animateAttack(event, player, foe, actionEpoch));
     } else if (event.type === "skill") {
       showCombo(event.skill === "block" ? "格擋" : event.skill === "heal" ? "回墨" : "專屬技能", "sm");
