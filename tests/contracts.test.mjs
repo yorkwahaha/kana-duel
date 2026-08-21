@@ -104,7 +104,7 @@ test("split scripts load in dependency order", () => {
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
-  assert.equal((html.match(/\?v=20260821-mobile-polish/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
+  assert.equal((html.match(/\?v=20260821-audio-response/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
@@ -124,8 +124,8 @@ test("online room entry and battle interception stay wired", () => {
   const css = read("styles.css");
   assert.match(html, /id="btn-mode-online"/);
   assert.match(html, /id="screen-online"/);
-  assert.match(html, /src="online\.js\?v=20260821-mobile-polish"/);
-  assert.match(html, /src="game-online\.js\?v=20260821-mobile-polish"/);
+  assert.match(html, /src="online\.js\?v=20260821-audio-response"/);
+  assert.match(html, /src="game-online\.js\?v=20260821-audio-response"/);
   assert.match(html, /id="online-category"/);
   assert.match(online, /q\.category === config\.category/);
   assert.match(html, /id="online-character-image"/);
@@ -157,7 +157,11 @@ test("online listen audio prefers static MP3 and remains server scheduled", () =
   assert.match(audio, /async function prepareQuestionAudio/);
   assert.match(audio, /async function scheduleQuestionAudio/);
   assert.match(audio, /assets\/audio\/questions\/manifest\.json/);
+  assert.match(audio, /function unlockTtsPlayback\(\)/);
+  assert.match(audio, /const ttsUnlock = unlockTtsPlayback\(\)/);
   assert.match(online, /scheduleQuestionAudio\(question, \{ delayMs \}\)/);
+  assert.match(online, /replayQuestion\(\)[\s\S]*?speakQuestionAudio\(q\)/);
+  assert.doesNotMatch(online, /playQuestionAudio\(q\)/);
   assert.match(worker, /listenCue: null/);
   assert.match(worker, /playAt: now \+ Math\.max\(0, delayMs\)/);
 });
@@ -186,6 +190,9 @@ test("phone battle pools cap at twelve readable options in two rows", () => {
   assert.match(game, /this\.pool\.length <= 10 \? "five" : "six"/);
   assert.match(css, /pool\[data-layout="six"\][\s\S]*repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(css, /height: 54px/);
+  assert.match(game, /tile\.setAttribute\("aria-label", `假名 \$\{item\.kana\}，已選入第 \$\{idx \+ 1\} 格`\)/);
+  assert.match(css, /\.tile\.used \{[\s\S]*?transform: translateY\(3px\) scale\(0\.97\)/);
+  assert.match(css, /\.tile\.used::after \{[\s\S]*?content: "✓"/);
 });
 
 test("desktop media and phone online duel keep full artwork and compact actions", () => {
@@ -214,6 +221,10 @@ test("online result uses one upright, aligned comparison view", () => {
   assert.match(online, /statRow\("錯誤次數"/);
   assert.doesNotMatch(online.slice(online.indexOf("function finishOnlineBattle")), /先開大招/);
   assert.match(online, /`對戰時間 \$\{seconds\.toFixed\(1\)\} 秒`/);
+  assert.match(online, /await playBattleDefeatOutro\(won \? 2 : 1, won \? 1 : 2\)/);
+  assert.match(game, /async function playBattleDefeatOutro\(loser, winner\)/);
+  assert.match(game, /loserEl\.classList\.add\("defeated"\)/);
+  assert.match(game, /await playVoice\(loserCh && loserCh\.voiceDefeat, 1\)/);
   assert.match(css, /body\.online-battle #screen-result \.result-face\.p2 \{ display: none; \}/);
   assert.match(css, /grid-template-columns: minmax\(5\.5rem, 1fr\) minmax\(4\.5rem, 0\.78fr\) minmax\(4\.5rem, 0\.78fr\)/);
   assert.match(css, /html \{ font-size: 18px; \}/);
@@ -227,4 +238,14 @@ test("mobile audio restores after returning to the browser and on the next gestu
   assert.match(audio, /window\.addEventListener\("pageshow"/);
   assert.match(audio, /\["pointerdown", "touchend", "keydown"\]/);
   assert.match(audio, /audioCtx\.state !== "running"/);
+  assert.match(audio, /sharedTtsAudio\.setAttribute\("playsinline", ""\)/);
+});
+
+test("online submit acknowledges touch immediately while the server remains authoritative", () => {
+  const online = read("game-online.js");
+  const css = read("styles.css");
+  assert.match(online, /setSubmitPending\(true\);\s*boards\[1\]\.setFeedback\("判定中…"\)/);
+  assert.match(online, /if \(submitPending\) return/);
+  assert.match(online, /client\.submit\(localQuestionId/);
+  assert.match(css, /\.btn-submit:active,[\s\S]*?\.btn-submit\.is-pending/);
 });

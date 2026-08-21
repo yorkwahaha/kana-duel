@@ -231,6 +231,7 @@ function createBoard(id, slotsId, poolId, feedbackId) {
         tile.classList.add("used");
         tile.tabIndex = -1;
         tile.setAttribute("aria-disabled", "true");
+        tile.setAttribute("aria-label", `假名 ${item.kana}，已選入第 ${idx + 1} 格`);
       }
       else this.render();
       if (tile) this.renderSlots();
@@ -252,6 +253,7 @@ function createBoard(id, slotsId, poolId, feedbackId) {
         tile.classList.remove("used");
         tile.tabIndex = 0;
         tile.setAttribute("aria-disabled", "false");
+        tile.setAttribute("aria-label", `假名 ${item?.kana || val.kana}，填入下一個空格`);
       }
       this.renderSlots();
       if (battleOpen) { const pid = Number(this.id); if (pid === 1 || pid === 2) updateSkillUi(pid); }
@@ -330,7 +332,7 @@ function createBoard(id, slotsId, poolId, feedbackId) {
         tile.textContent = item.kana;
         tile.tabIndex = item.used ? -1 : 0;
         tile.setAttribute("aria-disabled", item.used ? "true" : "false");
-        tile.setAttribute("aria-label", `假名 ${item.kana}，填入下一個空格`);
+        tile.setAttribute("aria-label", item.used ? `假名 ${item.kana}，已選取` : `假名 ${item.kana}，填入下一個空格`);
         // 即使 used 也綁定：之後撤回可立刻再點；place 內會擋 used
         bindDragSource(tile, { from: "pool", poolId: item.id, kana: item.kana, boardId: this.id });
         poolEl.appendChild(tile);
@@ -1325,7 +1327,7 @@ function setResultScreen(title, summary, withBattleStats, customRows = "") {
 }
 
 /** 敗北餘韻：先讓灰階／慘叫留在對戰畫面，再進結算 */
-async function finishBattleDefeat(loser, winner, title, summary) {
+async function playBattleDefeatOutro(loser, winner) {
   battleOpen = false;
   battleEpoch += 1;
   cancelAnimationFrame(timerRaf);
@@ -1355,13 +1357,17 @@ async function finishBattleDefeat(loser, winner, title, summary) {
   shakeBattle(true);
   stopBattleBgm();
   // 等最後幾下 hit SFX 衰减，再清楚播慘叫
-  await wait(420);
+  await wait(prefersReducedMotion() ? 140 : 420);
   await playVoice(loserCh && loserCh.voiceDefeat, 1);
   // 黑白敗北餘韻再多留一秒再進結算
-  await wait(1900);
+  await wait(prefersReducedMotion() ? 520 : 1900);
   setSfxDuck(1);
   clearBattleFx();
   stage?.classList.remove("ko-hold");
+}
+
+async function finishBattleDefeat(loser, winner, title, summary) {
+  await playBattleDefeatOutro(loser, winner);
   setResultScreen(title, summary, true);
   playSfx("fanfare", 0.55);
 }

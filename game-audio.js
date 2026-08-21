@@ -9,6 +9,34 @@ let ttsStartTimer = null, ttsStartResolve = null;
 const ttsBlobCache = new Map();
 const ttsRequestCache = new Map();
 const sharedTtsAudio = new Audio();
+const SILENT_TTS_UNLOCK_SRC = "data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACA";
+let ttsPlaybackUnlocked = false;
+let ttsUnlockPromise = null;
+sharedTtsAudio.preload = "auto";
+sharedTtsAudio.setAttribute("playsinline", "");
+sharedTtsAudio.setAttribute("webkit-playsinline", "");
+
+function unlockTtsPlayback() {
+  if (ttsPlaybackUnlocked || (currentTtsAudio === sharedTtsAudio && !sharedTtsAudio.paused)) {
+    return Promise.resolve(true);
+  }
+  if (ttsUnlockPromise) return ttsUnlockPromise;
+  const priorVolume = sharedTtsAudio.volume;
+  sharedTtsAudio.volume = 0.001;
+  sharedTtsAudio.src = SILENT_TTS_UNLOCK_SRC;
+  const attempt = sharedTtsAudio.play();
+  ttsUnlockPromise = Promise.resolve(attempt).then(() => {
+    sharedTtsAudio.pause();
+    sharedTtsAudio.currentTime = 0;
+    sharedTtsAudio.volume = priorVolume;
+    ttsPlaybackUnlocked = true;
+    return true;
+  }).catch(() => {
+    sharedTtsAudio.volume = priorVolume;
+    return false;
+  }).finally(() => { ttsUnlockPromise = null; });
+  return ttsUnlockPromise;
+}
 function revokeCloudUrl(url = currentCloudTtsObjectUrl) {
   if (!url) return;
   if (url === currentCloudTtsObjectUrl) currentCloudTtsObjectUrl = null;
@@ -99,7 +127,13 @@ function playPreparedGoogleTts(prepared, my) {
     a.onended = () => done(true);
     a.onerror = () => done(false);
     a.src = url;
-    a.play().then(() => setTtsStatus(true, "Google TTS · " + TTS_VOICE)).catch(() => done(false));
+    a.play().then(() => {
+      ttsPlaybackUnlocked = true;
+      setTtsStatus(true, "Google TTS · " + TTS_VOICE);
+    }).catch(() => {
+      setTtsStatus(false, "請點「再聽」重播");
+      done(false);
+    });
   });
 }
 async function scheduleGoogleTts(text, { rate = "1.0", delayMs = 0 } = {}) {
@@ -379,6 +413,7 @@ async function startBattleBgm() {
   return true;
 }
 async function primeBattleAudio() {
+  const ttsUnlock = unlockTtsPlayback();
   const ctx = await ensureAudioCtx();
   if (ctx) {
     const buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
@@ -387,7 +422,7 @@ async function primeBattleAudio() {
     source.connect(ctx.destination);
     source.start(0);
   }
-  await Promise.allSettled([preloadBattleSfx(), preloadBattleBgm()]);
+  await Promise.allSettled([ttsUnlock, preloadBattleSfx(), preloadBattleBgm()]);
 }
 
 let lastBattleAudioRestoreAt = 0;
@@ -419,7 +454,10 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("pageshow", () => requestBattleAudioRestore(true));
 window.addEventListener("focus", () => requestBattleAudioRestore());
 ["pointerdown", "touchend", "keydown"].forEach((type) => {
-  document.addEventListener(type, () => requestBattleAudioRestore(true), { capture: true, passive: true });
+  document.addEventListener(type, () => {
+    unlockTtsPlayback().catch(() => {});
+    requestBattleAudioRestore(true);
+  }, { capture: true, passive: true });
 });
 
 // —— 墨域言靈闘場 · 第 1 期 4 角（v1.0）——

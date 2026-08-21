@@ -5,12 +5,12 @@
 /* global pickP1:writable, pickP2:writable, gameMode:writable, playerQi:writable, sharedQi:writable */
 /* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, timerRaf */
 /* global bindTap, cancelAllDrags, clearBattleFx, clearSkillTimers, hideSpecialStage, noteQuestionOpen */
-/* global getSessionToken, playQuestionAudio, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio */
+/* global getSessionToken, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio, speakQuestionAudio */
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
 /* global showCombo, showDmgFloat, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, ensureCastLayers, preloadFighterPoses */
 /* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
-/* global spawnBlockParry, splitComboDamage, wait */
+/* global spawnBlockParry, splitComboDamage, wait, playBattleDefeatOutro */
 (() => {
   const client = window.KanaBattleOnlineClient;
   if (!client) return;
@@ -22,6 +22,7 @@
   let lastListenCueSeq = 0;
   let connectionStatus = "idle";
   let battleResultShown = false;
+  let submitPending = false;
   let pendingCharacterId = "";
 
   const CHARACTER_INTROS = {
@@ -166,6 +167,15 @@
     return performance.now() + Math.max(0, Number(serverDeadline || 0) - Number(room?.serverNow || Date.now()));
   }
 
+  function setSubmitPending(pending) {
+    submitPending = !!pending;
+    const button = $("btn-submit-1");
+    if (!button) return;
+    button.classList.toggle("is-pending", submitPending);
+    button.setAttribute("aria-busy", submitPending ? "true" : "false");
+    if (submitPending) button.textContent = "判定中…";
+  }
+
   function loadOnlineQuestion(force = false) {
     if (!room?.battle) return;
     const localId = room.currentQuestionId;
@@ -226,6 +236,7 @@
     playerQi = { 1: mine.qi, 2: 0 };
     sharedQi = room.battle.sharedQi;
     listenRoundClaimed = room.battle.listenClaimed;
+    setSubmitPending(false);
     updateHpUi();
     updatePlayerMeters(1);
     updatePlayerMeters(2);
@@ -251,6 +262,7 @@
     battleOpen = true;
     battleStats = null;
     attackQueue = Promise.resolve();
+    setSubmitPending(false);
     cancelAllDrags();
     clearBattleFx();
     clearSkillTimers(1); clearSkillTimers(2);
@@ -259,6 +271,9 @@
     $("hp1-name").textContent = localPlayer()?.name || "我方";
     $("hp2-name").textContent = remotePlayer()?.name || "對手";
     preloadFighterPoses(pickP1); preloadFighterPoses(pickP2);
+    $("fighter1")?.classList.remove("defeated", "hit", "hit-strong", "attacking", "blocking");
+    $("fighter2")?.classList.remove("defeated", "hit", "hit-strong", "attacking", "blocking");
+    document.querySelector(".duel-stage")?.classList.remove("ko-hold");
     syncFighterPassive(1); syncFighterPassive(2); ensureCastLayers();
     $("board2")?.setAttribute("aria-hidden", "true");
     document.querySelector(".duel-stage")?.classList.toggle("listen-mode", room.config.mode === "listen");
@@ -401,13 +416,9 @@
     overlay.classList.toggle("hidden", !show);
   }
 
-  function finishOnlineBattle() {
+  async function finishOnlineBattle() {
     if (battleResultShown || !room?.battle) return;
     battleResultShown = true;
-    battleOpen = false;
-    battleEpoch += 1;
-    cancelAnimationFrame(timerRaf);
-    stopBattleBgm();
     const won = room.battle.winnerSeat === localSeat();
     const mine = room.battle.fighters[localSeat()];
     const foe = room.battle.fighters[remoteSeat()];
@@ -425,6 +436,11 @@
       statRow("平均答題", answerSeconds(mine, true), answerSeconds(foe, true)),
       statRow("錯誤次數", mine.mistakes || 0, foe.mistakes || 0),
     ].join("");
+    try {
+      await playBattleDefeatOutro(won ? 2 : 1, won ? 1 : 2);
+    } catch (error) {
+      console.error("Online defeat outro failed", error);
+    }
     document.querySelectorAll(".btn-again-home").forEach((button) => { button.textContent = "回到房間"; });
     document.querySelectorAll(".btn-again").forEach((button) => { button.textContent = "準備再戰"; });
     setResultScreen(
@@ -449,7 +465,9 @@
       if (room.battle) syncBattleState();
       renderEvent(room.lastEvent);
       pauseOverlay(false);
-      Promise.resolve(attackQueue).then(finishOnlineBattle);
+      Promise.resolve(attackQueue).then(() => finishOnlineBattle()).catch((error) => {
+        console.error("Online battle completion failed", error);
+      });
     } else {
       if (active && priorPhase !== "lobby") {
         battleOpen = false;
@@ -499,7 +517,7 @@
       }
       renderLobby();
     },
-    onError(error) { setError(error.message); },
+    onError(error) { setSubmitPending(false); setError(error.message); },
   });
 
   const characterSelect = $("online-character");
@@ -549,8 +567,13 @@
       if (!room.players.every((entry) => entry?.connected)) { setError("對手重新連線中，對戰暫停。 "); return; }
       if (action === "clear") boards[1].clearAll();
       else if (action === "submit") {
+        if (submitPending) return;
         if (boards[1].slots.some((value) => !value)) { boards[1].setFeedback("還有空格。", "bad"); return; }
-        client.submit(localQuestionId, boards[1].slots.map((value) => value?.kana || ""));
+        setSubmitPending(true);
+        boards[1].setFeedback("判定中…");
+        if (!client.submit(localQuestionId, boards[1].slots.map((value) => value?.kana || ""))) {
+          setSubmitPending(false);
+        }
       } else if (action === "skip") client.skip();
       else if (action === "attack") client.attack();
       else if (action === "skill-block") client.skill("block");
@@ -573,7 +596,7 @@
     },
     replayQuestion() {
       const q = questionById(room?.currentQuestionId);
-      if (active && room?.config.mode === "listen" && q) playQuestionAudio(q);
+      if (active && room?.config.mode === "listen" && q) speakQuestionAudio(q);
     },
   };
 
