@@ -22,6 +22,18 @@
   let lastListenCueSeq = 0;
   let connectionStatus = "idle";
   let battleResultShown = false;
+  let pendingCharacterId = "";
+
+  const CHARACTER_INTROS = {
+    ao: "快速累積大招，擅長封鎖對手提交。",
+    rin: "高爆發大招，能奪取對手的蓄力。",
+    ya: "減少題目干擾，並封鎖對手攻擊。",
+    go: "連段攻擊專家，可強化下一次攻擊。",
+    ran: "蓄力速度快，能解除封鎖並保護自己。",
+    gen: "穩定增加連擊，擅長封鎖對手提交。",
+    sho: "減少干擾字，控制對手的攻擊節奏。",
+    yo: "高倍率大招，可吸取對手的蓄力。",
+  };
 
   function setError(message = "") {
     const el = $("online-error");
@@ -76,6 +88,31 @@
     return CHARACTERS.find((character) => character.id === id) || CHARACTERS[fallbackIndex] || null;
   }
 
+  function renderCharacterCard(id) {
+    const character = characterById(id, 0);
+    if (!character) return;
+    pendingCharacterId = character.id;
+    const image = $("online-character-image");
+    if (image) {
+      image.src = character.image;
+      image.alt = `${character.name}角色立繪`;
+    }
+    if ($("online-character-title")) $("online-character-title").textContent = character.title;
+    if ($("online-character-heading")) $("online-character-heading").textContent = character.name;
+    if ($("online-character-intro")) $("online-character-intro").textContent = CHARACTER_INTROS[character.id] || "選擇適合自己的戰鬥風格。";
+    if ($("online-character-passive")) $("online-character-passive").textContent = character.passive?.label || "—";
+    if ($("online-character-passive-desc")) $("online-character-passive-desc").textContent = character.passive?.desc || "—";
+    if ($("online-character-active")) $("online-character-active").textContent = character.active?.label || "—";
+    if ($("online-character-active-desc")) $("online-character-active-desc").textContent = character.active?.desc || "—";
+    if ($("online-character") && $("online-character").value !== character.id) $("online-character").value = character.id;
+  }
+
+  function stepCharacter(delta) {
+    const currentIndex = Math.max(0, CHARACTERS.findIndex((character) => character.id === pendingCharacterId));
+    const next = CHARACTERS[(currentIndex + delta + CHARACTERS.length) % CHARACTERS.length];
+    renderCharacterCard(next.id);
+  }
+
   function renderLobby() {
     if (!room) return;
     $("online-entry")?.classList.add("hidden");
@@ -94,14 +131,19 @@
     const players = $("online-players");
     if (players) {
       players.innerHTML = room.players.map((player, seat) => {
-        if (!player) return `<div class="online-player"><strong>等待玩家</strong><span>分享房號或邀請連結</span></div>`;
+        if (!player) return `<div class="online-player online-player-empty"><div><strong>等待玩家</strong><span>分享房號或邀請連結</span></div></div>`;
         const character = characterById(player.characterId, seat);
         const flags = [seat === room.hostSeat ? "房主" : "玩家", player.connected ? "已連線" : "重新連線中", player.ready ? "已準備" : "未準備"];
-        return `<div class="online-player${player.ready ? " ready" : ""}"><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(character?.name || "未選角")}</span><span>${flags.join(" · ")}</span></div>`;
+        return `<div class="online-player${player.ready ? " ready" : ""}"><img src="${escapeHtml(character?.image || "assets/characters/ao.webp")}" alt="" /><div><strong>${escapeHtml(player.name)}</strong><span>${escapeHtml(character?.name || "未選角")}</span><span>${flags.join(" · ")}</span></div><b>${player.ready ? "✓ 已準備" : "選角中"}</b></div>`;
       }).join("");
     }
     const mine = localPlayer();
-    if ($("online-character") && document.activeElement !== $("online-character")) $("online-character").value = mine?.characterId || "ao";
+    if (!pendingCharacterId || mine?.ready) pendingCharacterId = mine?.characterId || "ao";
+    if (document.activeElement !== $("online-character")) renderCharacterCard(pendingCharacterId);
+    const characterLocked = !!mine?.ready || room.phase !== "lobby";
+    ["online-character", "btn-online-character-prev", "btn-online-character-next"].forEach((id) => {
+      if ($(id)) $(id).disabled = characterLocked;
+    });
     const ready = $("btn-online-ready");
     if (ready) {
       ready.disabled = connectionStatus !== "connected" || !remotePlayer();
@@ -461,7 +503,11 @@
   const characterSelect = $("online-character");
   if (characterSelect) {
     characterSelect.innerHTML = CHARACTERS.map((character) => `<option value="${character.id}">${escapeHtml(character.name)} · ${escapeHtml(character.passive?.label || character.title)}</option>`).join("");
+    characterSelect.addEventListener("change", () => renderCharacterCard(characterSelect.value));
+    renderCharacterCard(characterSelect.value || "ao");
   }
+  bindTap($("btn-online-character-prev"), () => stepCharacter(-1));
+  bindTap($("btn-online-character-next"), () => stepCharacter(1));
   bindTap($("btn-mode-online"), enterOnline);
   bindTap($("btn-online-back"), () => { if (room) leaveRoom(); else showScreen("start"); });
   bindTap($("btn-online-create"), async () => {
@@ -482,7 +528,7 @@
     const mine = localPlayer();
     primeBattleAudio().catch(() => {});
     getSessionToken().catch(() => {});
-    client.ready($("online-character")?.value || "ao", !mine?.ready);
+    client.ready(pendingCharacterId || $("online-character")?.value || "ao", !mine?.ready);
   });
   ["online-mode", "online-category", "online-maxlen", "online-script", "online-distractors"].forEach((id) => {
     $(id)?.addEventListener("change", () => {
@@ -513,7 +559,7 @@
     returnToLobby() {
       if (!room) return leaveRoom();
       battleResultShown = false;
-      client.ready($("online-character")?.value || localPlayer()?.characterId || "ao", false);
+      client.ready(pendingCharacterId || $("online-character")?.value || localPlayer()?.characterId || "ao", false);
       showScreen("online");
     },
     readyRematch() {
@@ -521,7 +567,7 @@
       battleResultShown = false;
       primeBattleAudio().catch(() => {});
       showScreen("online");
-      client.ready($("online-character")?.value || localPlayer()?.characterId || "ao", true);
+      client.ready(pendingCharacterId || $("online-character")?.value || localPlayer()?.characterId || "ao", true);
     },
     replayQuestion() {
       const q = questionById(room?.currentQuestionId);

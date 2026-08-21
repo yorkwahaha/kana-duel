@@ -104,7 +104,7 @@ test("split scripts load in dependency order", () => {
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
-  assert.equal((html.match(/\?v=20260821-bank380/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
+  assert.equal((html.match(/\?v=20260821-character-cards/g) || []).length, 9, "CSS and scripts must bypass stale release caches");
 });
 
 test("local two-player zoom protection and accessibility contracts remain present", () => {
@@ -124,10 +124,16 @@ test("online room entry and battle interception stay wired", () => {
   const css = read("styles.css");
   assert.match(html, /id="btn-mode-online"/);
   assert.match(html, /id="screen-online"/);
-  assert.match(html, /src="online\.js\?v=20260821-bank380"/);
-  assert.match(html, /src="game-online\.js\?v=20260821-bank380"/);
+  assert.match(html, /src="online\.js\?v=20260821-character-cards"/);
+  assert.match(html, /src="game-online\.js\?v=20260821-character-cards"/);
   assert.match(html, /id="online-category"/);
   assert.match(online, /q\.category === config\.category/);
+  assert.match(html, /id="online-character-image"/);
+  assert.match(html, /id="online-character-intro"/);
+  assert.match(html, /aria-label="上一位角色"/);
+  assert.match(html, /aria-label="下一位角色"/);
+  assert.match(online, /const CHARACTER_INTROS =/);
+  assert.match(online, /renderCharacterCard\(pendingCharacterId\)/);
   assert.match(game, /window\.KanaBattleOnline\.handleAction\(p, act\)/);
   assert.match(game, /window\.KanaBattleOnline\.replayQuestion\(\)/);
   assert.match(online, /client\.submit\(localQuestionId/);

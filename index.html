@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260821-bank380" />
+  <link rel="stylesheet" href="styles.css?v=20260821-character-cards" />
 </head>
 <body>
   <div class="combo-float" id="combo-float"></div>
@@ -116,8 +116,27 @@
             <button class="btn btn-ghost btn-sm" id="btn-online-copy" type="button">複製邀請連結</button>
           </div>
           <div class="online-players" id="online-players"></div>
+          <section class="online-character-picker" aria-labelledby="online-character-heading">
+            <div class="online-character-art">
+              <img id="online-character-image" src="assets/characters/ao.webp" alt="墨切・蒼角色立繪" />
+              <span id="online-character-title">墨刃</span>
+            </div>
+            <div class="online-character-info" aria-live="polite">
+              <span class="online-character-kicker">MY FIGHTER</span>
+              <h3 id="online-character-heading">墨切・蒼</h3>
+              <p id="online-character-intro">快速累積大招，擅長封鎖對手提交。</p>
+              <dl class="online-character-traits">
+                <div><dt>被動</dt><dd><strong id="online-character-passive">墨意蓄積</strong><span id="online-character-passive-desc">答對時大招槽 +2</span></dd></div>
+                <div><dt>主動</dt><dd><strong id="online-character-active">墨鎖</strong><span id="online-character-active-desc">耗 2 COMBO · 鎖對手提交 5 秒</span></dd></div>
+              </dl>
+              <div class="online-character-controls">
+                <button class="btn btn-ghost online-character-step" id="btn-online-character-prev" type="button" aria-label="上一位角色">‹</button>
+                <label class="online-field"><span>切換角色</span><select id="online-character" aria-label="選擇我的角色"></select></label>
+                <button class="btn btn-ghost online-character-step" id="btn-online-character-next" type="button" aria-label="下一位角色">›</button>
+              </div>
+            </div>
+          </section>
           <div class="online-settings">
-            <label class="online-field"><span>我的角色</span><select id="online-character"></select></label>
             <label class="online-field"><span>對戰模式</span><select id="online-mode"><option value="race">競速</option><option value="listen">聽力搶答</option></select></label>
             <label class="online-field online-field-category"><span>題庫類別</span><select id="online-category"></select></label>
             <label class="online-field"><span>字數</span><select id="online-maxlen"><option value="0">不限</option><option value="4">≤4</option><option value="5">≤5</option><option value="8">≤8</option></select></label>
@@ -376,13 +395,13 @@
     </div>
   </div>
 
-  <script src="questions-data.js?v=20260821-bank380"></script>
-  <script src="questions-expansion-data.js?v=20260821-bank380"></script>
-  <script src="game-content.js?v=20260821-bank380"></script>
-  <script src="game-audio.js?v=20260821-bank380"></script>
-  <script src="game-vfx.js?v=20260821-bank380"></script>
-  <script src="online.js?v=20260821-bank380"></script>
-  <script src="game.js?v=20260821-bank380"></script>
-  <script src="game-online.js?v=20260821-bank380"></script>
+  <script src="questions-data.js?v=20260821-character-cards"></script>
+  <script src="questions-expansion-data.js?v=20260821-character-cards"></script>
+  <script src="game-content.js?v=20260821-character-cards"></script>
+  <script src="game-audio.js?v=20260821-character-cards"></script>
+  <script src="game-vfx.js?v=20260821-character-cards"></script>
+  <script src="online.js?v=20260821-character-cards"></script>
+  <script src="game.js?v=20260821-character-cards"></script>
+  <script src="game-online.js?v=20260821-character-cards"></script>
 </body>
 </html>
