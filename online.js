@@ -10,6 +10,7 @@ window.KanaBattleOnlineClient = (() => {
   let reconnectTimer = 0;
   let reconnectAttempts = 0;
   let intentionalClose = false;
+  let readySyncTimers = [];
   let handlers = { onState() {}, onConnection() {}, onError() {} };
 
   const ERROR_MESSAGES = {
@@ -84,6 +85,18 @@ window.KanaBattleOnlineClient = (() => {
     reconnectTimer = 0;
   }
 
+  function clearReadySync() {
+    readySyncTimers.forEach((timer) => clearTimeout(timer));
+    readySyncTimers = [];
+  }
+
+  function scheduleReadySync() {
+    clearReadySync();
+    readySyncTimers = [600, 1600, 3200].map((delay) => setTimeout(() => {
+      if (room?.phase === "lobby") send("sync");
+    }, delay));
+  }
+
   function scheduleReconnect() {
     if (intentionalClose || reconnectTimer || !roomCode || !token) return;
     reconnectAttempts += 1;
@@ -130,6 +143,7 @@ window.KanaBattleOnlineClient = (() => {
       try { message = JSON.parse(event.data); } catch { return; }
       if (message.room && (!room || message.room.version >= room.version)) {
         room = message.room;
+        if (room.phase !== "lobby") clearReadySync();
         handlers.onState(room);
       }
       if (message.type === "error" && message.code !== "STALE_STATE") emitError(message.code);
@@ -224,6 +238,7 @@ window.KanaBattleOnlineClient = (() => {
     const activeToken = token;
     intentionalClose = true;
     clearReconnect();
+    clearReadySync();
     if (activeSocket?.readyState === window.WebSocket.OPEN && room) send("leave");
     if (activeCode && activeToken) {
       void request(`/rooms/${encodeURIComponent(activeCode)}/leave`, {
@@ -244,7 +259,12 @@ window.KanaBattleOnlineClient = (() => {
     apiBase: API_BASE,
     init(next) { handlers = { ...handlers, ...(next || {}) }; },
     create, join, resume, leave,
-    ready(characterId, ready = true) { return send("ready", { characterId, ready }); },
+    ready(characterId, ready = true) {
+      const sent = send("ready", { characterId, ready });
+      if (sent && ready) scheduleReadySync();
+      else if (!ready) clearReadySync();
+      return sent;
+    },
     configure(config, deck) { return send("configure", { config, deck }); },
     submit(questionId, answer) { return send("submit", { questionId, answer }); },
     skip() { return send("skip"); },
@@ -254,10 +274,6 @@ window.KanaBattleOnlineClient = (() => {
       if (!roomCode) return false;
       const url = new URL(location.href); url.searchParams.set("room", roomCode);
       try { await navigator.clipboard.writeText(url.toString()); return true; } catch { return false; }
-    },
-    async copyRoomCode() {
-      if (!roomCode) return false;
-      try { await navigator.clipboard.writeText(roomCode); return true; } catch { return false; }
     },
     getRoom() { return room; },
   };

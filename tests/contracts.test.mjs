@@ -42,6 +42,29 @@ test("question bank keeps valid, unique, playable entries", () => {
   }
 });
 
+test("approved Fish Audio pack covers every question exactly once", () => {
+  const { ALL_QUESTIONS } = loadContentData();
+  const manifest = JSON.parse(read("assets/audio/questions/manifest.json"));
+  assert.equal(manifest.status, "approved");
+  assert.equal(manifest.records.length, ALL_QUESTIONS.length);
+  assert.equal(new Set(manifest.records.map((record) => record.id)).size, ALL_QUESTIONS.length);
+  assert.deepEqual(
+    manifest.records.map((record) => record.id).sort(),
+    Array.from(ALL_QUESTIONS, (question) => question.id).sort(),
+  );
+  let totalBytes = 0;
+  for (const record of manifest.records) {
+    assert.match(record.file, /^assets\/audio\/questions\/fish-92428785\/[a-z0-9_]+\.mp3$/);
+    const audio = fs.readFileSync(path.join(root, record.file));
+    const isMp3 = audio.subarray(0, 3).toString("ascii") === "ID3"
+      || (audio[0] === 0xff && (audio[1] & 0xe0) === 0xe0);
+    assert.equal(isMp3, true, `${record.id}: invalid MP3`);
+    assert.equal(audio.length, record.bytes, `${record.id}: byte count mismatch`);
+    totalBytes += audio.length;
+  }
+  assert.equal(totalBytes, manifest.totalBytes);
+});
+
 test("reviewed bank removes obscure names and provides categorized learning variety", () => {
   const { ALL_QUESTIONS } = loadContentData();
   const removed = ["custom_star", "custom_thunder", "custom_moon", "custom_flame", "custom_ice", "custom_wind", "custom_void", "custom_dragon", "custom_light", "custom_shadow", "sakura", "ashitaka", "chihiro", "howl", "genos", "ram", "hado31", "detroit", "expulsion", "seriouspunch", "malevolent", "shikai"];
@@ -50,17 +73,23 @@ test("reviewed bank removes obscure names and provides categorized learning vari
   const loanwords = ALL_QUESTIONS.filter((q) => q.category === "loanword");
   assert.equal(loanwords.length, 30, "dedicated loanword category should contain 30 questions");
   assert.ok(loanwords.every((q) => q.kanaSequence.every((part) => /^[\u30A0-\u30FFー]+$/.test(part))), "loanwords must practice katakana only");
+  const actions = ALL_QUESTIONS.filter((q) => q.category === "action");
+  assert.equal(actions.length, 25, "action category should contain 25 dictionary-form verbs");
+  assert.ok(actions.every((q) => !q.speakText.endsWith("ます")), "action verbs must use dictionary form instead of polite form");
+  assert.ok(actions.some((q) => q.id === "okiru" && q.speakText === "おきる"), "converted action ids and readings must stay aligned");
 });
 
-test("all referenced local media exist except the explicitly deferred voice pack", () => {
+test("all referenced local media exist except explicitly deferred audio", () => {
   const sources = ["index.html", "game-content.js", "game-audio.js", "game-vfx.js", "game.js"]
     .map(read)
     .join("\n");
   const refs = new Set(sources.match(/assets\/[A-Za-z0-9_./-]+\.(?:webp|png|jpe?g|mp3|wav|ogg|mp4)/g) || []);
   const missing = [...refs].filter((ref) => !exists(ref)).sort();
-  const deferred = ["gen", "ran", "sho", "yo"]
-    .flatMap((id) => [`assets/voice/${id}/defeat.mp3`, `assets/voice/${id}/hit.mp3`])
-    .sort();
+  const deferred = [
+    "assets/bgm/character-select.ogg",
+    ...["gen", "ran", "sho", "yo"]
+      .flatMap((id) => [`assets/voice/${id}/defeat.mp3`, `assets/voice/${id}/hit.mp3`]),
+  ].sort();
   assert.deepEqual(missing, deferred);
 });
 
@@ -109,14 +138,27 @@ test("split scripts load in dependency order", () => {
   assert.equal(new Set(releaseVersions).size, 1, "CSS and scripts must share one release cache version");
 });
 
-test("local two-player zoom protection and accessibility contracts remain present", () => {
+test("local two-player gestures preserve fast play without blocking accessibility zoom", () => {
   const html = read("index.html");
   const game = read("game.js");
-  assert.match(html, /user-scalable=no/);
-  assert.match(game, /gesturestart/);
-  assert.match(game, /touchend/);
+  const css = read("styles.css");
+  assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1/);
+  assert.doesNotMatch(game, /gesturestart|document\.addEventListener\("dblclick"/);
+  assert.match(css, /html, body \{[\s\S]*?touch-action: manipulation/);
+  assert.match(css, /\.board \.tile,[\s\S]*?touch-action: none !important/);
   assert.match(html, /id="reward-stage"[^>]*role="dialog"[^>]*aria-modal="true"/);
   assert.equal((html.match(/role="status" aria-live="polite"/g) || []).length, 4);
+  assert.equal((html.match(/class="card result-card" tabindex="-1"/g) || []).length, 2);
+  assert.match(game, /result-face\.p1 \.result-card"\)\?\.focus/);
+});
+
+test("document and worker responses carry baseline browser security policy", () => {
+  const html = read("index.html");
+  const worker = read("worker/src/index.mjs");
+  assert.match(html, /http-equiv="Content-Security-Policy"/);
+  assert.match(html, /object-src 'none'; base-uri 'none'; form-action 'none'/);
+  assert.match(worker, /"cache-control": "no-store"/);
+  assert.match(worker, /"x-content-type-options": "nosniff"/);
 });
 
 test("online room entry and battle interception stay wired", () => {
@@ -164,15 +206,42 @@ test("online invite, lobby, and VS intro use the phone-first interaction contrac
   assert.match(game, /\$\("online-code-input"\)\.disabled = inviteMode/);
   assert.match(game, /if \(!client\.resume\(invitedRoom\)\) setInviteMode\(true, invitedRoom\)/);
   assert.match(css, /#screen-online:not\(\.hidden\)[\s\S]*?touch-action: pan-y/);
-  assert.match(html, /<span>複製房號<\/span>[\s\S]*?id="btn-online-copy"/);
-  assert.match(client, /async copyRoomCode\(\)[\s\S]*?writeText\(roomCode\)/);
+  assert.match(html, /id="btn-online-leave"[\s\S]*?id="btn-online-copy"[^>]*>複製邀請連結<[\s\S]*?id="btn-online-ready"/);
+  assert.match(client, /async copyInvite\(\)[\s\S]*?url\.searchParams\.set\("room", roomCode\)[\s\S]*?writeText\(url\.toString\(\)\)/);
+  assert.match(game, /textContent = inviteMode \? "新建房間" : "建立房間"/);
   assert.match(game, /playerLabel = `\$\{player\.name\}\$\{seat === room\.hostSeat \? "（房主）" : ""\}`/);
   assert.match(css, /\.online-players \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(css, /\.online-lobby-actions \{[\s\S]*?position: fixed/);
+  assert.match(css, /\.online-lobby-actions \{[\s\S]*?position: fixed[\s\S]*?grid-template-columns: 1fr 1\.25fr 1fr/);
   assert.match(game, /function playOnlineVsIntro\(\)/);
   assert.match(game, /priorPhase === "lobby"\) playOnlineVsIntro\(\)/);
+  assert.match(game, /stage\?\.querySelector\(":scope > \.vs-face\.p1"\)/);
+  assert.match(game, /onlineFace\?\.querySelector\("\.vs-fighter\.p1 img"\)/);
   assert.match(css, /\.vs-stage\.online-vs > \.vs-face\.p2 \{ display: none; \}/);
   assert.match(css, /\.vs-stage\.online-vs \.vs-inner \{[\s\S]*?grid-template-rows: minmax\(0, 1fr\) auto minmax\(0, 1fr\)/);
+});
+
+test("character selection reserves a BGM path and uses the kana click sound", () => {
+  const audio = read("game-audio.js");
+  const game = read("game.js");
+  const online = read("game-online.js");
+  assert.match(audio, /CHARACTER_SELECT_BGM_PATH = "assets\/bgm\/character-select\.ogg"/);
+  assert.match(audio, /async function startCharacterSelectBgm\(\)/);
+  assert.match(audio, /characterSelectBgmUnavailable/);
+  assert.match(game, /function onPickChar\(player, c, withSound = true\)[\s\S]*?playSfx\("sfx_click"/);
+  assert.match(online, /function stepCharacter\(delta\)[\s\S]*?playSfx\("sfx_click"/);
+});
+
+test("battle BGM preload fetches only the selected track", () => {
+  const audio = read("game-audio.js");
+  assert.match(audio, /function chooseBattleBgmPath\(\)/);
+  assert.match(audio, /async function preloadBattleBgm\(\) \{\s*await loadBattleBgmBuffer\(chooseBattleBgmPath\(\)\)/);
+  assert.doesNotMatch(audio, /Promise\.all\(BATTLE_BGM_PATHS\.map/);
+});
+
+test("result text is escaped before player tags are colorized", () => {
+  const game = read("game.js");
+  assert.match(game, /function escapeResultText\(text\)/);
+  assert.match(game, /function colorizePlayerTags\(text\) \{\s*return escapeResultText\(text\)/);
 });
 
 test("online listen audio prefers static MP3 and remains server scheduled", () => {

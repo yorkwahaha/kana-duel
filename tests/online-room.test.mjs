@@ -4,15 +4,46 @@ import {
   applyAttack,
   applySkill,
   applySubmit,
+  configureRoom,
   createRoomState,
   joinRoom,
   leaveRoom,
   publicRoomState,
   sanitizeConfig,
   sanitizeDeck,
+  sanitizePlayerName,
   setConnected,
   setReady,
 } from "../worker/src/room-core.mjs";
+
+test("player names remove control and bidi override characters", () => {
+  assert.equal(sanitizePlayerName("  York\n\u202E（房主）  "), "York （房主）");
+  assert.equal([...sanitizePlayerName("😀".repeat(20))].length, 16);
+});
+
+test("rejected lobby updates do not mutate authoritative state", () => {
+  const room = createRoomState({
+    roomCode: "AB2C3D",
+    hostName: "Host",
+    hostToken: "host-token",
+    config: { mode: "race" },
+    deck: [{ id: "q1", answer: ["か"] }, { id: "q2", answer: ["な"] }],
+    now: 1000,
+  });
+  joinRoom(room, { name: "Guest", token: "guest-token", now: 1010 });
+  setConnected(room, 0, true, 1020);
+  setConnected(room, 1, true, 1030);
+  const originalConfig = { ...room.config };
+  const originalDeck = room.deck.map((entry) => ({ ...entry, answer: [...entry.answer] }));
+  const invalidConfig = configureRoom(room, 0, { mode: "listen" }, [{ id: "only", answer: ["か"] }], 1040);
+  assert.equal(invalidConfig.ok, false);
+  assert.deepEqual(room.config, originalConfig);
+  assert.deepEqual(room.deck, originalDeck);
+  const taken = setReady(room, 1, { ready: true, characterId: "ao" }, 1050);
+  assert.deepEqual(taken, { ok: false, error: "CHARACTER_TAKEN" });
+  assert.equal(room.players[1].characterId, "rin");
+  assert.equal(room.players[1].ready, false);
+});
 
 function createPlayingRoom(mode = "race") {
   const room = createRoomState({

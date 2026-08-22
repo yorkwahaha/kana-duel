@@ -198,12 +198,3 @@ window.KANA_QUESTIONS = [
   { id: "kokoro", contentType: "vocab", displayName: "こころ", kanaSequence: ["こ", "こ", "ろ"], kanji: "心", zh: "心", speakText: "こころ", rewardMode: "celebrate", tags: ["名詞"] },
   { id: "tamashii", contentType: "vocab", displayName: "たましい", kanaSequence: ["た", "ま", "し", "い"], kanji: "魂", zh: "靈魂", speakText: "たましい", rewardMode: "celebrate", tags: ["名詞"] },
 ];
-
-// 格數硬上限 16
-window.KANA_QUESTIONS = window.KANA_QUESTIONS.map((q) => {
-  if (q.kanaSequence.length > 16) {
-    console.warn("[題庫] 超過 16 格已截斷:", q.id);
-    q.kanaSequence = q.kanaSequence.slice(0, 16);
-  }
-  return q;
-});

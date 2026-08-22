@@ -45,6 +45,12 @@ python -m http.server 8001
 | 戰鬥 BGM×3 | `assets/bgm/battle-{1,2,3}.ogg`（Opus ~96k） |
 | 連打音效 | `assets/sfx/hit{1..5}.mp3` |
 
+## 題目語音
+
+380 題皆已連結至 `assets/audio/questions/manifest.json`，正式音檔位於
+`assets/audio/questions/fish-92428785/`。遊戲會按題載入並在瀏覽器內快取；若個別
+MP3 無法取得，才退回線上 TTS，不會在進站時一次下載整包。
+
 大招：播角色 `*-cast.mp4`（缺檔則立繪約 3 秒）；結束後接連打結算。
 
 ## 對戰規則摘要

@@ -59,11 +59,21 @@ function harness() {
   };
 }
 
-test("room code copy writes only the six-character code", async () => {
+test("invite copy writes the complete room URL", async () => {
   const { online, clipboardWrites } = harness();
   online.resume("AB2C3D");
-  assert.equal(await online.copyRoomCode(), true);
-  assert.deepEqual(clipboardWrites, ["AB2C3D"]);
+  assert.equal(await online.copyInvite(), true);
+  assert.deepEqual(clipboardWrites, ["https://example.test/?room=AB2C3D"]);
+});
+
+test("ready schedules a state resync so the first player cannot miss battle start", () => {
+  const { online, sockets, runTimer } = harness();
+  online.resume("AB2C3D");
+  sockets[0].emit("open");
+  sockets[0].emit("message", { data: JSON.stringify({ type: "state", room: { roomCode: "AB2C3D", version: 2, phase: "lobby" } }) });
+  assert.equal(online.ready("ao", true), true);
+  runTimer(600);
+  assert.deepEqual(sockets[0].sent.map((message) => message.type), ["sync", "ready", "sync"]);
 });
 
 test("a stale socket close cannot discard the replacement connection", () => {

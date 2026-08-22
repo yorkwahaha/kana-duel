@@ -2,14 +2,15 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://jpapp-tts-proxy.yorkwahaha.workers.dev https://kana-voice-match-online.yorkwahaha.workers.dev wss://kana-voice-match-online.yorkwahaha.workers.dev http://127.0.0.1:8787 ws://127.0.0.1:8787; object-src 'none'; base-uri 'none'; form-action 'none'" />
   <meta name="kana-online-api" content="https://kana-voice-match-online.yorkwahaha.workers.dev" />
   <title>聲の仮名 · 墨域言靈闘場 v1.0</title>
   <link rel="icon" href="assets/cover.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260822-online-lobby" />
+  <link rel="stylesheet" href="styles.css?v=20260822-audit-hardening" />
 </head>
 <body>
   <div class="combo-float" id="combo-float"></div>
@@ -111,10 +112,6 @@
         </div>
 
         <div class="online-lobby hidden" id="online-lobby">
-          <div class="online-room-card">
-            <span>複製房號</span>
-            <button class="btn btn-ghost btn-sm" id="btn-online-copy" type="button" aria-label="複製房號">——</button>
-          </div>
           <div class="online-players" id="online-players"></div>
           <section class="online-character-picker" aria-labelledby="online-character-heading">
             <div class="online-character-art">
@@ -146,6 +143,7 @@
           <p class="online-note" id="online-note">等待兩位玩家連線並選角。</p>
           <div class="online-lobby-actions">
             <button class="btn btn-ghost" id="btn-online-leave" type="button">離開房間</button>
+            <button class="btn btn-ghost" id="btn-online-copy" type="button" aria-label="複製邀請連結">複製邀請連結</button>
             <button class="btn btn-primary" id="btn-online-ready" type="button">準備</button>
           </div>
         </div>
@@ -360,9 +358,9 @@
     </section>
 
     <!-- RESULT · 兩端各自正向（練習時底端亦可讀） -->
-    <section class="screen hidden" id="screen-result">
+    <section class="screen hidden" id="screen-result" aria-label="對戰結果">
       <div class="result-face p2">
-        <div class="card result-card">
+        <div class="card result-card" tabindex="-1">
           <h1 class="result-title">結束</h1>
           <p class="result-summary">—</p>
           <ul class="result-stats hidden" data-result-stats></ul>
@@ -373,7 +371,7 @@
         </div>
       </div>
       <div class="result-face p1">
-        <div class="card result-card">
+        <div class="card result-card" tabindex="-1">
           <h1 class="result-title">結束</h1>
           <p class="result-summary">—</p>
           <ul class="result-stats hidden" data-result-stats></ul>
@@ -405,13 +403,13 @@
     </div>
   </div>
 
-  <script src="questions-data.js?v=20260822-online-lobby"></script>
-  <script src="questions-expansion-data.js?v=20260822-online-lobby"></script>
-  <script src="game-content.js?v=20260822-online-lobby"></script>
-  <script src="game-audio.js?v=20260822-online-lobby"></script>
-  <script src="game-vfx.js?v=20260822-online-lobby"></script>
-  <script src="online.js?v=20260822-online-lobby"></script>
-  <script src="game.js?v=20260822-online-lobby"></script>
-  <script src="game-online.js?v=20260822-online-lobby"></script>
+  <script src="questions-data.js?v=20260822-audit-hardening"></script>
+  <script src="questions-expansion-data.js?v=20260822-audit-hardening"></script>
+  <script src="game-content.js?v=20260822-audit-hardening"></script>
+  <script src="game-audio.js?v=20260822-audit-hardening"></script>
+  <script src="game-vfx.js?v=20260822-audit-hardening"></script>
+  <script src="online.js?v=20260822-audit-hardening"></script>
+  <script src="game.js?v=20260822-audit-hardening"></script>
+  <script src="game-online.js?v=20260822-audit-hardening"></script>
 </body>
 </html>

@@ -8,6 +8,7 @@
 /* global getSessionToken, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio, speakQuestionAudio */
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
 /* global showCombo, showDmgFloat, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
+/* global startCharacterSelectBgm, stopCharacterSelectBgm */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, ensureCastLayers, preloadFighterPoses */
 /* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
 /* global spawnBlockParry, splitComboDamage, wait, playBattleDefeatOutro */
@@ -113,6 +114,8 @@
   function stepCharacter(delta) {
     const currentIndex = Math.max(0, CHARACTERS.findIndex((character) => character.id === pendingCharacterId));
     const next = CHARACTERS[(currentIndex + delta + CHARACTERS.length) % CHARACTERS.length];
+    startCharacterSelectBgm().catch(() => {});
+    playSfx("sfx_click", 0.3);
     renderCharacterCard(next.id);
   }
 
@@ -120,23 +123,28 @@
     const inviteMode = !!enabled;
     $("screen-online")?.classList.toggle("invite-mode", inviteMode);
     if ($("online-name-label")) $("online-name-label").textContent = inviteMode ? "輸入你的名稱" : "你的名稱";
-    if ($("btn-online-create")) $("btn-online-create").disabled = inviteMode;
+    if ($("btn-online-create")) {
+      $("btn-online-create").disabled = inviteMode;
+      $("btn-online-create").textContent = inviteMode ? "新建房間" : "建立房間";
+    }
     if ($("online-code-input")) {
       if (code) $("online-code-input").value = code.toUpperCase();
       $("online-code-input").disabled = inviteMode;
     }
     $("btn-online-invite-exit")?.classList.toggle("hidden", !inviteMode);
+    if (inviteMode) stopCharacterSelectBgm();
   }
 
   function renderLobby() {
-    if (!room) return;
+    if (!room || room.phase !== "lobby") return;
     setInviteMode(false);
     $("online-entry")?.classList.add("hidden");
     $("online-lobby")?.classList.remove("hidden");
     if ($("btn-online-copy")) {
-      $("btn-online-copy").textContent = room.roomCode;
-      $("btn-online-copy").setAttribute("aria-label", `複製房號 ${room.roomCode}`);
+      $("btn-online-copy").textContent = "複製邀請連結";
+      $("btn-online-copy").setAttribute("aria-label", `複製房間 ${room.roomCode} 的邀請連結`);
     }
+    startCharacterSelectBgm().catch(() => {});
     const host = room.youSeat === room.hostSeat;
     const settings = ["online-mode", "online-category", "online-maxlen", "online-script", "online-distractors"];
     settings.forEach((id) => { if ($(id)) $(id).disabled = !host || room.phase !== "lobby"; });
@@ -267,6 +275,7 @@
 
   function beginOnlineBattle() {
     battleIntroPending = false;
+    stopCharacterSelectBgm();
     active = true;
     battleResultShown = false;
     lastEventId = 0;
@@ -318,20 +327,21 @@
   function playOnlineVsIntro() {
     if (!room || battleIntroPending || active) return;
     battleIntroPending = true;
+    stopCharacterSelectBgm();
     const mineCharacter = characterById(localPlayer()?.characterId, 0);
     const foeCharacter = characterById(remotePlayer()?.characterId, 1);
-    document.querySelectorAll('[data-vs="img1"]').forEach((el) => { el.src = mineCharacter?.image || ""; });
-    document.querySelectorAll('[data-vs="img2"]').forEach((el) => { el.src = foeCharacter?.image || ""; });
-    document.querySelectorAll('[data-vs="name1"]').forEach((el) => {
-      el.textContent = `${localPlayer()?.name || "我方"} · ${mineCharacter?.name || ""}`;
-    });
-    document.querySelectorAll('[data-vs="name2"]').forEach((el) => {
-      el.textContent = `${remotePlayer()?.name || "對手"} · ${foeCharacter?.name || ""}`;
-    });
-    document.querySelectorAll('[data-vs="rule"]').forEach((el) => {
-      el.textContent = room.config.mode === "listen" ? "LISTEN DUEL" : "SPEED DUEL";
-    });
     const stage = $("vs-stage");
+    const onlineFace = stage?.querySelector(":scope > .vs-face.p1");
+    const mineImage = onlineFace?.querySelector(".vs-fighter.p1 img");
+    const foeImage = onlineFace?.querySelector(".vs-fighter.p2 img");
+    const mineName = onlineFace?.querySelector(".vs-fighter.p1 .vs-name");
+    const foeName = onlineFace?.querySelector(".vs-fighter.p2 .vs-name");
+    const rule = onlineFace?.querySelector(".vs-center .vs-sub");
+    if (mineImage) mineImage.src = mineCharacter?.image || "";
+    if (foeImage) foeImage.src = foeCharacter?.image || "";
+    if (mineName) mineName.textContent = `${localPlayer()?.name || "我方"} · ${mineCharacter?.name || ""}`;
+    if (foeName) foeName.textContent = `${remotePlayer()?.name || "對手"} · ${foeCharacter?.name || ""}`;
+    if (rule) rule.textContent = room.config.mode === "listen" ? "LISTEN DUEL" : "SPEED DUEL";
     stage?.classList.remove("show");
     stage?.classList.add("online-vs");
     void stage?.offsetWidth;
@@ -552,7 +562,7 @@
     battleOpen = false;
     battleEpoch += 1;
     cancelAnimationFrame(timerRaf);
-    stopBattleBgm(); stopTts(); hideSpecialStage(); clearBattleFx(); cancelAllDrags();
+    stopBattleBgm(); stopCharacterSelectBgm(); stopTts(); hideSpecialStage(); clearBattleFx(); cancelAllDrags();
     pauseOverlay(false);
     document.body.classList.remove("online-battle");
     $("board2")?.removeAttribute("aria-hidden");
@@ -580,7 +590,7 @@
         el.textContent = labels[info.status] || info.status;
         el.classList.toggle("connected", info.status === "connected");
       }
-      renderLobby();
+      if (room?.phase === "lobby") renderLobby();
     },
     onError(error) { setSubmitPending(false); setError(error.message); },
   });
@@ -588,7 +598,11 @@
   const characterSelect = $("online-character");
   if (characterSelect) {
     characterSelect.innerHTML = CHARACTERS.map((character) => `<option value="${character.id}">${escapeHtml(character.name)} · ${escapeHtml(character.passive?.label || character.title)}</option>`).join("");
-    characterSelect.addEventListener("change", () => renderCharacterCard(characterSelect.value));
+    characterSelect.addEventListener("change", () => {
+      startCharacterSelectBgm().catch(() => {});
+      playSfx("sfx_click", 0.3);
+      renderCharacterCard(characterSelect.value);
+    });
     renderCharacterCard(characterSelect.value || "ao");
   }
   bindTap($("btn-online-character-prev"), () => stepCharacter(-1));
@@ -604,12 +618,16 @@
     try { await client.join({ playerName: $("online-name")?.value || "玩家", code: $("online-code-input")?.value || "" }); } catch {}
   });
   bindTap($("btn-online-copy"), async () => {
-    const ok = await client.copyRoomCode();
+    const ok = await client.copyInvite();
     const button = $("btn-online-copy");
     if (button) {
       button.classList.toggle("copied", ok);
-      button.setAttribute("aria-label", ok ? `房號 ${room?.roomCode || ""} 已複製` : "無法複製房號");
-      setTimeout(() => button.classList.remove("copied"), 1200);
+      button.textContent = ok ? "已複製" : "複製失敗";
+      button.setAttribute("aria-label", ok ? `房間 ${room?.roomCode || ""} 的邀請連結已複製` : "無法複製邀請連結");
+      setTimeout(() => {
+        button.classList.remove("copied");
+        button.textContent = "複製邀請連結";
+      }, 1200);
     }
   });
   bindTap($("btn-online-invite-exit"), () => {

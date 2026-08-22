@@ -4,7 +4,7 @@
   --line: rgba(240, 230, 216, 0.12);
   --accent: #d4a017; --accent-soft: rgba(212, 160, 23, 0.18);
   --ok: #4a9b78; --ok-soft: rgba(74, 155, 120, 0.18);
-  --bad: #c45648; --gold: #e0b84a;
+  --bad: #d06457; --gold: #e0b84a;
   --p1: #2f8f86; --p2: #c45a3a;
   --slot: #2a241e;
   --panel: rgba(28, 24, 20, 0.92);
@@ -12,15 +12,15 @@
   --serif: "Noto Serif JP", "Yu Mincho", serif;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* touch-action 不繼承：必須落到實際被點到的元素，否則快速連點仍會雙擊放大 */
+/* 快速點擊用 manipulation；答題拖曳區另行鎖定，頁面其他位置保留輔助縮放。 */
 * { box-sizing: border-box; touch-action: manipulation; }
 html, body {
   height: 100%;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
-  touch-action: none;
-  -ms-touch-action: none;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -392,16 +392,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .room-code-field input { text-transform: uppercase; letter-spacing: 0.18em; font-weight: 800; }
 .online-lobby { display: grid; gap: 16px; padding: 18px 0 96px; }
-.online-room-card {
-  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-  border-radius: 12px; background: rgba(73,90,131,0.16); border: 1px solid rgba(123,148,207,0.25);
-}
-.online-room-card > span { color: var(--muted); font-size: 0.75rem; }
-.online-room-card #btn-online-copy {
-  min-width: 8.5rem; margin-left: auto; font-size: 1.18rem; font-weight: 900;
-  letter-spacing: 0.16em; color: #dce5ff;
-}
-.online-room-card #btn-online-copy.copied { border-color: var(--ok); box-shadow: 0 0 0 2px rgba(74, 155, 120, 0.2); }
 .online-players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .online-player {
   display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 10px;
@@ -443,12 +433,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .online-lobby-actions {
   position: fixed; z-index: 45; left: 50%; bottom: max(8px, env(safe-area-inset-bottom, 0px));
   width: min(680px, calc(100vw - 32px)); transform: translateX(-50%);
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 8px;
   padding: 10px; border: 1px solid rgba(111, 81, 34, 0.36); border-radius: 14px;
   background: rgba(244, 236, 222, 0.94); box-shadow: 0 12px 34px rgba(45, 32, 20, 0.28);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .online-lobby-actions .btn { width: 100%; min-height: 50px; }
+.online-lobby-actions #btn-online-copy { padding-inline: 8px; font-size: 0.8rem; line-height: 1.2; }
+.online-lobby-actions #btn-online-copy.copied { border-color: var(--ok); box-shadow: 0 0 0 2px rgba(74, 155, 120, 0.2); }
 .online-error { min-height: 1.3em; margin: 10px 0 0; color: var(--bad); font-size: 0.8rem; }
 .online-settings :disabled { opacity: 0.52; }
 

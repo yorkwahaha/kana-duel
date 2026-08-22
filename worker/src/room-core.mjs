@@ -24,7 +24,11 @@ function cleanText(value, maxLength = 80) {
 }
 
 export function sanitizePlayerName(value, fallback = "玩家") {
-  return cleanText(value, MAX_NAME_LENGTH) || fallback;
+  const clean = String(value ?? "")
+    .replace(/[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return Array.from(clean).slice(0, MAX_NAME_LENGTH).join("") || fallback;
 }
 
 export function sanitizeRoomCode(value) {
@@ -185,8 +189,10 @@ export function configureRoom(room, seat, config, deck, now = Date.now()) {
   if (!room || room.phase !== "lobby") return { ok: false, error: "NOT_IN_LOBBY" };
   if (seat !== hostSeat(room)) return { ok: false, error: "ONLY_HOST_CAN_CONFIGURE" };
   try {
-    room.config = sanitizeConfig(config);
-    if (deck) room.deck = sanitizeDeck(deck);
+    const nextConfig = sanitizeConfig(config);
+    const nextDeck = deck ? sanitizeDeck(deck) : room.deck;
+    room.config = nextConfig;
+    room.deck = nextDeck;
   } catch (error) {
     return { ok: false, error: error.message || "INVALID_CONFIG" };
   }
@@ -202,9 +208,10 @@ export function setReady(room, seat, { ready = true, characterId }, now = Date.n
   const player = room.players[seat];
   if (!player) return { ok: false, error: "INVALID_SESSION" };
   if (!player.connected) return { ok: false, error: "PLAYER_NOT_CONNECTED" };
-  if (VALID_CHARACTERS.has(characterId)) player.characterId = characterId;
+  const nextCharacterId = VALID_CHARACTERS.has(characterId) ? characterId : player.characterId;
   const other = room.players[seat === 0 ? 1 : 0];
-  if (ready && other?.characterId === player.characterId) return { ok: false, error: "CHARACTER_TAKEN" };
+  if (ready && other?.characterId === nextCharacterId) return { ok: false, error: "CHARACTER_TAKEN" };
+  player.characterId = nextCharacterId;
   player.ready = ready !== false;
   bump(room, now);
   if (room.players.every((entry) => entry?.connected && entry.ready)) {

@@ -1,0 +1,2670 @@
+{
+  "id": "fish-92428785-approved-v1",
+  "provider": "Fish Audio",
+  "model": "s2.1-pro-free",
+  "referenceId": "92428785fd3e457bbe228b39f16c39e6",
+  "status": "approved",
+  "records": [
+    {
+      "id": "goku",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/goku.mp3",
+      "bytes": 18807,
+      "sha256": "118ce6c75a9430d03542141b2c4873be59bcbea31cab458d4cab46408871c1d1"
+    },
+    {
+      "id": "domain",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/domain.mp3",
+      "bytes": 20479,
+      "sha256": "17faea6b2f535a2eae9e55de718165df9bd9ef092a6c3e43db89ab3364adcbbd"
+    },
+    {
+      "id": "naruto",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/naruto.mp3",
+      "bytes": 13791,
+      "sha256": "1868747a30ef789a6d62eba1df81736f6d9e49471878529aefac7cb065262340"
+    },
+    {
+      "id": "luffy",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/luffy.mp3",
+      "bytes": 12119,
+      "sha256": "110d4df3fb20e3ccbf7a11ecee94d99e91e953193f7f84fa55023b910e5424ea"
+    },
+    {
+      "id": "ichigo",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/ichigo.mp3",
+      "bytes": 12955,
+      "sha256": "48d2ce037d2f8ed55e75268c711078cbdde9cc5af000efefccc55c851690eb09"
+    },
+    {
+      "id": "tanjiro",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/tanjiro.mp3",
+      "bytes": 15045,
+      "sha256": "367ae81f332fe671edc353781f9ac0ce28264c3995bfec60974a778469bf18d9"
+    },
+    {
+      "id": "nezuko",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/nezuko.mp3",
+      "bytes": 12955,
+      "sha256": "d435cf2ae430813f34e747a326dc11df457c625a5cbf2eab332bd5dcf14150fc"
+    },
+    {
+      "id": "vegeta",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/vegeta.mp3",
+      "bytes": 17553,
+      "sha256": "58aa6f2bd20f9be625861e27537d5298776871cb857fe7ab3d80d98e2d65bbe1"
+    },
+    {
+      "id": "pikachu",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/pikachu.mp3",
+      "bytes": 13791,
+      "sha256": "0b9f5c2b3c588c56c879ee37acd37d81fcc991834a756c0ec768c36f7a8187f7"
+    },
+    {
+      "id": "totoro",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/totoro.mp3",
+      "bytes": 10866,
+      "sha256": "33299cd7c0363b2bb8b3c5e73f94c1181396651d438a0535d0ab1d36536de5ec"
+    },
+    {
+      "id": "eren",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/eren.mp3",
+      "bytes": 12119,
+      "sha256": "4d1fc9db58f77ffce7d25ee5eba089c86d63626fbc395e165056de010b3ab96c"
+    },
+    {
+      "id": "mikasa",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/mikasa.mp3",
+      "bytes": 14209,
+      "sha256": "d371464f45fecbe20fe8641ce7907d9d93dd6c27a2d813482bfb0d3cca7e7ceb"
+    },
+    {
+      "id": "levi",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/levi.mp3",
+      "bytes": 11283,
+      "sha256": "295b127651f2171fb8526ba3da0d3a36eac4ee81569110502a4431baec79ba05"
+    },
+    {
+      "id": "saitama",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/saitama.mp3",
+      "bytes": 12955,
+      "sha256": "a894694168a690805f5d898d9fc6e2ae449884e4dfa7c9560052238ef7ca76c1"
+    },
+    {
+      "id": "midoriya",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/midoriya.mp3",
+      "bytes": 15045,
+      "sha256": "1e0b2ab64c47daee733e8cfaa76e978a61ff90eb4da1b61e6a31628ddee7d2d5"
+    },
+    {
+      "id": "bakugo",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/bakugo.mp3",
+      "bytes": 13791,
+      "sha256": "60d84d99d4f459a96c7d3218ed29d6a7ba2e602acb86e3d9f4e678df3dcb8cae"
+    },
+    {
+      "id": "rem",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/rem.mp3",
+      "bytes": 11283,
+      "sha256": "a92e771b341486339d98f513c02c562fede49542e256b1973c5218591a5e47c4"
+    },
+    {
+      "id": "asuna",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/asuna.mp3",
+      "bytes": 12955,
+      "sha256": "191ef7918c8a9f285bc4cd57a48e002d1267f4c76faca4a3176239f56e4ebb0e"
+    },
+    {
+      "id": "kirito",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/kirito.mp3",
+      "bytes": 13791,
+      "sha256": "7e47f8ce955b9291db8fc5a9a856be45862e537d55b0a5e8d3f2bca481908c24"
+    },
+    {
+      "id": "kamehameha",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/kamehameha.mp3",
+      "bytes": 16717,
+      "sha256": "d4c5a4213203d013ae0aac37802192b003201c73d84bdc474711598d2ed56282"
+    },
+    {
+      "id": "rasengan",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/rasengan.mp3",
+      "bytes": 15881,
+      "sha256": "7927301fa3fadd8069a9cdee101dd9f2a3d60791ea73e47142e6ac5b97ab09e8"
+    },
+    {
+      "id": "chidori",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/chidori.mp3",
+      "bytes": 11283,
+      "sha256": "3a31c652f396329c2c4638e6e31de85db47f3c5af0501b166cd2b86c15c0c0c3"
+    },
+    {
+      "id": "bankai",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/bankai.mp3",
+      "bytes": 13791,
+      "sha256": "41b0f6d9b8ee92109bac08e2413a3fda0985de85b541db67d3f2b3074e0e1dd6"
+    },
+    {
+      "id": "getsuga",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/getsuga.mp3",
+      "bytes": 20897,
+      "sha256": "ba27a011f64650eac52156888e3dfe9746ea1c465926e35da8495c3fb3e11a4f"
+    },
+    {
+      "id": "finalflash",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/finalflash.mp3",
+      "bytes": 19643,
+      "sha256": "7893f0ccfacd387a4e75be6764cc5cad7559954350f6ab120c2c8283ddc83f41"
+    },
+    {
+      "id": "spiritbomb",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/spiritbomb.mp3",
+      "bytes": 15881,
+      "sha256": "887dcb5d2d1d13bdc3325f1657a80c31813c71cb2bbead5851dbf44a1a699552"
+    },
+    {
+      "id": "sharingan",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/sharingan.mp3",
+      "bytes": 15881,
+      "sha256": "b2b65a6da99a420f3e0b5e1d875556cd15883af1accfa9576260675b33c118ef"
+    },
+    {
+      "id": "susanoo",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/susanoo.mp3",
+      "bytes": 14209,
+      "sha256": "6df1a57ca7d0ef7945007303c6088fc6fe6bcbb0a695a147759b721819f155b0"
+    },
+    {
+      "id": "amaterasu",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/amaterasu.mp3",
+      "bytes": 16717,
+      "sha256": "e6bcf895400dcf48761b57ef6ccf3a4aade1995dea8d49048c1c2e430b514c4c"
+    },
+    {
+      "id": "hijutsu",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/hijutsu.mp3",
+      "bytes": 24240,
+      "sha256": "687c67df750445aaca5f4948bbf681fa0ff0d97e5b766410e3c674af93b156ef"
+    },
+    {
+      "id": "omoiyari",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/omoiyari.mp3",
+      "bytes": 18807,
+      "sha256": "ac55e5f9816771a6cbe3ce2337efc0603222f5f9c3b770a35007937a2e889100"
+    },
+    {
+      "id": "hinokami",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/hinokami.mp3",
+      "bytes": 19643,
+      "sha256": "1bb005cdc847d5ba9082cace88e234a55b7391d49946bcd3dcae7ec3ce15e1ce"
+    },
+    {
+      "id": "oneforall",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/oneforall.mp3",
+      "bytes": 20479,
+      "sha256": "c6ca5282eb089bec71d62ff5a693cb3a9af8b61f9346093cae188e7f201fb00b"
+    },
+    {
+      "id": "gumgum",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/gumgum.mp3",
+      "bytes": 24240,
+      "sha256": "6da6d9d78c6ab2d5eb55836effb57a1f85c715afda40f63756ba8312977d30eb"
+    },
+    {
+      "id": "gearsecond",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/gearsecond.mp3",
+      "bytes": 20897,
+      "sha256": "8fc4b8e2972990d42a7b022b5690bdb8df295e42eb3e564175b451ea03e7909c"
+    },
+    {
+      "id": "blackflash",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/blackflash.mp3",
+      "bytes": 12955,
+      "sha256": "ac82c49660c5290fc635f45ab5e3032248c84702427d874d5191abf9bfe7dbf5"
+    },
+    {
+      "id": "hollowpurple",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/hollowpurple.mp3",
+      "bytes": 24240,
+      "sha256": "de8d741cd751ad3e9fa30d3cd4df99c5ef03285e607015d7ec2378bfaea38901"
+    },
+    {
+      "id": "infinitevoid",
+      "category": "anime",
+      "file": "assets/audio/questions/fish-92428785/infinitevoid.mp3",
+      "bytes": 19643,
+      "sha256": "70e3cf11b67afb367ea14ea1dafcb7f12500bd00c9a95129ec5224350d6c26cd"
+    },
+    {
+      "id": "arigatou",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/arigatou.mp3",
+      "bytes": 14209,
+      "sha256": "384a437919863d16cb54be691d3aa2852c898c34e543a8a4dafbfa46565c754b"
+    },
+    {
+      "id": "ohayou",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/ohayou.mp3",
+      "bytes": 13791,
+      "sha256": "61b9ee9d7ff8218fda6a29c276de7f3713c0e87052c1b8a78c04e4a5a116d80a"
+    },
+    {
+      "id": "konnichiwa",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/konnichiwa.mp3",
+      "bytes": 15045,
+      "sha256": "fa7bcb5eef16ddeada0cb859d113c77d2c1e9e3d5c34806ab87648e817a3044a"
+    },
+    {
+      "id": "konbanwa",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/konbanwa.mp3",
+      "bytes": 13791,
+      "sha256": "5b4fb7ac238332c051d18e1345f28b18571096608a02f2845544889ad9200408"
+    },
+    {
+      "id": "sayounara",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/sayounara.mp3",
+      "bytes": 15045,
+      "sha256": "5ff042a559d04a204e3e98cc28a0a0db94bd610b277c7f06dbdb606f11b95eb8"
+    },
+    {
+      "id": "sumimasen",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/sumimasen.mp3",
+      "bytes": 14209,
+      "sha256": "395ff8af05332b611e015671a5c906563aae2d8e16197c9aaa45cc925de35c6b"
+    },
+    {
+      "id": "gomen",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/gomen.mp3",
+      "bytes": 12119,
+      "sha256": "99d6ad7795b79f0301db0063f9ae19e03005abc038858b84ff680ae8eb93e19b"
+    },
+    {
+      "id": "onegaishimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/onegaishimasu.mp3",
+      "bytes": 16717,
+      "sha256": "4670c4323881a6c4eda1665dec96d02aa2db60361f0a4d97e4a72e59f9adc668"
+    },
+    {
+      "id": "douzo",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/douzo.mp3",
+      "bytes": 12955,
+      "sha256": "188e2c0d7afbc7fb151250656e93ba5a320c606afeac6bc8edebd61ed3246c2b"
+    },
+    {
+      "id": "hai",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/hai.mp3",
+      "bytes": 8358,
+      "sha256": "bb3cee13e72c88dce9b69c2831bbb21598df0611cb2196b25dbed5daf79d3b79"
+    },
+    {
+      "id": "iie",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/iie.mp3",
+      "bytes": 12119,
+      "sha256": "d80caa109a67769b14b5616ae013411ab98655e88bd556a0c00402375023dc57"
+    },
+    {
+      "id": "wakarimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/wakarimasu.mp3",
+      "bytes": 14209,
+      "sha256": "4acf7f9186ffa7e87e1f8dd1948d424615d1537a12aafc079955e24642b6ba33"
+    },
+    {
+      "id": "tabemasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/tabemasu.mp3",
+      "bytes": 13791,
+      "sha256": "9c621749d001026f4691b4751586ec100072e29861444b7dde81f37d76013fbb"
+    },
+    {
+      "id": "nomimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/nomimasu.mp3",
+      "bytes": 12955,
+      "sha256": "661d4900cbd0564c5afa3bd67edb6d21aa3feae90efa413fe2cdb6eeb782be42"
+    },
+    {
+      "id": "ikimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/ikimasu.mp3",
+      "bytes": 12119,
+      "sha256": "9944988f525d024e3fb90e78b6531766c014a8f366c47f92cc523e8406312563"
+    },
+    {
+      "id": "kimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/kimasu.mp3",
+      "bytes": 12955,
+      "sha256": "7deb1ab151831655b102ffaff3ca9abec4bb78abad0871b68c246e05c7d8ea7b"
+    },
+    {
+      "id": "mimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/mimasu.mp3",
+      "bytes": 12955,
+      "sha256": "bf153d62b723d83a7d3a57057ec2057222490ad63d73de48b901087678d5e5bd"
+    },
+    {
+      "id": "kikimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/kikimasu.mp3",
+      "bytes": 12955,
+      "sha256": "6c7cd105fbcbbe8fa03de5c659f0a888d47001d38e25b489bea7a3da6a077052"
+    },
+    {
+      "id": "hanashimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/hanashimasu.mp3",
+      "bytes": 15881,
+      "sha256": "1dcd3aa46db2cee329ae38cdedc0ef784fa6455309682db83f760e1c0cd0c53a"
+    },
+    {
+      "id": "yomimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/yomimasu.mp3",
+      "bytes": 12955,
+      "sha256": "8eb639786e9abaa3e2cb8a9adfcc7f81c93d41ad61ca5df5dca9279d36a0289d"
+    },
+    {
+      "id": "kakimasu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/kakimasu.mp3",
+      "bytes": 11283,
+      "sha256": "cb30ba4e347d59df749448efcea9b66d69e865066cc9d9846ae8ccae0f8d46a9"
+    },
+    {
+      "id": "benkyou",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/benkyou.mp3",
+      "bytes": 14209,
+      "sha256": "fe7231f2556c14992688a6f9db64c010658ec317a273690239336d1bd20b4054"
+    },
+    {
+      "id": "gakkou",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/gakkou.mp3",
+      "bytes": 12955,
+      "sha256": "417917c7442b478ca135bfcec13a167af7bb1de5416978b12c1c426a3936a4dc"
+    },
+    {
+      "id": "sensei",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/sensei.mp3",
+      "bytes": 13791,
+      "sha256": "33d1389db2f6d52098f34e321d07e16e53bcee490c6dcb190e70fd5179431084"
+    },
+    {
+      "id": "tomodachi",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/tomodachi.mp3",
+      "bytes": 14209,
+      "sha256": "5dfd55cc8b69574c064f5d879d47bf6a1c6bf9413d352ac635ed107e6957457e"
+    },
+    {
+      "id": "kazoku",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/kazoku.mp3",
+      "bytes": 11283,
+      "sha256": "37f5d27d3d7493f17796b3e1404bf2e64d0f621c67e006a79064769eaa2daec5"
+    },
+    {
+      "id": "nihongo",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/nihongo.mp3",
+      "bytes": 14209,
+      "sha256": "eec8230f6527568e23ed94008724d1bdea47592ac8c6d42130fd6023a3715e15"
+    },
+    {
+      "id": "eigo",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/eigo.mp3",
+      "bytes": 10866,
+      "sha256": "69e02bf8456bb33d25e5a0124d6726292701c16d8d8769c2cfd71ae654a63557"
+    },
+    {
+      "id": "mizu",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/mizu.mp3",
+      "bytes": 11283,
+      "sha256": "81745f1f97cc20f68de47efe2f4daade45aac99e8b4b40f13f1d94cdf8c82545"
+    },
+    {
+      "id": "gohan",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/gohan.mp3",
+      "bytes": 12119,
+      "sha256": "c3bc641fe890ee3d080b2820e9c7c98d4144b62c2200d90c839a2aa3b9569b05"
+    },
+    {
+      "id": "pan",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/pan.mp3",
+      "bytes": 10030,
+      "sha256": "926dc00c43ca51b6834c4343fd512785fa2a51527c642789ac6ef0376500b0fb"
+    },
+    {
+      "id": "ramen",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/ramen.mp3",
+      "bytes": 13791,
+      "sha256": "c444729ca2ed5f64b22bde47519a4b43594bb8769663080767de6b01ebc21059"
+    },
+    {
+      "id": "sushi",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/sushi.mp3",
+      "bytes": 12955,
+      "sha256": "85d07eed2f8374305e0eca63292398055ce508df68f6e063067b45838bfbba68"
+    },
+    {
+      "id": "tempura",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/tempura.mp3",
+      "bytes": 14209,
+      "sha256": "15943d56b9b956951e965127ac163a09afe3125e3380704a574f70e7fe758343"
+    },
+    {
+      "id": "ocha",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/ocha.mp3",
+      "bytes": 11283,
+      "sha256": "65cd02498a80ee8c7525e999a29cc6c9e3a19995545aee9d7e5bedc40bdb93a7"
+    },
+    {
+      "id": "koohii",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/koohii.mp3",
+      "bytes": 12119,
+      "sha256": "35a156907b077b1e41a82be2340107868035a9e3fb9bc287b06550410e9ddb9a"
+    },
+    {
+      "id": "denwa",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/denwa.mp3",
+      "bytes": 12955,
+      "sha256": "1cab9bff9b02690b98841c7a3af5e1b975a90e5d07ee151c11667b00f0b869b7"
+    },
+    {
+      "id": "terebi",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/terebi.mp3",
+      "bytes": 12119,
+      "sha256": "21d95493fd4279224f75985fcc34ebdcaf46fca4f206f2e590ab84122708a35c"
+    },
+    {
+      "id": "pasokon",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/pasokon.mp3",
+      "bytes": 14209,
+      "sha256": "2d9e3fa9c7af1071f725d33d7179efa3a0a65660b9162307adbb49b54ee13bc9"
+    },
+    {
+      "id": "keitai",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/keitai.mp3",
+      "bytes": 10866,
+      "sha256": "5f24d16441199970a9c18df1a40a39197166902fb566e148863c4f76cae581cb"
+    },
+    {
+      "id": "densha",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/densha.mp3",
+      "bytes": 14209,
+      "sha256": "5e457201bd30b4f8d0844b4fc30f4c16e2123dd1c182bbf287f76323789cfe29"
+    },
+    {
+      "id": "basu",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/basu.mp3",
+      "bytes": 11283,
+      "sha256": "7944d7aa73999c8969665263500d31ff4a46931871def5a83d55a3d1fcabbf28"
+    },
+    {
+      "id": "takushii",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/takushii.mp3",
+      "bytes": 14209,
+      "sha256": "1b2d36e80fd604c5aba1b0e43abddc9062084380b99337d7b6efb8325a64b3d6"
+    },
+    {
+      "id": "hikouki",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/hikouki.mp3",
+      "bytes": 14209,
+      "sha256": "8f507fe11ad7dd6645dba202a9b9c93fdcb30b163142274a332333f84b880fea"
+    },
+    {
+      "id": "jikan",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/jikan.mp3",
+      "bytes": 11283,
+      "sha256": "697b3bfb92a87255e7a0b7449e20d276c5a425b2fc0690e293a341f02b93d995"
+    },
+    {
+      "id": "kyou",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/kyou.mp3",
+      "bytes": 9194,
+      "sha256": "1be99e57a66f8b73058cb2d20f5fb52e86b235d6d516b0e23f07d2079f32b138"
+    },
+    {
+      "id": "ashita",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/ashita.mp3",
+      "bytes": 12955,
+      "sha256": "4f04cf7ba56b4a5bb867181546eb19569d4291c3906d7dc83452aa10ed86779c"
+    },
+    {
+      "id": "kinou",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/kinou.mp3",
+      "bytes": 11283,
+      "sha256": "ba705da68fee605ae211665ac25d5d081c754a036fd91605f15143f369460034"
+    },
+    {
+      "id": "ima",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/ima.mp3",
+      "bytes": 9194,
+      "sha256": "a00034b1c9cef7e71395d75677ba369e2cc9b8ab8ae38688cc4f41a0232a33dd"
+    },
+    {
+      "id": "asa",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/asa.mp3",
+      "bytes": 10866,
+      "sha256": "a708f7a1a4eb3bcde78ace6ee50837646c7b4207bbeff2b6bcf5d5cfe9e19484"
+    },
+    {
+      "id": "hiru",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/hiru.mp3",
+      "bytes": 9194,
+      "sha256": "c8005e416f15af176769503cf1cad5705307d0117ae9e7e8b83955359d2531b2"
+    },
+    {
+      "id": "yoru",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/yoru.mp3",
+      "bytes": 9194,
+      "sha256": "fe65e2549e8875c93a53982f9f58a78a888ac3de7ac7b396bbf241235931d17c"
+    },
+    {
+      "id": "ookii",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/ookii.mp3",
+      "bytes": 12119,
+      "sha256": "c93e1f11011fc1c342baf8c16305fc0b3225dad48609e6b119f54d8ed62ab909"
+    },
+    {
+      "id": "chiisai",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/chiisai.mp3",
+      "bytes": 12119,
+      "sha256": "8c0c0999c324396c1ad0f5e3e89e2ea2f6e211af6662205b0734870e678782fc"
+    },
+    {
+      "id": "atarashii",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/atarashii.mp3",
+      "bytes": 15881,
+      "sha256": "af7fbf6bf622302d3d37d99272ec50be7f22c53649b54a2d6e9f4f20b69e9885"
+    },
+    {
+      "id": "furui",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/furui.mp3",
+      "bytes": 11283,
+      "sha256": "2d5cb8da36f64590264eb44ac43983254e362d04e27f8a507bde44d94fe0d7ea"
+    },
+    {
+      "id": "takai",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/takai.mp3",
+      "bytes": 12119,
+      "sha256": "e828adf1a5e8b887c831ccde8de584d17cb493a77e022e235fc427cc62c7cf5a"
+    },
+    {
+      "id": "yasui",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/yasui.mp3",
+      "bytes": 13791,
+      "sha256": "0251440c39297d3ed9182a3d9d1156086e2cf3d657380bec7803a5a2299fc41e"
+    },
+    {
+      "id": "oishii",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/oishii.mp3",
+      "bytes": 13791,
+      "sha256": "a819b79dda059ad2c50c337af6bcfbac143675a56322d49bbfdadaa50bc10f98"
+    },
+    {
+      "id": "tanoshii",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/tanoshii.mp3",
+      "bytes": 13791,
+      "sha256": "5ffb4c2213239b69dfc2b67af0e1d99c3bb6ffa1b02a585d5f75f360c77f19ac"
+    },
+    {
+      "id": "muzukashii",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/muzukashii.mp3",
+      "bytes": 16717,
+      "sha256": "96155d5db566c9bf96953bcc33d70fa8d6daaa5a7289f075b152fd789be2f19b"
+    },
+    {
+      "id": "yasashii",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/yasashii.mp3",
+      "bytes": 15045,
+      "sha256": "e7c0d1c5bd66eba643a18bad2ffc2ddf7aa01c33e4ab0279d65a48a6b7e9d9f1"
+    },
+    {
+      "id": "kawaii",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/kawaii.mp3",
+      "bytes": 11283,
+      "sha256": "2531011e0f2a6d455d43cb0a0e155ffba337f39a2003f66f1b0a89caf9642534"
+    },
+    {
+      "id": "sugoi",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/sugoi.mp3",
+      "bytes": 14209,
+      "sha256": "8383308065ff559172ed2e69b88cbd480c95cba9466de4c0cf5c6ea1fef08fbf"
+    },
+    {
+      "id": "daijoubu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/daijoubu.mp3",
+      "bytes": 16717,
+      "sha256": "2ccb0bab4267365bf1968623e099e077fd7c70e30622c60d1d85ece21942d144"
+    },
+    {
+      "id": "genki",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/genki.mp3",
+      "bytes": 13791,
+      "sha256": "d7394ab306df0164b4a2a3623cfb33371f08c63d1a3c1b7beff25c100e88a8bc"
+    },
+    {
+      "id": "suki",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/suki.mp3",
+      "bytes": 11283,
+      "sha256": "2fc3b0586ac3adcb7488a4107592afd813eb909f4b15b5716af54ba17cf943fb"
+    },
+    {
+      "id": "kirai",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/kirai.mp3",
+      "bytes": 11283,
+      "sha256": "d4033e8d8289c3e38862f6f380099f480030eafabda0efddfa56510d7e128345"
+    },
+    {
+      "id": "tsukareta",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/tsukareta.mp3",
+      "bytes": 14209,
+      "sha256": "2045fa4a9a46571199a22507b62f807cc7c9d5ee6db1e883acb355c6a85afb71"
+    },
+    {
+      "id": "nemui",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/nemui.mp3",
+      "bytes": 12955,
+      "sha256": "26182fcbea7b8d6ba782f14016c7cf5be348d6443e321fdf3d49c2d0800ad234"
+    },
+    {
+      "id": "samui",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/samui.mp3",
+      "bytes": 12119,
+      "sha256": "cd2f94fb010dd76f1fa3e0ef410c87c92322f2f2b9bddb1f51c456d232849e83"
+    },
+    {
+      "id": "atsui",
+      "category": "description",
+      "file": "assets/audio/questions/fish-92428785/atsui.mp3",
+      "bytes": 12955,
+      "sha256": "8b6687a723876502796c87553504aa824b527a9b31dd0c25e325d8acaeae0890"
+    },
+    {
+      "id": "ame",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/ame.mp3",
+      "bytes": 9194,
+      "sha256": "2d478d40cdaa57de3b5d0cabfb3de9f53ef9f57aaba1d6f70af7636700539bc7"
+    },
+    {
+      "id": "yuki",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/yuki.mp3",
+      "bytes": 11283,
+      "sha256": "305723e6eabadb1c5651314eeafefdf23f469fcbcb85c138f8c6314bfa2bdd1c"
+    },
+    {
+      "id": "kaze",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/kaze.mp3",
+      "bytes": 10030,
+      "sha256": "f7ef6bd70546a3e0e8bef860f80d766b594617e2e2d2509802e647ae085a57a1"
+    },
+    {
+      "id": "haru",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/haru.mp3",
+      "bytes": 11283,
+      "sha256": "f1c410834f1cbeca7d9adae27199430a9ff0aa672a1afed5cd02be7a4e73f0e8"
+    },
+    {
+      "id": "natsu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/natsu.mp3",
+      "bytes": 12955,
+      "sha256": "5078045eccc4b3621db1e8c4276e343221211b62c8d7a3db584da0066bf35695"
+    },
+    {
+      "id": "aki",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/aki.mp3",
+      "bytes": 10030,
+      "sha256": "98a77eb8fed8c1886ac8e909123d9b20ca2b4c5f97f2cd7d1fbc12619688dfb9"
+    },
+    {
+      "id": "fuyu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/fuyu.mp3",
+      "bytes": 10030,
+      "sha256": "ca242de51c4d19987a9f42f6beaebc4d6b3e5a5dc27d038acf1f2fa08797e5a3"
+    },
+    {
+      "id": "yama",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/yama.mp3",
+      "bytes": 11283,
+      "sha256": "30f6ecf595b7b95c22648ca1b249de3b84c26669281a48f2d4e0fc13a13963cd"
+    },
+    {
+      "id": "kawa",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/kawa.mp3",
+      "bytes": 9194,
+      "sha256": "b5d34ac2f09e6a740360b284a7ca23370521b2655d56625f54090b311f49b087"
+    },
+    {
+      "id": "umi",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/umi.mp3",
+      "bytes": 9194,
+      "sha256": "b8af1325c4abb27a10c88cbaba66d86cf93d5100bc6bd07139c0a9bf3c82506b"
+    },
+    {
+      "id": "sora",
+      "category": "time_nature",
+      "file": "assets/audio/questions/fish-92428785/sora.mp3",
+      "bytes": 12955,
+      "sha256": "afdc4f1a3912d4c5c879ec84a4937e179817ae3e9a10f16a62acfc00068dd67b"
+    },
+    {
+      "id": "hana",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/hana.mp3",
+      "bytes": 9194,
+      "sha256": "69c877a14266a7961fd8e227aa25ccf2587cbef8d264991ebbee54d3d0fb0f4a"
+    },
+    {
+      "id": "ki",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/ki.mp3",
+      "bytes": 9194,
+      "sha256": "393213db4a6aff0d58cdce20135001407f18ccf2116421450c6e85732e99373b"
+    },
+    {
+      "id": "neko",
+      "category": "animals",
+      "file": "assets/audio/questions/fish-92428785/neko.mp3",
+      "bytes": 11283,
+      "sha256": "01795cdf71fab185f23a08478f9d53ed516ce4bfbdeea75cd12cb3d6f5e0495d"
+    },
+    {
+      "id": "inu",
+      "category": "animals",
+      "file": "assets/audio/questions/fish-92428785/inu.mp3",
+      "bytes": 10030,
+      "sha256": "8179df623336d65e3192887eb349f953a590b036ec065f0cf42f1abdb40462c6"
+    },
+    {
+      "id": "tori",
+      "category": "animals",
+      "file": "assets/audio/questions/fish-92428785/tori.mp3",
+      "bytes": 9194,
+      "sha256": "d897cb8207517d383445b996951805fc4420ca80e8e91b272355b1a0067e25ba"
+    },
+    {
+      "id": "sakana",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/sakana.mp3",
+      "bytes": 12955,
+      "sha256": "e01ea3516db5f35b5cc87d81fa3981e0824bd3f74d6cf84a37b999c9c13b9683"
+    },
+    {
+      "id": "ringo",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/ringo.mp3",
+      "bytes": 11283,
+      "sha256": "5dabbdfe508dfabf1ab0dd49eb4b2bf7cac0835f1b9be61e0917fe889d70d6c8"
+    },
+    {
+      "id": "mikan",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/mikan.mp3",
+      "bytes": 13791,
+      "sha256": "1c34529cf65a40f3e79c1ea31cfcee22d4f894d6f910652bbecd7c141df7e0dc"
+    },
+    {
+      "id": "banana",
+      "category": "food",
+      "file": "assets/audio/questions/fish-92428785/banana.mp3",
+      "bytes": 13791,
+      "sha256": "ac00fe5d885dc377eb794cf0efa6fcc57697b1b4cacf9e2660350d28ef1e6e15"
+    },
+    {
+      "id": "aisukuriimu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/aisukuriimu.mp3",
+      "bytes": 17971,
+      "sha256": "9817b08e08000c256b21bcd0c9ead3d16ea06eaddf9d4ac37be4e62fdf4863e4"
+    },
+    {
+      "id": "chokoreeto",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/chokoreeto.mp3",
+      "bytes": 16717,
+      "sha256": "d4f45be2e754eec760180e7699efef92fa948d29864c03a584985ecad7eb1539"
+    },
+    {
+      "id": "keeki",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/keeki.mp3",
+      "bytes": 16717,
+      "sha256": "31f923acd0ce40652f64d4277585111fb8e2f301460a90a94830747dec19ad7e"
+    },
+    {
+      "id": "pizza",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/pizza.mp3",
+      "bytes": 10866,
+      "sha256": "da5faa6a0a2e83c56f37ad14c8c10f20a9249647392118304b011e3567bcbe57"
+    },
+    {
+      "id": "hanbaagaa",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/hanbaagaa.mp3",
+      "bytes": 16717,
+      "sha256": "5fe3894fb15f4e23cce8003f94caf567e3b8cdec167015e81706e5a18dd210d2"
+    },
+    {
+      "id": "sandoicchi",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/sandoicchi.mp3",
+      "bytes": 17553,
+      "sha256": "4926492f80f5008cfac6e6c09c3733314c695af8c851459b835a51e514c50cf2"
+    },
+    {
+      "id": "jutsu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/jutsu.mp3",
+      "bytes": 12119,
+      "sha256": "282e9103107438e4d72a16777098c938334e2999c0a9d27792244c165c59995b"
+    },
+    {
+      "id": "mahou",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/mahou.mp3",
+      "bytes": 12955,
+      "sha256": "30e9f7eb75c7f47d33174366fc7d4e8cba2bc51268376ec925fcb7d07f5dc7a2"
+    },
+    {
+      "id": "ken",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/ken.mp3",
+      "bytes": 17847,
+      "sha256": "b4b04fdc39eba0420a1666c1acb82bca5a4f17f62d5b8176973724a05ed54c87"
+    },
+    {
+      "id": "tate",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/tate.mp3",
+      "bytes": 10866,
+      "sha256": "daffb42445fef21a00607cfd3908e9299de51efec3716668a260187aa57219cd"
+    },
+    {
+      "id": "yoroi",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/yoroi.mp3",
+      "bytes": 11283,
+      "sha256": "0ab63d9b31e2c827ecd3e1b3950c1a6b42492d51e29ffa3e62db7f82f3667672"
+    },
+    {
+      "id": "yumi",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/yumi.mp3",
+      "bytes": 10030,
+      "sha256": "e578b706e68910cfb88b6d3e85bd19f9fe54be13abf726bfd5cc684ec588ee0e"
+    },
+    {
+      "id": "ya",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/ya.mp3",
+      "bytes": 9194,
+      "sha256": "116a843d73dcc8862d79018bbb4d683edcc307358d8c5425d19d3c02a5a55e58"
+    },
+    {
+      "id": "tatakau",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/tatakau.mp3",
+      "bytes": 12955,
+      "sha256": "5e3378cc993161d77591127ef4f5d4a026526a096a646bde676b5b05bd88ceaf"
+    },
+    {
+      "id": "mamoru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/mamoru.mp3",
+      "bytes": 11283,
+      "sha256": "f0aca5e2787c49a669ac068ee5d4aa64dbc692d07b6a6db14a3b4644c76bfd65"
+    },
+    {
+      "id": "nigeru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/nigeru.mp3",
+      "bytes": 12119,
+      "sha256": "d05e4e49096c078e862486eb2c9056b5ed704da16a045f24cdad45c8f2f5d042"
+    },
+    {
+      "id": "katsu",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/katsu.mp3",
+      "bytes": 10866,
+      "sha256": "7370424936879df5afa7304623cb738972a58408ac0b3813f91fbc82ee28faac"
+    },
+    {
+      "id": "makeru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/makeru.mp3",
+      "bytes": 13791,
+      "sha256": "12f61bc24b01027ddfadee2c850fa62cb829daef55b7c3400c1e0428ff35b0c5"
+    },
+    {
+      "id": "yuuki",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/yuuki.mp3",
+      "bytes": 12119,
+      "sha256": "7762a7cad090decfb10579e91635c5e13b9a2d01110963662779ea88712a9754"
+    },
+    {
+      "id": "kibou",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/kibou.mp3",
+      "bytes": 11283,
+      "sha256": "4b794856f15e4d7ed59a94dfede10e8bc59265a606143bef8e9bb45af79b8489"
+    },
+    {
+      "id": "yume",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/yume.mp3",
+      "bytes": 9194,
+      "sha256": "a8f6cdd1590785c28fedb2079f030d3da0d81a013d85ede83aea314e13ad3262"
+    },
+    {
+      "id": "ai",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/ai.mp3",
+      "bytes": 9194,
+      "sha256": "95f624de89333eb4626f331d0734808d6ff287d92dc213505ab5b3ba6e78e8d6"
+    },
+    {
+      "id": "heiwa",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/heiwa.mp3",
+      "bytes": 11283,
+      "sha256": "5a0cdd6d2bb855402e53bcbb46315340ae1373908a6a8f1908a0f82e2a9ea687"
+    },
+    {
+      "id": "sensou",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/sensou.mp3",
+      "bytes": 14209,
+      "sha256": "371045c355215b4d9c399fe3880fff46cdf21dce702583fae331b9e68ef9508f"
+    },
+    {
+      "id": "shouri",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/shouri.mp3",
+      "bytes": 12119,
+      "sha256": "bc9ec5c5e35469f10883ac196b0553412ce2fe6a07eb08ab60fa1f554c2190ca"
+    },
+    {
+      "id": "haiboku",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/haiboku.mp3",
+      "bytes": 15045,
+      "sha256": "bfce6d0d3106e792a99a1c5adda849035da37c983b40826d462672b58e369cf4"
+    },
+    {
+      "id": "chikara",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/chikara.mp3",
+      "bytes": 12955,
+      "sha256": "a737e4829413cb4d95b4cac160221b4443c8ada4470b32c75fa94b57006509b6"
+    },
+    {
+      "id": "inochi",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/inochi.mp3",
+      "bytes": 12955,
+      "sha256": "a8a37542e8ea689f7944a3bb9c1693accd8d329110f331c70f8519e981318209"
+    },
+    {
+      "id": "kokoro",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/kokoro.mp3",
+      "bytes": 11283,
+      "sha256": "de3e99c0a633ecaff8a11d3225b01e0c6806468de156a4a94e657ec053251286"
+    },
+    {
+      "id": "tamashii",
+      "category": "fantasy_battle",
+      "file": "assets/audio/questions/fish-92428785/tamashii.mp3",
+      "bytes": 14209,
+      "sha256": "5e25506ecbb48bf7e152236a8fcfce0300795ec5fb42ad844fe182fa537b910e"
+    },
+    {
+      "id": "ie",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/ie.mp3",
+      "bytes": 10030,
+      "sha256": "81852bf6581e99b2f445a6c81d958d274acee5ca94d5ce65773879af6a603893"
+    },
+    {
+      "id": "heya",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/heya.mp3",
+      "bytes": 11283,
+      "sha256": "21c3f7a8cadc02926241720cf2d7ada8dcf56807374ba676d6011ea17b774186"
+    },
+    {
+      "id": "daidokoro",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/daidokoro.mp3",
+      "bytes": 15881,
+      "sha256": "55872abe241d3bc5839a50680056b144dd4a5fc3e32c1206d1a99f6b9260c0cd"
+    },
+    {
+      "id": "ofuro",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/ofuro.mp3",
+      "bytes": 12119,
+      "sha256": "eefbf67bf4a751732ad016df854a0c4cca64173ebd354982ef3dfbdfe4080b23"
+    },
+    {
+      "id": "toire",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/toire.mp3",
+      "bytes": 11283,
+      "sha256": "ffc81d018d9e676c6e723e271cc9616a06675e2eb345effb7e787dfcdf931ed9"
+    },
+    {
+      "id": "doa",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/doa.mp3",
+      "bytes": 10030,
+      "sha256": "7b3195096af3bba623c341ac94ac9fb059bcea72b2145aaa2e9241945d217dfb"
+    },
+    {
+      "id": "mado",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/mado.mp3",
+      "bytes": 10030,
+      "sha256": "eba5d5d330d9dbb69e6a5850b0526a57de873ecad7ff4fb90983286bfd5bb32c"
+    },
+    {
+      "id": "tsukue",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/tsukue.mp3",
+      "bytes": 11283,
+      "sha256": "692bf5e1022ef92e9bb1d89519bd1dcc48425f147bc6ec0f07331066dfdd8b65"
+    },
+    {
+      "id": "isu",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/isu.mp3",
+      "bytes": 10866,
+      "sha256": "f0cde7012cfcc92d0aa0750abecbd3e7bca1e48973e102edcb02ef01dadcd33a"
+    },
+    {
+      "id": "beddo",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/beddo.mp3",
+      "bytes": 12955,
+      "sha256": "972ef60d93279e40100183f2b1a8d02aea3bfc997ede30059f165bcda46ee861"
+    },
+    {
+      "id": "reizouko",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/reizouko.mp3",
+      "bytes": 15881,
+      "sha256": "a87db51ae9a20ad2097350e59321a93da89f2ca5ae9f370df0560a7acc391d42"
+    },
+    {
+      "id": "sentakuki",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/sentakuki.mp3",
+      "bytes": 16717,
+      "sha256": "89185f7fcf75711ff2d073f4d23c89436e08a7be2cc4f48fb3dbf7a522e80c9d"
+    },
+    {
+      "id": "soujiki",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/soujiki.mp3",
+      "bytes": 15045,
+      "sha256": "414108f866f37a7552c78f0f9604c051b01e3719edd155ce65ed0572e0897e89"
+    },
+    {
+      "id": "eakon",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/eakon.mp3",
+      "bytes": 12955,
+      "sha256": "c1432d897f152256155652641a755c4cf91e01b266245cf11e41348ef809fadf"
+    },
+    {
+      "id": "denki",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/denki.mp3",
+      "bytes": 12955,
+      "sha256": "74ff50df75fc092abd5e2486452fe3733bbf8760eba295749dbd949d6e3dab33"
+    },
+    {
+      "id": "kagi",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/kagi.mp3",
+      "bytes": 10030,
+      "sha256": "782ea9609fc2065c9813cbed7375c525543d1c7cfd789117401acb69701eea06"
+    },
+    {
+      "id": "kasa",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/kasa.mp3",
+      "bytes": 10866,
+      "sha256": "7b5ee1333c3dffa11e467fe4213112ede1d815ab83b00f6217c8559d7ef5020d"
+    },
+    {
+      "id": "kaban",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/kaban.mp3",
+      "bytes": 10030,
+      "sha256": "73f68428a4665f03747117d8d3a371b1a543d648a554a9d1fc57121d31867b9d"
+    },
+    {
+      "id": "saifu",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/saifu.mp3",
+      "bytes": 14209,
+      "sha256": "6d01ec9de86ae8c6c23ca77050e0262877ed4b50c7090648c2f25d80f52a5923"
+    },
+    {
+      "id": "tokei",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/tokei.mp3",
+      "bytes": 10866,
+      "sha256": "56b07a4aa9f56776d8e73c2fb7bac584d52f3b073c222740d4377029043efcf5"
+    },
+    {
+      "id": "kagami",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/kagami.mp3",
+      "bytes": 11283,
+      "sha256": "c49fe8149d431c3945169301c91e41f4557fbeaaea8d3cc54a8a83f8c05df356"
+    },
+    {
+      "id": "taoru",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/taoru.mp3",
+      "bytes": 12955,
+      "sha256": "b58e55844d9c89c82ff53cb381390e589d5a5273729d6a83be877962cd123f14"
+    },
+    {
+      "id": "koppu",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/koppu.mp3",
+      "bytes": 11283,
+      "sha256": "701be1541c6cdf0cebfddaebf4370f642c41fb218cf2342c7067f327edd9a5da"
+    },
+    {
+      "id": "sara",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/sara.mp3",
+      "bytes": 10030,
+      "sha256": "6b997863ad1c352af8ee35e4e979775365e6c5599bd05733b0761526b8e43ac4"
+    },
+    {
+      "id": "hashi_chopsticks",
+      "category": "household",
+      "file": "assets/audio/questions/fish-92428785/hashi_chopsticks.mp3",
+      "bytes": 11283,
+      "sha256": "a70e8a0ac8d0d45f951af7ab26d1a769c52af06fbc3c62450acabbe1e1550001"
+    },
+    {
+      "id": "fuku",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/fuku.mp3",
+      "bytes": 10030,
+      "sha256": "fb8ec5db10271530b2a53e5424b5948a353109b4f6520894b6d5e417bdeeb513"
+    },
+    {
+      "id": "shatsu",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/shatsu.mp3",
+      "bytes": 12119,
+      "sha256": "2135a53987164748d59ad6af53a1adfa311b3f71b255c9a209750b1d9feb6067"
+    },
+    {
+      "id": "tishatsu",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/tishatsu.mp3",
+      "bytes": 14209,
+      "sha256": "258b8156c16faa37bb19c6e8ff14a757cff1366f7368ed66c27cff3825eedb74"
+    },
+    {
+      "id": "zubon",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/zubon.mp3",
+      "bytes": 12955,
+      "sha256": "2485a7947c11b79f08eeab1abdd4510aebc2b47e9fd7b44ac2ac71b44fcf4727"
+    },
+    {
+      "id": "sukaato",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/sukaato.mp3",
+      "bytes": 15045,
+      "sha256": "609b467baacffca8f49d2e0e967af703787ed7757cb1ff0aabf5652278af771e"
+    },
+    {
+      "id": "wanpiisu",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/wanpiisu.mp3",
+      "bytes": 16717,
+      "sha256": "43c5cc2b5d7bdfa2a997abbcc101ef41b6286f25b9d18ec714aed6de9813bdb6"
+    },
+    {
+      "id": "kooto",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/kooto.mp3",
+      "bytes": 12119,
+      "sha256": "2a1f1dd09ae4cd5b0cbebce31015980d34b0c8ee8e45e00cddeba167d9dd611a"
+    },
+    {
+      "id": "jaketto",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/jaketto.mp3",
+      "bytes": 15045,
+      "sha256": "e747f447dcafface04c6f0a8b82e57d8fee7ff5d0bc636e9fc4d13b5de7a0d37"
+    },
+    {
+      "id": "seetaa",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/seetaa.mp3",
+      "bytes": 13791,
+      "sha256": "ab0d8d3c43514d7257db0acc9267ed37dd0c37a88bc0b425c6859b38c495f4b3"
+    },
+    {
+      "id": "kutsushita",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/kutsushita.mp3",
+      "bytes": 14209,
+      "sha256": "de15ab8dd2817a2ae6bd16da3e72baae8d1963b2c5b9b41c31835ee82577d763"
+    },
+    {
+      "id": "kutsu",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/kutsu.mp3",
+      "bytes": 11283,
+      "sha256": "ac35151e48900148dd4ffc077302a3aabc13c0bfb5c7f01aa628864a0e8fcc0d"
+    },
+    {
+      "id": "suniikaa",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/suniikaa.mp3",
+      "bytes": 18807,
+      "sha256": "bd0ffa53e6548845cb5b95fbfb792f7e12521ff938783949acfe104acca66eb3"
+    },
+    {
+      "id": "boushi",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/boushi.mp3",
+      "bytes": 14209,
+      "sha256": "e096bfb5170ad5afaa8262817816383c28227ce3daef320518d3aefbe9b6b4ea"
+    },
+    {
+      "id": "tebukuro",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/tebukuro.mp3",
+      "bytes": 12119,
+      "sha256": "398a22987185b7e80a892ce3d3d517f203cfebce137f49c6402acc5ca61e90c2"
+    },
+    {
+      "id": "megane",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/megane.mp3",
+      "bytes": 12119,
+      "sha256": "bdc1d64492544f7af050afe3c1796282d0f565afa33ae0a8cddd21340ef21fad"
+    },
+    {
+      "id": "udedokei",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/udedokei.mp3",
+      "bytes": 14209,
+      "sha256": "28cee000f83f5518074c8e8747ab03ff752149f61654a38824ad761f6161180a"
+    },
+    {
+      "id": "nekutai",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/nekutai.mp3",
+      "bytes": 12955,
+      "sha256": "d92cd9b9f5bf88df65b6557d46ef55e0be8a7083c0b43182bd727899ec39429a"
+    },
+    {
+      "id": "beruto",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/beruto.mp3",
+      "bytes": 13791,
+      "sha256": "762e94ab72660b48755b6867cc1482a56148052086c74fcd22567faf27e6a49a"
+    },
+    {
+      "id": "pajama",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/pajama.mp3",
+      "bytes": 12955,
+      "sha256": "351a3300d0495b94b252cdeaaddacef8fb50932009389aa48f1da2287edf21f0"
+    },
+    {
+      "id": "uwagi",
+      "category": "clothing",
+      "file": "assets/audio/questions/fish-92428785/uwagi.mp3",
+      "bytes": 12955,
+      "sha256": "d2cdb9413e7ac2a702131c038c13289be28bef354212717dee77b2b0ab63e981"
+    },
+    {
+      "id": "karada",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/karada.mp3",
+      "bytes": 12119,
+      "sha256": "69cfacaf451d7eec6628e1f09e93ec1d6546c63ece89a2db5f9728f853f7fe4b"
+    },
+    {
+      "id": "atama",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/atama.mp3",
+      "bytes": 14209,
+      "sha256": "7b877eeeeadf7b34d085ced492cf12fb95685f121dd9bd83cc68f683156024de"
+    },
+    {
+      "id": "kao",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/kao.mp3",
+      "bytes": 11283,
+      "sha256": "55dffff23a5fdd32db5c4ad706b3475d108bb42cebb7bd74d3d930c0001df987"
+    },
+    {
+      "id": "me_eye",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/me_eye.mp3",
+      "bytes": 8358,
+      "sha256": "5d5a6dc2fb272860ab1be6e542f51398e8c3a4f0ec703f8c13e8e7f7e377307f"
+    },
+    {
+      "id": "mimi",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/mimi.mp3",
+      "bytes": 10866,
+      "sha256": "8ee1f7a4c637b5bff18678e2d2a5dc42b84c5aab8fce3453decf9ff2aa4c33dd"
+    },
+    {
+      "id": "hana_nose",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/hana_nose.mp3",
+      "bytes": 10866,
+      "sha256": "fb098810c7df4cf5de1ea77843a6afd3a3b08546dcc9a33f0df3cabd9c1ba2b2"
+    },
+    {
+      "id": "kuchi",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/kuchi.mp3",
+      "bytes": 12119,
+      "sha256": "cef83e159054239303d815a9e1c655e2298b35823ef6a3ed44647849e521cf8a"
+    },
+    {
+      "id": "ha_tooth",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/ha_tooth.mp3",
+      "bytes": 10030,
+      "sha256": "f29554c50706916e40f8afa59862e12c61e40a391cc02a89897988d0a3c50a17"
+    },
+    {
+      "id": "te_hand",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/te_hand.mp3",
+      "bytes": 9194,
+      "sha256": "387bc0c6d3e4d79143a3ba7ad222f7c2e05d01d77b0b4da18b8e6c1faca072cf"
+    },
+    {
+      "id": "ashi_body",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/ashi_body.mp3",
+      "bytes": 12119,
+      "sha256": "69ac0082de72835d3be2a3c4dd89319b01a2b3de31c31575b961e08e0980d481"
+    },
+    {
+      "id": "onaka",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/onaka.mp3",
+      "bytes": 12955,
+      "sha256": "80fac090e309db095deaf2160e86d37c348b530140e6f168cea42f0fa34d2f86"
+    },
+    {
+      "id": "senaka",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/senaka.mp3",
+      "bytes": 12955,
+      "sha256": "73c0b7e12b7a9bff0b5c36bfbdd826ad12289d1ae7bc5820fbbe7573615a67fe"
+    },
+    {
+      "id": "nodo",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/nodo.mp3",
+      "bytes": 10866,
+      "sha256": "c99bbb249a22fed2fab3a7a776bd9d5429fceb6a15b6c1df9a6c0b982df09db5"
+    },
+    {
+      "id": "netsu",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/netsu.mp3",
+      "bytes": 11283,
+      "sha256": "498ff11507289ab13972612923a64100a00c36e057728d7f17b518f4327f3e3b"
+    },
+    {
+      "id": "byouki",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/byouki.mp3",
+      "bytes": 11283,
+      "sha256": "dfe90e6402e81c57022d87e4e01824aeccdd67a5d59efcb9d81defe79c34acc4"
+    },
+    {
+      "id": "kusuri",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/kusuri.mp3",
+      "bytes": 10030,
+      "sha256": "8dd0eb55f001b0915f87f15e830a2c31604777621a182107664a43a316df1617"
+    },
+    {
+      "id": "byouin",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/byouin.mp3",
+      "bytes": 12955,
+      "sha256": "e93c916d3a867aaea8a2a547be79d0deb874e444e6e41542a3d3e9c1f75aee53"
+    },
+    {
+      "id": "isha",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/isha.mp3",
+      "bytes": 10030,
+      "sha256": "63dbadaa6c4c3901c40200159d46bfd96dde80e3e0d00c2f84fa52c9db93a906"
+    },
+    {
+      "id": "itai",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/itai.mp3",
+      "bytes": 12119,
+      "sha256": "ae74852a193b08c0547fb5e2eee8d244527ff2ebb2a293ba464d24f4e75ad4fd"
+    },
+    {
+      "id": "kenkou",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/kenkou.mp3",
+      "bytes": 13791,
+      "sha256": "0017d7c0035b6871513fdd53440c41edcb5004c7c8423ed2930a4924ede26f5e"
+    },
+    {
+      "id": "kega",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/kega.mp3",
+      "bytes": 10866,
+      "sha256": "967b6942b3437d544fa1ae32a762f1d889892d7536c842a8128ea0c1b54d8f46"
+    },
+    {
+      "id": "seki",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/seki.mp3",
+      "bytes": 11283,
+      "sha256": "ea6fe5b47ff23ed296737e8e41cfb3ff925a9d5ed2f539ce2608e1a097f7d6e0"
+    },
+    {
+      "id": "hanamizu",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/hanamizu.mp3",
+      "bytes": 14209,
+      "sha256": "cd52a5a21a459a241c341f862469e5d2d0a5ec92f12c907186544429825d415f"
+    },
+    {
+      "id": "zutsuu",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/zutsuu.mp3",
+      "bytes": 14209,
+      "sha256": "67b0263088e3ccf985abe9e657ad9e5d106c2e4212556fefaf697b6b94a2d8d9"
+    },
+    {
+      "id": "hakike",
+      "category": "health",
+      "file": "assets/audio/questions/fish-92428785/hakike.mp3",
+      "bytes": 12955,
+      "sha256": "6c97d6beb7f7aa61a6af7f8ec350576b8a2267fc0be5958fcf80ad00664c243c"
+    },
+    {
+      "id": "eki",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/eki.mp3",
+      "bytes": 10030,
+      "sha256": "607bc50488cabb608ef15b0442d3ce36012e4d5f9d68c68ff9fcb7653ec79de0"
+    },
+    {
+      "id": "mise",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/mise.mp3",
+      "bytes": 10866,
+      "sha256": "74fd53054f6d362fbd703753a5c37dad10f64cd79691b2aa2d2b5aed7e62ae8d"
+    },
+    {
+      "id": "suupaa",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/suupaa.mp3",
+      "bytes": 14209,
+      "sha256": "69b864bf8d63eb94747b50924cacb2e2c3647506bac9942f4a6508b96a47f05c"
+    },
+    {
+      "id": "konbini",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/konbini.mp3",
+      "bytes": 12119,
+      "sha256": "42d71a0e4eb37ceb9c1673fa87ebe645767272479722339ff2d46b847db628df"
+    },
+    {
+      "id": "depaato",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/depaato.mp3",
+      "bytes": 15045,
+      "sha256": "9d269eb9703be8ef8bdf36292117d87b3db6cac4aac3eb419371e0a4de98b970"
+    },
+    {
+      "id": "ginkou",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/ginkou.mp3",
+      "bytes": 15045,
+      "sha256": "2a053f5a2e5d0349e275677e39da3d1fef2bd0c2c02ff50c04f76bdaf7168c71"
+    },
+    {
+      "id": "yuubinkyoku",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/yuubinkyoku.mp3",
+      "bytes": 17553,
+      "sha256": "0754cf501a9980853424ef05ea0e43ce9aedbbededee8e4bde5084a4a39b8b51"
+    },
+    {
+      "id": "toshokan",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/toshokan.mp3",
+      "bytes": 14209,
+      "sha256": "3b3c4d3988a4e3e4d28cb486917c3928f86170c31119a8b1cfbb10f02039020b"
+    },
+    {
+      "id": "kouen",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/kouen.mp3",
+      "bytes": 11283,
+      "sha256": "229f6f50e79e46c53be2dca390f036f1520baaff6efde9b07ad26576db5b2f8c"
+    },
+    {
+      "id": "resutoran",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/resutoran.mp3",
+      "bytes": 14209,
+      "sha256": "230b946ef69070ad7b9f7eda4ab312e558b3efc8881edd5e2c57b763d3ff651a"
+    },
+    {
+      "id": "hoteru",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/hoteru.mp3",
+      "bytes": 11283,
+      "sha256": "e94cdf720551ff44feb879fa9e1496fa47e83db7cd2a7bfd6eba38fb4cae0e29"
+    },
+    {
+      "id": "kuukou",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/kuukou.mp3",
+      "bytes": 12955,
+      "sha256": "243619abd3e60bdd24c94a4b5d105f3043da209c018c16e1de2c6332642cc4d1"
+    },
+    {
+      "id": "yakkyoku",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/yakkyoku.mp3",
+      "bytes": 14209,
+      "sha256": "b20c69729fe399883e109c19adbfaf133b1f557392b6be466ba6c0b5bb6b8caa"
+    },
+    {
+      "id": "kouban",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/kouban.mp3",
+      "bytes": 11283,
+      "sha256": "841f34c8b602da26ee354d6276cfc150c02c81164eadc5638e55c9d734c04dff"
+    },
+    {
+      "id": "kissaten",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/kissaten.mp3",
+      "bytes": 15045,
+      "sha256": "ccefd491139fb80bebd0c761e2911d86098080eec10ce001a6f69f764e703100"
+    },
+    {
+      "id": "migi",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/migi.mp3",
+      "bytes": 11283,
+      "sha256": "8966bff2ab6735de92dc265b3e5eccf149910404959223a80afcfb80e3942467"
+    },
+    {
+      "id": "hidari",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/hidari.mp3",
+      "bytes": 11283,
+      "sha256": "a096f87b0726057ca1ef82da433a30896e83ed430b88af3dcd5a0b139a3fc22b"
+    },
+    {
+      "id": "mae",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/mae.mp3",
+      "bytes": 10030,
+      "sha256": "0564fa3fa0c3d2f450f79bc9c27f2b145912a92f991702e31f64ea1c706e90f0"
+    },
+    {
+      "id": "ushiro",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/ushiro.mp3",
+      "bytes": 14209,
+      "sha256": "9c9dbb3a89e15f3daf7017285e1232937bfc1dca87b118d675cded7ec6572e5c"
+    },
+    {
+      "id": "naka",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/naka.mp3",
+      "bytes": 13791,
+      "sha256": "903fce030cc7da1e0ecdafa19301e26199c385093fd80312c85db7788ba4d6fa"
+    },
+    {
+      "id": "soto",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/soto.mp3",
+      "bytes": 11283,
+      "sha256": "dbe629cde2c366cee9e1421e1f26ac3af857d169da855b65795e6972415323df"
+    },
+    {
+      "id": "ue",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/ue.mp3",
+      "bytes": 11283,
+      "sha256": "3df58994557009d23b9ed07735db18c4e4810d6decab0405fe14bc5e8da7819f"
+    },
+    {
+      "id": "shita",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/shita.mp3",
+      "bytes": 11283,
+      "sha256": "f090a7a71cf572c8cfce6b34cb60343fa3c11eb093cfad228b93ba6265ab6aa1"
+    },
+    {
+      "id": "chikai",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/chikai.mp3",
+      "bytes": 12119,
+      "sha256": "4d535c9b509619ed3bc37686cfb4e4f231dd9794b1b40c25479add18b36291fb"
+    },
+    {
+      "id": "massugu",
+      "category": "places_transport",
+      "file": "assets/audio/questions/fish-92428785/massugu.mp3",
+      "bytes": 15045,
+      "sha256": "09c2ce03a9c86a30feec3d9fcf4cb0ca046c038aa92d560a61f93b82b7b4850b"
+    },
+    {
+      "id": "okane",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/okane.mp3",
+      "bytes": 11283,
+      "sha256": "49f992dd6c66df45aa68be9a7f2774c1795745a8f3dfde0e7d30c6684c02814f"
+    },
+    {
+      "id": "en",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/en.mp3",
+      "bytes": 9194,
+      "sha256": "3001d42c59c83844e248de74a49175c827a1ff1742948b3d6534a195e8457ef9"
+    },
+    {
+      "id": "nedan",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/nedan.mp3",
+      "bytes": 13791,
+      "sha256": "0e4010392bf641d6dbe03f2f13b97793b6f0ec3c5524c062b90e77252fa24bf6"
+    },
+    {
+      "id": "ikura",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/ikura.mp3",
+      "bytes": 10866,
+      "sha256": "1e5180679141fbb1fdbabf9813f5e276633876e7fcd1ce289e0e364c2bbebc0b"
+    },
+    {
+      "id": "kaimasu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/kaimasu.mp3",
+      "bytes": 13791,
+      "sha256": "2b179b26be8315b08a89d4680c9f766be1c844e35093425a906fd440436ef520"
+    },
+    {
+      "id": "urimasu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/urimasu.mp3",
+      "bytes": 11283,
+      "sha256": "9eaeb6a373047e007a2894ca2b31937ad753add10ec94d53078223edb87e4c4b"
+    },
+    {
+      "id": "haraimasu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/haraimasu.mp3",
+      "bytes": 12955,
+      "sha256": "8e0555a3f8b14c5082bd531fa508834684d047ee540397bc389f984805a94c45"
+    },
+    {
+      "id": "genkin",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/genkin.mp3",
+      "bytes": 14209,
+      "sha256": "8642e5da45a07b034e4ad06ea39ad30097bc8a8ea4deada1ba1e99ca4a78f1b8"
+    },
+    {
+      "id": "kaado",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/kaado.mp3",
+      "bytes": 11283,
+      "sha256": "287e4295fdd26c7f9698cc5a55bbc0a598cc999f1588ee4e2301cb8c8d9e36d7"
+    },
+    {
+      "id": "otsuri",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/otsuri.mp3",
+      "bytes": 13791,
+      "sha256": "50f8a099b4184dde36b235335c07dc178ab20619c884fe1492181aa7f60da15c"
+    },
+    {
+      "id": "reshiito",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/reshiito.mp3",
+      "bytes": 13791,
+      "sha256": "7524a98f5a56968b30711c49a6c25216a904b2541670664b1288c5cf7f2afa15"
+    },
+    {
+      "id": "fukuro",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/fukuro.mp3",
+      "bytes": 10030,
+      "sha256": "9495040c0c2f3b95bca392471d3f68d15ea0bdd5c890e81f6c8bf4bac1efa508"
+    },
+    {
+      "id": "kaimono",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/kaimono.mp3",
+      "bytes": 13791,
+      "sha256": "10197542db9139e8a7502f75c474f4895999fa2d2236e03084e32d7f01924df7"
+    },
+    {
+      "id": "seeru",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/seeru.mp3",
+      "bytes": 11283,
+      "sha256": "736b2d2bd445c4cefec1d3536a41a7bff52fbfa4f8611ed75cdb216a36699fcb"
+    },
+    {
+      "id": "waribiki",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/waribiki.mp3",
+      "bytes": 14209,
+      "sha256": "f4e9bc649525cbf28367b9affd428703eac2e2955022b04888794410fee71b11"
+    },
+    {
+      "id": "zeikin",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/zeikin.mp3",
+      "bytes": 14209,
+      "sha256": "241ba8c2b0c7eaeb26f5c04f7c7a1f645eb6c0ef7df95946fcefc96baabb06ec"
+    },
+    {
+      "id": "muryou",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/muryou.mp3",
+      "bytes": 12119,
+      "sha256": "081fbde659c7a30ecdbc8737e86a723fb259da7a9d4a0d2ea4573459fce57cd8"
+    },
+    {
+      "id": "shouhin",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/shouhin.mp3",
+      "bytes": 14209,
+      "sha256": "fac15149237cd73c9a649d3b2fa34e06eecb56457377e55388fa703c330e6e00"
+    },
+    {
+      "id": "irimasu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/irimasu.mp3",
+      "bytes": 12119,
+      "sha256": "26239a7a9daad2b4b27c52719bafe0fbe6738116610479f0dc6363c80397bd04"
+    },
+    {
+      "id": "erabimasu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/erabimasu.mp3",
+      "bytes": 12955,
+      "sha256": "e806016ffa1e40694a66609ea89b9dc26db8e3c6dca76635d1a8fe10fb83133a"
+    },
+    {
+      "id": "ichi",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/ichi.mp3",
+      "bytes": 12119,
+      "sha256": "e61e779d423696ba8d88d05c7598c34be2620546550a8ed90de8d26618342102"
+    },
+    {
+      "id": "ni",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/ni.mp3",
+      "bytes": 9194,
+      "sha256": "5a7a2d79b2d75c507ff83748c49dcd9d0491bbb2234c3e5480cbaaa59816160b"
+    },
+    {
+      "id": "san",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/san.mp3",
+      "bytes": 9194,
+      "sha256": "804f27496633a85582159db8273c40ee5d90d98d5e8f55d16e720c90d85f417b"
+    },
+    {
+      "id": "yon",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/yon.mp3",
+      "bytes": 9194,
+      "sha256": "064d1afc29f64f91141ff233be361f23beb68bdfdcef2c3597398a2799bf0273"
+    },
+    {
+      "id": "go_number",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/go_number.mp3",
+      "bytes": 11283,
+      "sha256": "08294b572bf30a66cc8114610a5a9f4548e8f6ff5c2dedbc526241c82420cc18"
+    },
+    {
+      "id": "roku",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/roku.mp3",
+      "bytes": 11283,
+      "sha256": "9897cf1d7f30570573077d401dd8f16b956121c536330e064d40bf25a6a36b55"
+    },
+    {
+      "id": "nana",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/nana.mp3",
+      "bytes": 10866,
+      "sha256": "068ea5038a568731f78d72844fee330a108a2bd526b7482eb59e7a59d7e5bbf2"
+    },
+    {
+      "id": "hachi",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/hachi.mp3",
+      "bytes": 12955,
+      "sha256": "58e69f7145279a49e0322b9e0b7ba216cffe35a869a4e82aada94c0172cbebfe"
+    },
+    {
+      "id": "kyuu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/kyuu.mp3",
+      "bytes": 9194,
+      "sha256": "5a4639b9db438b06e78f2ff01e46d08951ab4ccfa0d3e416b48ccb049416f8e9"
+    },
+    {
+      "id": "juu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/juu.mp3",
+      "bytes": 10030,
+      "sha256": "d488cfa11481bc21e81c8433e128df414a9d155ab32f3f684c7bbc5548ac592b"
+    },
+    {
+      "id": "hyaku",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/hyaku.mp3",
+      "bytes": 10866,
+      "sha256": "5718832341ef3c62860db96215786b644ec38534ca4fd1f0bc76d37afa5a59d2"
+    },
+    {
+      "id": "sen_number",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/sen_number.mp3",
+      "bytes": 9194,
+      "sha256": "1d4e62ff89723502862d5d597b01b074595e6bbc49bb071241c65311ab7afbc0"
+    },
+    {
+      "id": "man_number",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/man_number.mp3",
+      "bytes": 9194,
+      "sha256": "951361579767d50524e7487dfa2a0ac521f6dc966fb52d3ede92349243626dec"
+    },
+    {
+      "id": "hitotsu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/hitotsu.mp3",
+      "bytes": 12955,
+      "sha256": "cd4b253bd531321b4c21ce333ffaf29e1169d880777166cfbe9fb08901e2c8ea"
+    },
+    {
+      "id": "futatsu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/futatsu.mp3",
+      "bytes": 11283,
+      "sha256": "42fd07875e18498d47a42164213585c46797a1698a68103b747a26191546de4c"
+    },
+    {
+      "id": "mittsu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/mittsu.mp3",
+      "bytes": 14209,
+      "sha256": "0a01b43881b3b02550e039eabc10769d1869340b8771027dad26cf203aab1b81"
+    },
+    {
+      "id": "yottsu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/yottsu.mp3",
+      "bytes": 13791,
+      "sha256": "0aa1ba0a6d26333294df6e0bf0d781b33bd224a2688719ce8951b797b92f06bd"
+    },
+    {
+      "id": "itsutsu",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/itsutsu.mp3",
+      "bytes": 12955,
+      "sha256": "28a4df407cb8006327165d93754e9a498cbb813d43129a553b051e635cefff33"
+    },
+    {
+      "id": "hitori",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/hitori.mp3",
+      "bytes": 11283,
+      "sha256": "854f8cdbdf7c25bbb134643c7e30ccf4890cb1d53e8d2071cad4a42bf6fc5f20"
+    },
+    {
+      "id": "futari",
+      "category": "shopping_numbers",
+      "file": "assets/audio/questions/fish-92428785/futari.mp3",
+      "bytes": 10866,
+      "sha256": "c7e02da76baae5a1a7bdd8840a51503a0f68fc84b031aaf32ba8c03c8d341d11"
+    },
+    {
+      "id": "gakusei",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/gakusei.mp3",
+      "bytes": 14209,
+      "sha256": "a15023281d5461c99d0df2a0c9f4eeeaf0d6908815c1eb390860413ce8f9f3d2"
+    },
+    {
+      "id": "kaishain",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/kaishain.mp3",
+      "bytes": 15045,
+      "sha256": "bd695c7ef4d914b5d03c78b936c784d839a004b24f9cb02f3c16d9a86c97d09a"
+    },
+    {
+      "id": "kyoushi",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/kyoushi.mp3",
+      "bytes": 12119,
+      "sha256": "b1185f91de9dd9b95c5c072f8e8b26856a6e3e357b22a04db9ff81b11984b48e"
+    },
+    {
+      "id": "kangoshi",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/kangoshi.mp3",
+      "bytes": 14209,
+      "sha256": "83edff80ac439589889b9f9b779bd4edccbe43f8bd2ab53f227d873379019218"
+    },
+    {
+      "id": "keisatsukan",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/keisatsukan.mp3",
+      "bytes": 15881,
+      "sha256": "e41e69d711801458e31dfb0bec036acbd82037e0aa2eb5478cf06b6b46886535"
+    },
+    {
+      "id": "shouboushi",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/shouboushi.mp3",
+      "bytes": 17971,
+      "sha256": "0fd545d57fc58270ac7e38303d2a0d678f875cf2e74d750671cfa938e5f17ecb"
+    },
+    {
+      "id": "tenin",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/tenin.mp3",
+      "bytes": 11283,
+      "sha256": "3e5160b54e36a7d6fd0001bc7dc160916562552a5cf102d147e7adbe2e6c3a45"
+    },
+    {
+      "id": "ryourinin",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/ryourinin.mp3",
+      "bytes": 14209,
+      "sha256": "96ec47581ffa502ac581eb7e21fb8e4933d4bac7714831eb325ec712ee8da4fa"
+    },
+    {
+      "id": "untenshu",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/untenshu.mp3",
+      "bytes": 16717,
+      "sha256": "e22b1e33171f51387b1a1bc96cb2270ca905eb07ffcb98127e78853b13ea5c5a"
+    },
+    {
+      "id": "enjinia",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/enjinia.mp3",
+      "bytes": 14209,
+      "sha256": "d655bda84869648b7e352d687242c88335646da64d043de10710bc9cd6dd749a"
+    },
+    {
+      "id": "dezainaa",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/dezainaa.mp3",
+      "bytes": 15881,
+      "sha256": "cf781dabfd5ddd5d947eb0085bb831d3e92df0ee8c16e513826b133a70f0a36e"
+    },
+    {
+      "id": "puroguramaa",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/puroguramaa.mp3",
+      "bytes": 15881,
+      "sha256": "49d93680e8ca5da8d9d2eece242cccf390af2bf2ff19ecaacdb0cf816e9a3576"
+    },
+    {
+      "id": "bengoshi",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/bengoshi.mp3",
+      "bytes": 14209,
+      "sha256": "00c21afe830e64825fe1c9ac8f145f413707eba45ad820f6f9c91c74c207bce2"
+    },
+    {
+      "id": "nouka",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/nouka.mp3",
+      "bytes": 13791,
+      "sha256": "b1940a856e172e4c07dd1e47b646be81e2731ee8e4660709c9c55449981df000"
+    },
+    {
+      "id": "kaisha",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/kaisha.mp3",
+      "bytes": 15045,
+      "sha256": "ff9d8b0a3056d6888769e8a6bbdad30f72c105c9057f62f1b1accf8949828303"
+    },
+    {
+      "id": "shigoto",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/shigoto.mp3",
+      "bytes": 13791,
+      "sha256": "59dc603deb05603bc3c1e86a29fd2415bb937be32b417d0808e4cbf790c50ad3"
+    },
+    {
+      "id": "kaigi",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/kaigi.mp3",
+      "bytes": 11283,
+      "sha256": "a6caa66bfd8d32bcb1915c03a207a8d3609f0fe42bb8fdef801f5080a758ec52"
+    },
+    {
+      "id": "jimusho",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/jimusho.mp3",
+      "bytes": 13791,
+      "sha256": "c0a0e702ee7b54a07700a3e7294b4dd58056d855aab1a166d7b9382a66096364"
+    },
+    {
+      "id": "shukudai",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/shukudai.mp3",
+      "bytes": 13791,
+      "sha256": "220af9b41b6fff7cccf575db09782613e12528d41cdfa5e304967b61ea17147d"
+    },
+    {
+      "id": "shiken",
+      "category": "school_work",
+      "file": "assets/audio/questions/fish-92428785/shiken.mp3",
+      "bytes": 10866,
+      "sha256": "d635bf8fa2f75f9a0f9cf527b819e23a455596753b9d00b2607e28e74ac17d25"
+    },
+    {
+      "id": "camera_word",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/camera_word.mp3",
+      "bytes": 10030,
+      "sha256": "e04100a9644e482f56967e1ca8a3e19fa8ec05e977f5085827b9e4325393fb96"
+    },
+    {
+      "id": "rajio",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/rajio.mp3",
+      "bytes": 12119,
+      "sha256": "5f15172ff331890c8a9b74fc991f2789355e5072c20ad512920c446a706b2a2e"
+    },
+    {
+      "id": "nyuusu",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/nyuusu.mp3",
+      "bytes": 12955,
+      "sha256": "d47e7963467fe83584b022064044ba5aa6bef8b97c8dceef4733fc788daa6a01"
+    },
+    {
+      "id": "intaanetto",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/intaanetto.mp3",
+      "bytes": 19643,
+      "sha256": "f4df9e0e5e78b97e4371e05493f98cc1963cdb770eadb55bfc587837c6c6a208"
+    },
+    {
+      "id": "sumaho",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/sumaho.mp3",
+      "bytes": 13791,
+      "sha256": "ff08befb82d888b20200facfc03fc5d31c327661e3ca318e68c8dee53b79a3ff"
+    },
+    {
+      "id": "apuri",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/apuri.mp3",
+      "bytes": 11283,
+      "sha256": "4d993558ee739fece8c7d39d5c0fe25c0e10eecc20a276dcb23552c28fd9cf23"
+    },
+    {
+      "id": "meeru",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/meeru.mp3",
+      "bytes": 12119,
+      "sha256": "0c6abcf18d7da8139a8cd3e5122bd5a6417ef62b79f1a2c504f5c6e7eadff4b4"
+    },
+    {
+      "id": "pasuwaado",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/pasuwaado.mp3",
+      "bytes": 14209,
+      "sha256": "e4ae069e7a4b9d479568ea7c90f5e1140862547415727b9a1fd307ae6ef3e643"
+    },
+    {
+      "id": "geemu",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/geemu.mp3",
+      "bytes": 11283,
+      "sha256": "449844fefc18aad68a94fd49e2858a13be83a0321988adbe95da3a5a0a54fc33"
+    },
+    {
+      "id": "anime_word",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/anime_word.mp3",
+      "bytes": 11283,
+      "sha256": "79419941f750d23f993489fa6a171a7d14e2967ba8af198f7a5af07bab253caa"
+    },
+    {
+      "id": "manga_word",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/manga_word.mp3",
+      "bytes": 12955,
+      "sha256": "5d14d45a39ab4b5023c6747fb53f85895a9ca1b5ef174461f3f99a27deb133c0"
+    },
+    {
+      "id": "supootsu",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/supootsu.mp3",
+      "bytes": 15045,
+      "sha256": "c3934fcc916b199aaafba06220b1e061ca7045692e86950928c79feb2f2f6201"
+    },
+    {
+      "id": "sakkaa",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/sakkaa.mp3",
+      "bytes": 13791,
+      "sha256": "ee4e37b546ea4a823859d02142f036f6d71ffdc915c77449ff837366696df413"
+    },
+    {
+      "id": "tenisu",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/tenisu.mp3",
+      "bytes": 12119,
+      "sha256": "39e75c34fbee62ee757633060817a7103dcab6d78fd76b2a23c692d4e57dcd3d"
+    },
+    {
+      "id": "basuketto",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/basuketto.mp3",
+      "bytes": 17971,
+      "sha256": "93baad243bd1c31e64b2d2bef45c3a7919407460ee878596c2959d85ddf02fc6"
+    },
+    {
+      "id": "bareebooru",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/bareebooru.mp3",
+      "bytes": 16717,
+      "sha256": "84305d72bd76b397247bc9394e71a7a277378f1cfd717a4c73759ef4b1b89a20"
+    },
+    {
+      "id": "piano",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/piano.mp3",
+      "bytes": 11283,
+      "sha256": "88be9e275f07ad9d75987bb8128cc9f77d14716d340c2456cf17607329118699"
+    },
+    {
+      "id": "gitaa",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/gitaa.mp3",
+      "bytes": 13791,
+      "sha256": "8e0e1fa5110eae842378fd2e61d2afe59f40ecc41e6ce6caea0f1a78c368ef85"
+    },
+    {
+      "id": "konsaato",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/konsaato.mp3",
+      "bytes": 14209,
+      "sha256": "9c21ffcd8f9964adc09215edb684984ed0ef41737dd94225fae770f0c5740827"
+    },
+    {
+      "id": "dorama",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/dorama.mp3",
+      "bytes": 11283,
+      "sha256": "a688ac6e22b7eae16d62de02234954652f6b5f2e587c2a8785ebfac193fa6a76"
+    },
+    {
+      "id": "chansu",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/chansu.mp3",
+      "bytes": 13791,
+      "sha256": "b16b814ab4e66e311afab9d008f6ac7bfb053e6114aaa72b2e5ad15335b2c33d"
+    },
+    {
+      "id": "memo",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/memo.mp3",
+      "bytes": 10030,
+      "sha256": "e6825bbb83ee508b7e7819464ab1ab4002b3d9d646d60a30fa5f617b7371442d"
+    },
+    {
+      "id": "nooto",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/nooto.mp3",
+      "bytes": 13791,
+      "sha256": "e07c385f2f0da296b09e94b503b2f52232b1215c2804ba2d9033c06db4d8bc00"
+    },
+    {
+      "id": "pen",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/pen.mp3",
+      "bytes": 10030,
+      "sha256": "6e9df1efe916d8a939c15d65c30f3c740e61672b65398e0938ba027c2c358220"
+    },
+    {
+      "id": "purezento",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/purezento.mp3",
+      "bytes": 14209,
+      "sha256": "768ebe544424e0b49d2944f2ca4b060a40ec89e25f8260dffa650f4ad1fe2d1c"
+    },
+    {
+      "id": "paatii",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/paatii.mp3",
+      "bytes": 13791,
+      "sha256": "337a94c6e3654565fad705c613965b134474deb65c88ae5fa5e13ce835616ca9"
+    },
+    {
+      "id": "ryukkusakku",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/ryukkusakku.mp3",
+      "bytes": 19643,
+      "sha256": "21e84f6e21f47585772f422e893f0854941a26a4c447a0660e32344a95f188a2"
+    },
+    {
+      "id": "petto",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/petto.mp3",
+      "bytes": 10866,
+      "sha256": "147d66fdcb43165ba7609680db98d4c04f9ed9a301e2624b100dbd110796b686"
+    },
+    {
+      "id": "dokutaa",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/dokutaa.mp3",
+      "bytes": 12955,
+      "sha256": "3755618f9342fadf2dae0084b5f35920054ab9e833859f388a81acab0eb9c6a2"
+    },
+    {
+      "id": "sukejuuru",
+      "category": "loanword",
+      "file": "assets/audio/questions/fish-92428785/sukejuuru.mp3",
+      "bytes": 15881,
+      "sha256": "aed040f5fd5ce75ee95c3e682558b8361319dbde8406044359ed72eb8d3996d9"
+    },
+    {
+      "id": "okiru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/okiru.mp3",
+      "bytes": 12955,
+      "sha256": "0ef815dca03a05359e887c6c1d3c5ff2a1061f08f6cd158a04e8cb4c1e2bd811"
+    },
+    {
+      "id": "neru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/neru.mp3",
+      "bytes": 10030,
+      "sha256": "7ac5169ca45ff29e8bb7c1e59fed763f71018c450f06ca6d4b43cacc985215f5"
+    },
+    {
+      "id": "aruku",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/aruku.mp3",
+      "bytes": 11283,
+      "sha256": "0afe735628251849680ff67340c1aa788669d9fff3bd11fa3647669613f4a130"
+    },
+    {
+      "id": "hashiru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/hashiru.mp3",
+      "bytes": 12955,
+      "sha256": "8353859ab4f2c77350e0d52372ba4c444a2467e23b31ca518eccbd5d50d67a9b"
+    },
+    {
+      "id": "oyogu",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/oyogu.mp3",
+      "bytes": 11283,
+      "sha256": "3dd83fc35ce52973d836ba39cb5ddb9c5846342230ef5026b4cb8cdf40f7c2c0"
+    },
+    {
+      "id": "noru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/noru.mp3",
+      "bytes": 10866,
+      "sha256": "89bb1c7cf1891fcc88401ebf84690a371a07af16daffee7f225a87d3b23e6ee6"
+    },
+    {
+      "id": "oriru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/oriru.mp3",
+      "bytes": 10866,
+      "sha256": "0fa71af4f0043b9126b1d16c09b6f5fdb84c9c734d09cd975e43f9110c2dd73a"
+    },
+    {
+      "id": "au",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/au.mp3",
+      "bytes": 9194,
+      "sha256": "138d5500a756dc3011b15b3ef5030e6c7f7bf068490c29b74b035f1f04a68ee1"
+    },
+    {
+      "id": "matsu",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/matsu.mp3",
+      "bytes": 12119,
+      "sha256": "74de3e9b5c2337eb00871c5a6533cccd13b3027370b83d52b73109f24bf812bf"
+    },
+    {
+      "id": "tsukau",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/tsukau.mp3",
+      "bytes": 11283,
+      "sha256": "73e5cefd5acb449270220418fd6f7692911d1869d0fc5ceea0389efb9aa1d2fa"
+    },
+    {
+      "id": "tsukuru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/tsukuru.mp3",
+      "bytes": 11283,
+      "sha256": "df1fdac6a0351ae5d33f97e0359c126fcc121aa6e533868166466a3bc0dab8a6"
+    },
+    {
+      "id": "kaeru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/kaeru.mp3",
+      "bytes": 12119,
+      "sha256": "10b1512df99cb732b074b13453ee29ac89ea79d6522b68ea5bdd9f60bcd7c922"
+    },
+    {
+      "id": "hairu",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/hairu.mp3",
+      "bytes": 12119,
+      "sha256": "fb943fbc6e6034bb80d8fd9108ec7370f07e80e64f6fb4afd4d80c2c876d6292"
+    },
+    {
+      "id": "deru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/deru.mp3",
+      "bytes": 12119,
+      "sha256": "dca9b28d9f0a08ff0d29cc2781179ec51f5c25b938badbae999da94a85a465eb"
+    },
+    {
+      "id": "akeru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/akeru.mp3",
+      "bytes": 11283,
+      "sha256": "66ca0cd6b61f7b881f92fd8d49fa8ca419e916aa82de14ea81f8ba47ba73d8be"
+    },
+    {
+      "id": "shimeru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/shimeru.mp3",
+      "bytes": 13791,
+      "sha256": "40ba828159daf3663c7695e71016e0174139bfb3c3e4e7aa2de7f680bacfda12"
+    },
+    {
+      "id": "aru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/aru.mp3",
+      "bytes": 11283,
+      "sha256": "b953a54f4def3a03c3673296149a5b05679551c4e9b460893078947084856bb7"
+    },
+    {
+      "id": "iru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/iru.mp3",
+      "bytes": 11283,
+      "sha256": "08ab2a975c63e077a78070a60c9bcd0f37d538c2a61cbb1d03ed396fa3aea312"
+    },
+    {
+      "id": "wasureru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/wasureru.mp3",
+      "bytes": 16717,
+      "sha256": "6338c16e6eca3f436cff3a054c4932457be506da5d819cd686a397c18afcd4aa"
+    },
+    {
+      "id": "oboeru",
+      "category": "action",
+      "file": "assets/audio/questions/fish-92428785/oboeru.mp3",
+      "bytes": 12955,
+      "sha256": "a8642aa1ee6686e9d7036f1c7d2c4b36c76d92103e137bdb03d25b3d906d9c1b"
+    },
+    {
+      "id": "yukkuri",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/yukkuri.mp3",
+      "bytes": 14209,
+      "sha256": "6dda6a5b4717f53b303b2709fc801510cd9a95cc6a82d050232b79aabd797c4d"
+    },
+    {
+      "id": "hayaku",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/hayaku.mp3",
+      "bytes": 15881,
+      "sha256": "6ba5f584b9a7e7c23198f2c500965b13f735777df0b2ab403cb8ab9c5e20d5a8"
+    },
+    {
+      "id": "sugu",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/sugu.mp3",
+      "bytes": 11283,
+      "sha256": "06093e6f396ba33aa9e0b762f1234e77dfc1603ed16ac60c9450987ad7dc7255"
+    },
+    {
+      "id": "mata",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/mata.mp3",
+      "bytes": 11283,
+      "sha256": "7badba709c6aa83137c0d192543f9922d73ef9e426d337b11d2e3330e9cfd213"
+    },
+    {
+      "id": "mada",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/mada.mp3",
+      "bytes": 11283,
+      "sha256": "987d3837d830a4ddd7175638de355e464228f0d4e17adb3ebcd7e5db825af1bf"
+    },
+    {
+      "id": "mou",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/mou.mp3",
+      "bytes": 10030,
+      "sha256": "7eecc692c920515193be8fb73580908d5d7082e72580814a3d12112946c8baff"
+    },
+    {
+      "id": "itsumo",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/itsumo.mp3",
+      "bytes": 13791,
+      "sha256": "79fe890c0a1dbe0fec357593db3642a2924b9bae37d536d76855c32a50d8ff7c"
+    },
+    {
+      "id": "yoku",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/yoku.mp3",
+      "bytes": 12955,
+      "sha256": "bb2fd1c332935ba12e0348161b5d4578542103133a86523d993971bd08722dd8"
+    },
+    {
+      "id": "tokidoki",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/tokidoki.mp3",
+      "bytes": 14209,
+      "sha256": "5bd959879ea75189e58f956e7631a3d2bd5f3ca520fd7cbc20e2db8d00c61fa9"
+    },
+    {
+      "id": "amari",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/amari.mp3",
+      "bytes": 12955,
+      "sha256": "1627666a5603f49f619910fc2cee0bc3c08af88378b8acc384c560e404243e1d"
+    },
+    {
+      "id": "zenzen",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/zenzen.mp3",
+      "bytes": 13791,
+      "sha256": "05aafa902329b1527abfd53f4226897012b7b4d1df83d252c04eb2547d4d0b87"
+    },
+    {
+      "id": "issho",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/issho.mp3",
+      "bytes": 11283,
+      "sha256": "5830a38fdbed66f1a55ed3fb2135a0391ecf2f7abfe56e733696b3de6888d47f"
+    },
+    {
+      "id": "hitoride",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/hitoride.mp3",
+      "bytes": 13791,
+      "sha256": "ba46b17b69a4dda9ca12cb6b2d6d2c62905dfd85657682d693b9b591b4ee6445"
+    },
+    {
+      "id": "chotto",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/chotto.mp3",
+      "bytes": 10866,
+      "sha256": "eebda863c8456194fb9349804ac4c18902857cd8822ca52fd82c0950823985e0"
+    },
+    {
+      "id": "motto",
+      "category": "daily",
+      "file": "assets/audio/questions/fish-92428785/motto.mp3",
+      "bytes": 12955,
+      "sha256": "f0768dda529d2e49c4d29590d39a9109b080190b228d37c77836a088d60d9569"
+    }
+  ],
+  "totalBytes": 4918248
+}

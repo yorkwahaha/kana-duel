@@ -319,6 +319,39 @@ async function preloadBattleSfx() {
   }));
 }
 
+// —— 選角 BGM：稍後只需補上此檔案即可啟用 ——
+const CHARACTER_SELECT_BGM_PATH = "assets/bgm/character-select.ogg";
+const CHARACTER_SELECT_BGM_VOL = 0.11;
+let characterSelectBgm = null;
+let characterSelectBgmUnavailable = false;
+
+async function startCharacterSelectBgm() {
+  if (characterSelectBgmUnavailable) return false;
+  if (!characterSelectBgm) {
+    characterSelectBgm = new Audio(CHARACTER_SELECT_BGM_PATH);
+    characterSelectBgm.loop = true;
+    characterSelectBgm.preload = "auto";
+    characterSelectBgm.volume = CHARACTER_SELECT_BGM_VOL;
+    characterSelectBgm.setAttribute("playsinline", "");
+    characterSelectBgm.addEventListener("error", () => { characterSelectBgmUnavailable = true; }, { once: true });
+  }
+  if (!characterSelectBgm.paused) return true;
+  try {
+    await characterSelectBgm.play();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function stopCharacterSelectBgm() {
+  if (!characterSelectBgm) return;
+  try {
+    characterSelectBgm.pause();
+    characterSelectBgm.currentTime = 0;
+  } catch {}
+}
+
 // —— 戰鬥 BGM：Web Audio 迴圈播，避免影片搶焦點時被暫停 ——
 const BATTLE_BGM_PATHS = [
   "assets/bgm/battle-1.ogg",
@@ -332,6 +365,14 @@ let bgmSource = null;
 let bgmHtmlFallback = null;
 let bgmWatchdog = null;
 let bgmSessionId = 0;
+let queuedBattleBgmPath = "";
+
+function chooseBattleBgmPath() {
+  if (!queuedBattleBgmPath) {
+    queuedBattleBgmPath = BATTLE_BGM_PATHS[Math.floor(Math.random() * BATTLE_BGM_PATHS.length)];
+  }
+  return queuedBattleBgmPath;
+}
 
 async function ensureAudioCtx() {
   const AC = window.AudioContext || window.webkitAudioContext;
@@ -366,7 +407,7 @@ async function loadBattleBgmBuffer(src) {
   return buffer;
 }
 async function preloadBattleBgm() {
-  await Promise.all(BATTLE_BGM_PATHS.map((src) => loadBattleBgmBuffer(src).catch(() => null)));
+  await loadBattleBgmBuffer(chooseBattleBgmPath()).catch(() => null);
 }
 function applyBgmVolume() {
   if (bgmGain && audioCtx) {
@@ -383,7 +424,8 @@ function keepBattleBgmAlive() {
 async function startBattleBgm() {
   stopBattleBgm();
   const my = bgmSessionId;
-  const src = BATTLE_BGM_PATHS[Math.floor(Math.random() * BATTLE_BGM_PATHS.length)];
+  const src = chooseBattleBgmPath();
+  queuedBattleBgmPath = "";
   try {
     const ctx = await ensureAudioCtx();
     if (!ctx) throw new Error("no AudioContext");

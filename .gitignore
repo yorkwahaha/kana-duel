@@ -6,3 +6,5 @@ Desktop.ini
 .idea/
 node_modules/
 worker/.wrangler/
+outputs/
+scripts/__pycache__/

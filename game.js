@@ -10,6 +10,7 @@
 /* global preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi, speakQuestionAudio */
 /* global romajiSequence, setSfxDuck, setTtsStatus, shakeBattle, showCombo, shuffle */
 /* global spawnBlockParry, spawnHitBurst, speakGoogleTts, startBattleBgm, stopBattleBgm */
+/* global startCharacterSelectBgm, stopCharacterSelectBgm */
 /* global stopTts, stopVoice, voiceBufCache, wait */
 /* global QUESTIONS:writable, voiceHtml:writable, voiceWebSrc:writable */
 // Main interaction, practice, and battle state runtime.
@@ -54,6 +55,8 @@ function showScreen(name) {
   document.querySelector(".app")?.classList.toggle("battle-mode", name === "battle");
   document.querySelector(".app")?.classList.toggle("char-mode", name === "chars");
   document.querySelector(".app")?.classList.toggle("cover-mode", name === "start");
+  if (name === "chars") startCharacterSelectBgm().catch(() => {});
+  else if (name !== "online") stopCharacterSelectBgm();
 }
 
 // —— Drag / tap（雙人：依 pointerId 並行；換題／大招／回首頁強制清掉 ghost）——
@@ -507,6 +510,7 @@ function renderCharGrid() {
 }
 function stepCharFocus(player, dir) {
   if ((player === 1 && readyP1) || (player === 2 && readyP2)) return;
+  startCharacterSelectBgm().catch(() => {});
   const n = CHARACTERS.length;
   charFocus[player] = ((charFocus[player] + dir) % n + n) % n;
   const c = CHARACTERS[charFocus[player]];
@@ -519,10 +523,11 @@ function stepCharFocus(player, dir) {
     renderCharGrid();
     return;
   }
-  onPickChar(player, c);
+  onPickChar(player, c, false);
 }
-function onPickChar(player, c) {
+function onPickChar(player, c, withSound = true) {
   if ((player === 1 && readyP1) || (player === 2 && readyP2)) return;
+  if (withSound) startCharacterSelectBgm().catch(() => {});
   const foe = player === 1 ? pickP2 : pickP1;
   if (foe?.id === c.id) {
     playSfx("sfx_miss", 0.3);
@@ -532,7 +537,7 @@ function onPickChar(player, c) {
   if (idx >= 0) charFocus[player] = idx;
   if (player === 1) { pickP1 = c; readyP1 = false; }
   else { pickP2 = c; readyP2 = false; }
-  playSfx("pop", 0.32);
+  if (withSound) playSfx("sfx_click", 0.3);
   renderCharGrid();
 }
 function onCharConfirm(player) {
@@ -1084,6 +1089,7 @@ function syncFighterPassive(player) {
 
 function playVsThenBattle() {
   if (!pickP1 || !pickP2) return;
+  stopCharacterSelectBgm();
   readBattleOptsFromUi();
   document.querySelectorAll('[data-vs="img1"]').forEach((el) => { el.src = pickP1.image; });
   document.querySelectorAll('[data-vs="img2"]').forEach((el) => { el.src = pickP2.image; });
@@ -1320,8 +1326,18 @@ function buildBattleStatsRows() {
   }).join("");
 }
 
+function escapeResultText(text) {
+  return String(text || "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
 function colorizePlayerTags(text) {
-  return String(text || "")
+  return escapeResultText(text)
     .replace(/P1/g, '<span class="tag-p1">P1</span>')
     .replace(/P2/g, '<span class="tag-p2">P2</span>');
 }
@@ -1340,6 +1356,7 @@ function setResultScreen(title, summary, withBattleStats, customRows = "") {
     }
   });
   showScreen("result");
+  requestAnimationFrame(() => document.querySelector(".result-face.p1 .result-card")?.focus({ preventScroll: true }));
 }
 
 /** 敗北餘韻：先讓灰階／慘叫留在對戰畫面，再進結算 */
@@ -2008,22 +2025,6 @@ document.querySelectorAll(".btn-again").forEach((btn) => {
     } else startPractice();
   });
 });
-
-// 關閉平板／手機雙擊放大與捏合縮放（不攔截快速連點的 pointerup）
-["gesturestart", "gesturechange", "gestureend"].forEach((type) => {
-  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
-});
-document.addEventListener("touchmove", (e) => {
-  if (typeof e.scale === "number" && e.scale !== 1) e.preventDefault();
-}, { passive: false });
-let lastTouchEndAt = 0;
-document.addEventListener("touchend", (e) => {
-  const now = performance.now();
-  // 阻擋瀏覽器雙擊放大；按鈕動作改走 pointerup，不受影響
-  if (now - lastTouchEndAt > 0 && now - lastTouchEndAt < 350) e.preventDefault();
-  lastTouchEndAt = now;
-}, { passive: false });
-document.addEventListener("dblclick", (e) => e.preventDefault());
 
 bindTap($("portrait"), () => { if (!busy && currentQ()) speakQuestionAudio(currentQ()); });
 bindTap($("btn-listen"), () => { if (!busy && currentQ()) speakQuestionAudio(currentQ()); });
