@@ -1,7 +1,7 @@
 {
   "name": "kana-duel",
-  "version": "1.0.0",
-  "description": "**v1.0** — 假名聽音拼字對決原型（單人練習／雙人對戰）。",
+  "version": "1.1.0",
+  "description": "**v1.1** — 假名聽音拼字對決（單人練習／本機雙人／線上雙人）。",
   "main": "game.js",
   "scripts": {
     "lint": "eslint .",
@@ -19,8 +19,9 @@
     "url": "https://github.com/yorkwahaha/kana-duel/issues"
   },
   "homepage": "https://yorkwahaha.github.io/kana-duel/",
-  "dependencies": {
+  "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.8.0"
+    "eslint": "^10.8.0",
+    "wrangler": "^4.125.0"
   }
 }

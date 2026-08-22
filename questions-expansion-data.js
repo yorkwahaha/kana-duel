@@ -3,6 +3,7 @@
  * 正式題目語音依 id 由 assets/audio/questions/manifest.json 對應。
  */
 (() => {
+  const target = typeof window === "undefined" ? globalThis : window;
   const CATEGORY_OPTIONS = [
     ["all", "全部類別"],
     ["daily", "日常會話"],
@@ -22,24 +23,17 @@
     ["fantasy_battle", "奇幻與戰鬥"],
   ].map(([value, label]) => ({ value, label }));
 
-  const REMOVED_IDS = new Set([
-    "custom_star", "custom_thunder", "custom_moon", "custom_flame", "custom_ice",
-    "custom_wind", "custom_void", "custom_dragon", "custom_light", "custom_shadow",
-    "sakura", "ashitaka", "chihiro", "howl", "genos", "ram",
-    "hado31", "detroit", "expulsion", "seriouspunch", "malevolent", "shikai",
-  ]);
-
   const BASE_CATEGORY_IDS = {
-    daily: ["ohayou", "konnichiwa", "konbanwa", "arigatou", "sumimasen", "onegaishimasu", "hai", "iie", "daijoubu", "wakarimashita", "wakarimasen", "yoroshiku", "namae", "doko", "dare", "nani", "itsu"],
-    action: ["taberu", "nomu", "miru", "kiku", "hanasu", "yomu", "kaku", "iku", "kuru", "tatakau", "mamoru", "nigeru", "katsu", "makeru"],
-    school_work: ["gakkou", "sensei", "tomodachi", "benkyou", "jugyou", "kyoukasho", "enpitsu"],
-    food: ["gohan", "mizu", "ocha", "niku", "sakana", "yasai", "kudamono", "pan", "ringo", "mikan", "ichigo_fruit", "banana", "suika", "budou", "momo", "nashi"],
-    household: ["pasokon", "terebi", "denwa", "jitensha"],
-    places_transport: ["densha", "basu", "kuruma", "hikouki"],
-    time_nature: ["kyou", "ashita", "kinou", "ima", "asa", "hiru", "yoru", "mainichi", "sora", "umi", "yama", "kawa", "mori", "ame", "yuki", "kaze", "hi", "tsuki", "hoshi", "kumo", "taiyou"],
-    description: ["ookii", "chiisai", "hayai", "osoi", "atsui", "samui", "omoshiroi", "tanoshii", "muzukashii", "yasashii", "kawaii", "kakkoii", "suki", "kirai", "jouzu", "heta", "genki"],
-    animals: ["inu", "neko", "tori", "sakana_animal"],
-    fantasy_battle: ["ken", "yumi", "tate", "yoroi", "mahou", "yuusha", "maou", "yuuki", "kibou", "yume", "ai", "heiwa", "sensou", "shouri", "haiboku", "chikara", "inochi", "kokoro", "tamashii"],
+    daily: ["arigatou", "ohayou", "konnichiwa", "konbanwa", "sayounara", "sumimasen", "gomen", "onegaishimasu", "douzo", "hai", "iie", "wakarimasu", "daijoubu"],
+    action: ["tabemasu", "nomimasu", "ikimasu", "kimasu", "mimasu", "kikimasu", "hanashimasu", "yomimasu", "kakimasu", "tatakau", "mamoru", "nigeru", "katsu", "makeru"],
+    school_work: ["benkyou", "gakkou", "sensei", "tomodachi", "nihongo", "eigo"],
+    food: ["mizu", "gohan", "pan", "ramen", "sushi", "tempura", "ocha", "koohii", "ringo", "mikan", "banana", "aisukuriimu", "chokoreeto", "keeki", "pizza", "hanbaagaa", "sandoicchi"],
+    household: ["kazoku", "denwa", "terebi", "pasokon", "keitai"],
+    places_transport: ["densha", "basu", "takushii", "hikouki"],
+    time_nature: ["jikan", "kyou", "ashita", "kinou", "ima", "asa", "hiru", "yoru", "ame", "yuki", "kaze", "haru", "natsu", "aki", "fuyu", "yama", "kawa", "umi", "sora", "hana", "ki"],
+    description: ["ookii", "chiisai", "atarashii", "furui", "takai", "yasui", "oishii", "tanoshii", "muzukashii", "yasashii", "kawaii", "sugoi", "genki", "suki", "kirai", "tsukareta", "nemui", "samui", "atsui"],
+    animals: ["neko", "inu", "tori", "sakana"],
+    fantasy_battle: ["jutsu", "mahou", "ken", "tate", "yoroi", "yumi", "ya", "yuuki", "kibou", "yume", "ai", "heiwa", "sensou", "shouri", "haiboku", "chikara", "inochi", "kokoro", "tamashii"],
   };
 
   const categoryById = new Map();
@@ -134,15 +128,14 @@
     tags: category === "loanword" ? [labels.get(category), "片仮名"] : [labels.get(category)],
   })));
 
-  const base = (window.KANA_QUESTIONS || [])
-    .filter((question) => !REMOVED_IDS.has(question.id))
+  const base = (target.KANA_QUESTIONS || [])
     .map((question) => ({
       ...question,
-      category: question.contentType === "character" || question.contentType === "skill" || question.contentType === "custom_skill"
+      category: question.contentType === "character" || question.contentType === "skill"
         ? "anime"
         : categoryById.get(question.id) || "daily",
     }));
 
-  window.KANA_CATEGORY_OPTIONS = CATEGORY_OPTIONS;
-  window.KANA_QUESTIONS = [...base, ...added];
+  target.KANA_CATEGORY_OPTIONS = CATEGORY_OPTIONS;
+  target.KANA_QUESTIONS = [...base, ...added];
 })();

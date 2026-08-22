@@ -4,11 +4,12 @@
  * kanji: 漢字表記（答對飄字優先顯示）；zh: 繁中詞義
  * 硬上限 16 格
  */
-window.KANA_QUESTIONS = [
+(() => {
+const target = typeof window === "undefined" ? globalThis : window;
+target.KANA_QUESTIONS = [
 
   // —— 示範保留 ——
   { id: "goku", contentType: "character", displayName: "孫悟空", kanaSequence: ["ご", "く", "う"], kanji: "孫悟空", zh: "孫悟空", speakText: "ごくう", rewardMode: "celebrate", tags: ["角色", "入門"] },
-  { id: "sakura", contentType: "character", displayName: "さくら", kanaSequence: ["さ", "く", "ら"], kanji: "桜", zh: "小櫻", speakText: "さくら", rewardMode: "celebrate", tags: ["角色", "入門"] },
   { id: "domain", contentType: "skill", displayName: "領域展開", kanaSequence: ["りょ", "う", "い", "き", "て", "ん", "か", "い"], kanji: "領域展開", speakText: "りょういきてんかい", castSpeakText: "りょういきてんかい！", castSubtitle: "領域展開", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
 
   // —— 角色名 ——
@@ -19,19 +20,14 @@ window.KANA_QUESTIONS = [
   { id: "nezuko", contentType: "character", displayName: "ねずこ", kanaSequence: ["ね", "ず", "こ"], kanji: "禰豆子", zh: "禰豆子", speakText: "ねずこ", rewardMode: "celebrate", tags: ["角色"] },
   { id: "vegeta", contentType: "character", displayName: "ベジータ", kanaSequence: ["ベ", "ジ", "ー", "タ"], zh: "貝吉塔", speakText: "ベジータ", rewardMode: "celebrate", tags: ["角色", "長音"] },
   { id: "pikachu", contentType: "character", displayName: "ピカチュウ", kanaSequence: ["ピ", "カ", "チュ", "ウ"], zh: "皮卡丘", speakText: "ピカチュウ", rewardMode: "celebrate", tags: ["角色", "拗音"] },
-  { id: "ashitaka", contentType: "character", displayName: "アシタカ", kanaSequence: ["ア", "シ", "タ", "カ"], zh: "阿席達卡", speakText: "アシタカ", rewardMode: "celebrate", tags: ["角色"] },
   { id: "totoro", contentType: "character", displayName: "トトロ", kanaSequence: ["ト", "ト", "ロ"], zh: "龍貓", speakText: "トトロ", rewardMode: "celebrate", tags: ["角色"] },
-  { id: "chihiro", contentType: "character", displayName: "ちひろ", kanaSequence: ["ち", "ひ", "ろ"], kanji: "千尋", zh: "千尋", speakText: "ちひろ", rewardMode: "celebrate", tags: ["角色"] },
-  { id: "howl", contentType: "character", displayName: "ハウル", kanaSequence: ["ハ", "ウ", "ル"], zh: "霍爾", speakText: "ハウル", rewardMode: "celebrate", tags: ["角色"] },
   { id: "eren", contentType: "character", displayName: "エレン", kanaSequence: ["エ", "レ", "ン"], zh: "艾連", speakText: "エレン", rewardMode: "celebrate", tags: ["角色"] },
   { id: "mikasa", contentType: "character", displayName: "ミカサ", kanaSequence: ["ミ", "カ", "サ"], zh: "米卡莎", speakText: "ミカサ", rewardMode: "celebrate", tags: ["角色"] },
   { id: "levi", contentType: "character", displayName: "リヴァイ", kanaSequence: ["リ", "ヴァ", "イ"], zh: "里維", speakText: "リヴァイ", rewardMode: "celebrate", tags: ["角色"] },
   { id: "saitama", contentType: "character", displayName: "サイタマ", kanaSequence: ["サ", "イ", "タ", "マ"], zh: "埼玉", speakText: "サイタマ", rewardMode: "celebrate", tags: ["角色"] },
-  { id: "genos", contentType: "character", displayName: "ジェノス", kanaSequence: ["ジェ", "ノ", "ス"], zh: "傑諾斯", speakText: "ジェノス", rewardMode: "celebrate", tags: ["角色", "拗音"] },
   { id: "midoriya", contentType: "character", displayName: "みどりや", kanaSequence: ["み", "ど", "り", "や"], kanji: "緑谷", zh: "綠谷", speakText: "みどりや", rewardMode: "celebrate", tags: ["角色"] },
   { id: "bakugo", contentType: "character", displayName: "ばくごう", kanaSequence: ["ば", "く", "ご", "う"], kanji: "爆豪", zh: "爆豪", speakText: "ばくごう", rewardMode: "celebrate", tags: ["角色"] },
   { id: "rem", contentType: "character", displayName: "レム", kanaSequence: ["レ", "ム"], zh: "雷姆", speakText: "レム", rewardMode: "celebrate", tags: ["角色", "入門"] },
-  { id: "ram", contentType: "character", displayName: "ラム", kanaSequence: ["ラ", "ム"], zh: "拉姆", speakText: "ラム", rewardMode: "celebrate", tags: ["角色", "入門"] },
   { id: "asuna", contentType: "character", displayName: "アスナ", kanaSequence: ["ア", "ス", "ナ"], zh: "亞絲娜", speakText: "アスナ", rewardMode: "celebrate", tags: ["角色"] },
   { id: "kirito", contentType: "character", displayName: "キリト", kanaSequence: ["キ", "リ", "ト"], zh: "桐人", speakText: "キリト", rewardMode: "celebrate", tags: ["角色"] },
 
@@ -50,29 +46,11 @@ window.KANA_QUESTIONS = [
   { id: "omoiyari", contentType: "skill", displayName: "水の呼吸", kanaSequence: ["み", "ず", "の", "こ", "きゅ", "う"], kanji: "水の呼吸", speakText: "みずのこきゅう", castSpeakText: "みずのこきゅう！", castSubtitle: "水の呼吸", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
   { id: "hinokami", contentType: "skill", displayName: "ヒノカミ神楽", kanaSequence: ["ヒ", "ノ", "カ", "ミ", "か", "ぐ", "ら"], kanji: "ヒノカミ神楽", speakText: "ヒノカミかぐら", castSpeakText: "ヒノカミかぐら！", castSubtitle: "ヒノカミ神楽", rewardMode: "cast_skill", tags: ["招式"] },
   { id: "oneforall", contentType: "skill", displayName: "ワン・フォー・オール", kanaSequence: ["ワ", "ン", "フォ", "ー", "オ", "ー", "ル"], speakText: "ワンフォーオール", castSpeakText: "ワンフォーオール！", castSubtitle: "ワン・フォー・オール", rewardMode: "cast_skill", tags: ["招式", "片仮名"] },
-  { id: "detroit", contentType: "skill", displayName: "デトロイトスマッシュ", kanaSequence: ["デ", "ト", "ロ", "イ", "ト", "ス", "マ", "ッ", "シュ"], speakText: "デトロイトスマッシュ", castSpeakText: "デトロイトスマッシュ！", castSubtitle: "デトロイトスマッシュ", rewardMode: "cast_skill", tags: ["招式", "長詞"] },
-  { id: "expulsion", contentType: "skill", displayName: "爆破", kanaSequence: ["ば", "く", "は"], kanji: "爆破", speakText: "ばくは", castSpeakText: "ばくは！", castSubtitle: "爆破", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "seriouspunch", contentType: "skill", displayName: "マジ殴り", kanaSequence: ["マ", "ジ", "な", "ぐ", "り"], kanji: "マジ殴り", speakText: "マジなぐり", castSpeakText: "マジなぐり！", castSubtitle: "マジ殴り", rewardMode: "cast_skill", tags: ["招式"] },
   { id: "gumgum", contentType: "skill", displayName: "ゴムゴムのピストル", kanaSequence: ["ゴ", "ム", "ゴ", "ム", "の", "ピ", "ス", "ト", "ル"], speakText: "ゴムゴムのピストル", castSpeakText: "ゴムゴムのピストル！", castSubtitle: "ゴムゴムのピストル", rewardMode: "cast_skill", tags: ["招式", "長詞"] },
   { id: "gearsecond", contentType: "skill", displayName: "ギア・セカンド", kanaSequence: ["ギ", "ア", "セ", "カ", "ン", "ド"], speakText: "ギアセカンド", castSpeakText: "ギアセカンド！", castSubtitle: "ギア・セカンド", rewardMode: "cast_skill", tags: ["招式"] },
   { id: "blackflash", contentType: "skill", displayName: "黒閃", kanaSequence: ["こ", "く", "せ", "ん"], kanji: "黒閃", speakText: "こくせん", castSpeakText: "こくせん！", castSubtitle: "黒閃", rewardMode: "cast_skill", tags: ["招式"] },
   { id: "hollowpurple", contentType: "skill", displayName: "虚式茈", kanaSequence: ["きょ", "し", "き", "む", "ら", "さ", "き"], kanji: "虚式茈", speakText: "きょしきむらさき", castSpeakText: "きょしきむらさき！", castSubtitle: "虚式茈", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
   { id: "infinitevoid", contentType: "skill", displayName: "無量空処", kanaSequence: ["む", "りょ", "う", "く", "う", "しょ"], kanji: "無量空処", speakText: "むりょうくうしょ", castSpeakText: "むりょうくうしょ！", castSubtitle: "無量空処", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
-  { id: "malevolent", contentType: "skill", displayName: "伏魔御厨子", kanaSequence: ["ふ", "く", "ま", "ご", "ず", "し"], kanji: "伏魔御厨子", speakText: "ふくまごずし", castSpeakText: "ふくまごずし！", castSubtitle: "伏魔御厨子", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "shikai", contentType: "skill", displayName: "始解", kanaSequence: ["し", "か", "い"], kanji: "始解", speakText: "しかい", castSpeakText: "しかい！", castSubtitle: "始解", rewardMode: "cast_skill", tags: ["招式", "入門"] },
-  { id: "hado31", contentType: "skill", displayName: "赤火砲", kanaSequence: ["しゃ", "っ", "か", "ほ", "う"], kanji: "赤火砲", speakText: "しゃっかほう", castSpeakText: "しゃっかほう！", castSubtitle: "赤火砲", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
-
-  // —— 自創／中二招式 ——
-  { id: "custom_star", contentType: "custom_skill", displayName: "星屑螺旋", kanaSequence: ["ほ", "し", "く", "ず", "ら", "せ", "ん"], kanji: "星屑螺旋", speakText: "ほしくずらせん", castSpeakText: "ほしくずらせん！", castSubtitle: "星屑螺旋", rewardMode: "cast_skill", tags: ["自創"] },
-  { id: "custom_thunder", contentType: "custom_skill", displayName: "蒼天雷鳴斬", kanaSequence: ["そ", "う", "て", "ん", "ら", "い", "め", "い", "ざ", "ん"], kanji: "蒼天雷鳴斬", speakText: "そうてんらいめいざん", castSpeakText: "そうてんらいめいざん！", castSubtitle: "蒼天雷鳴斬", rewardMode: "cast_skill", tags: ["自創", "長詞"] },
-  { id: "custom_moon", contentType: "custom_skill", displayName: "月影一閃", kanaSequence: ["つ", "き", "か", "げ", "い", "っ", "せ", "ん"], kanji: "月影一閃", speakText: "つきかげいっせん", castSpeakText: "つきかげいっせん！", castSubtitle: "月影一閃", rewardMode: "cast_skill", tags: ["自創"] },
-  { id: "custom_flame", contentType: "custom_skill", displayName: "紅蓮業火", kanaSequence: ["ぐ", "れ", "ん", "ご", "う", "か"], kanji: "紅蓮業火", speakText: "ぐれんごうか", castSpeakText: "ぐれんごうか！", castSubtitle: "紅蓮業火", rewardMode: "cast_skill", tags: ["自創"] },
-  { id: "custom_ice", contentType: "custom_skill", displayName: "絶対零度", kanaSequence: ["ぜ", "っ", "た", "い", "れ", "い", "ど"], kanji: "絶対零度", speakText: "ぜったいれいど", castSpeakText: "ぜったいれいど！", castSubtitle: "絶対零度", rewardMode: "cast_skill", tags: ["自創"] },
-  { id: "custom_wind", contentType: "custom_skill", displayName: "疾風迅雷", kanaSequence: ["し", "っ", "ぷ", "う", "じ", "ん", "ら", "い"], kanji: "疾風迅雷", speakText: "しっぷうじんらい", castSpeakText: "しっぷうじんらい！", castSubtitle: "疾風迅雷", rewardMode: "cast_skill", tags: ["自創"] },
-  { id: "custom_void", contentType: "custom_skill", displayName: "虚空断裂", kanaSequence: ["こ", "く", "う", "だ", "ん", "れ", "つ"], kanji: "虚空断裂", speakText: "こくうだんれつ", castSpeakText: "こくうだんれつ！", castSubtitle: "虚空断裂", rewardMode: "cast_skill", tags: ["自創"] },
-  { id: "custom_dragon", contentType: "custom_skill", displayName: "竜神の咆哮", kanaSequence: ["りゅ", "う", "じ", "ん", "の", "ほ", "う", "こ", "う"], kanji: "竜神の咆哮", speakText: "りゅうじんのほうこう", castSpeakText: "りゅうじんのほうこう！", castSubtitle: "竜神の咆哮", rewardMode: "cast_skill", tags: ["自創", "拗音"] },
-  { id: "custom_light", contentType: "custom_skill", displayName: "聖光の審判", kanaSequence: ["せ", "い", "こ", "う", "の", "し", "ん", "ぱ", "ん"], kanji: "聖光の審判", speakText: "せいこうのしんぱん", castSpeakText: "せいこうのしんぱん！", castSubtitle: "聖光の審判", rewardMode: "cast_skill", tags: ["自創"] },
-  { id: "custom_shadow", contentType: "custom_skill", displayName: "闇影縛鎖", kanaSequence: ["あ", "ん", "え", "い", "ば", "く", "さ"], kanji: "闇影縛鎖", speakText: "あんえいばくさ", castSpeakText: "あんえいばくさ！", castSubtitle: "闇影縛鎖", rewardMode: "cast_skill", tags: ["自創"] },
 
   // —— 日常・N5 詞彙 ——
   { id: "arigatou", contentType: "vocab", displayName: "ありがとう", kanaSequence: ["あ", "り", "が", "と", "う"], zh: "謝謝", speakText: "ありがとう", rewardMode: "celebrate", tags: ["日常", "入門"] },
@@ -198,3 +176,4 @@ window.KANA_QUESTIONS = [
   { id: "kokoro", contentType: "vocab", displayName: "こころ", kanaSequence: ["こ", "こ", "ろ"], kanji: "心", zh: "心", speakText: "こころ", rewardMode: "celebrate", tags: ["名詞"] },
   { id: "tamashii", contentType: "vocab", displayName: "たましい", kanaSequence: ["た", "ま", "し", "い"], kanji: "魂", zh: "靈魂", speakText: "たましい", rewardMode: "celebrate", tags: ["名詞"] },
 ];
+})();

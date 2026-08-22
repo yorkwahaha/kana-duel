@@ -1,5 +1,4 @@
 {
-  "$schema": "../node_modules/wrangler/config-schema.json",
   "name": "kana-voice-match-online",
   "main": "src/index.mjs",
   "compatibility_date": "2026-08-01",

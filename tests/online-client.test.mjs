@@ -13,7 +13,7 @@ function harness() {
   let timerId = 0;
   class FakeWebSocket {
     static OPEN = 1;
-    constructor(url) { this.url = url; this.readyState = 0; this.listeners = new Map(); this.sent = []; sockets.push(this); }
+    constructor(url, protocols) { this.url = url; this.protocols = protocols; this.readyState = 0; this.listeners = new Map(); this.sent = []; sockets.push(this); }
     addEventListener(type, listener) { this.listeners.set(type, [...(this.listeners.get(type) || []), listener]); }
     emit(type, event = {}) {
       if (type === "open") this.readyState = FakeWebSocket.OPEN;
@@ -64,6 +64,14 @@ test("invite copy writes the complete room URL", async () => {
   online.resume("AB2C3D");
   assert.equal(await online.copyInvite(), true);
   assert.deepEqual(clipboardWrites, ["https://example.test/?room=AB2C3D"]);
+});
+
+test("websocket credentials use a subprotocol instead of the request URL", () => {
+  const { online, sockets } = harness();
+  online.resume("AB2C3D");
+  assert.equal(sockets[0].url, "wss://api.example.test/rooms/AB2C3D/ws");
+  assert.equal(sockets[0].url.includes("host-token"), false);
+  assert.deepEqual(Array.from(sockets[0].protocols), ["kana-voice-match-v1", "kana-token.host-token"]);
 });
 
 test("ready schedules a state resync so the first player cannot miss battle start", () => {

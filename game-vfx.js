@@ -2,6 +2,7 @@
 // Battle presentation and visual-effect helpers.
 function showCombo(text, tier) {
   const el = $("combo-float");
+  if (!el) return;
   el.textContent = text;
   el.classList.remove("go", "hit-sm", "hit-md", "hit-lg");
   if (tier === "sm") el.classList.add("hit-sm");

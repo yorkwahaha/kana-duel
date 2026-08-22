@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://jpapp-tts-proxy.yorkwahaha.workers.dev https://kana-voice-match-online.yorkwahaha.workers.dev wss://kana-voice-match-online.yorkwahaha.workers.dev http://127.0.0.1:8787 ws://127.0.0.1:8787; object-src 'none'; base-uri 'none'; form-action 'none'" />
   <meta name="kana-online-api" content="https://kana-voice-match-online.yorkwahaha.workers.dev" />
-  <title>聲の仮名 · 墨域言靈闘場 v1.0</title>
+  <title>聲の仮名 · 墨域言靈闘場 v1.1</title>
   <link rel="icon" href="assets/cover.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260822-audit-hardening" />
+  <link rel="stylesheet" href="styles.css?v=20260823-grok-audit-fixes" />
 </head>
 <body>
   <div class="combo-float" id="combo-float"></div>
@@ -84,7 +84,7 @@
             <button type="button" class="cover-btn cover-btn-duo" id="btn-mode-battle">雙人對戰</button>
             <button type="button" class="cover-btn cover-btn-online" id="btn-mode-online">線上對戰</button>
           </div>
-            <div class="cover-foot">
+          <div class="cover-foot">
             <span id="qbank-meta">題庫載入中…</span>
             <span class="tts-status" id="tts-boot">TTS：尚未測試</span>
           </div>
@@ -403,13 +403,13 @@
     </div>
   </div>
 
-  <script src="questions-data.js?v=20260822-audit-hardening"></script>
-  <script src="questions-expansion-data.js?v=20260822-audit-hardening"></script>
-  <script src="game-content.js?v=20260822-audit-hardening"></script>
-  <script src="game-audio.js?v=20260822-audit-hardening"></script>
-  <script src="game-vfx.js?v=20260822-audit-hardening"></script>
-  <script src="online.js?v=20260822-audit-hardening"></script>
-  <script src="game.js?v=20260822-audit-hardening"></script>
-  <script src="game-online.js?v=20260822-audit-hardening"></script>
+  <script src="questions-data.js?v=20260823-grok-audit-fixes"></script>
+  <script src="questions-expansion-data.js?v=20260823-grok-audit-fixes"></script>
+  <script src="game-content.js?v=20260823-grok-audit-fixes"></script>
+  <script src="game-audio.js?v=20260823-grok-audit-fixes"></script>
+  <script src="game-vfx.js?v=20260823-grok-audit-fixes"></script>
+  <script src="online.js?v=20260823-grok-audit-fixes"></script>
+  <script src="game.js?v=20260823-grok-audit-fixes"></script>
+  <script src="game-online.js?v=20260823-grok-audit-fixes"></script>
 </body>
 </html>

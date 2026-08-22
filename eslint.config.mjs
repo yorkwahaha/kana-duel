@@ -43,6 +43,40 @@ export default [
     files: ["tests/**/*.test.mjs"],
     languageOptions: {
       globals: {
+        Request: "readonly",
+        setTimeout: "readonly"
+      }
+    }
+  },
+  {
+    ...js.configs.recommended,
+    files: ["worker/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        crypto: "readonly",
+        DurableObject: "readonly",
+        Headers: "readonly",
+        Response: "readonly",
+        Uint8Array: "readonly",
+        URL: "readonly",
+        WebSocket: "readonly",
+        WebSocketPair: "readonly"
+      }
+    },
+    rules: {
+      "no-control-regex": "off",
+      "no-empty": ["error", { "allowEmptyCatch": true }],
+      "no-unused-vars": ["error", { "args": "none", "caughtErrors": "none" }]
+    }
+  },
+  {
+    ...js.configs.recommended,
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        Buffer: "readonly",
+        fetch: "readonly",
+        process: "readonly",
         setTimeout: "readonly"
       }
     }

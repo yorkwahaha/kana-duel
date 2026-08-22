@@ -93,7 +93,6 @@ const CHARACTERS = [
 const TYPE_LABEL = {
   character: "角色名",
   skill: "招式名",
-  custom_skill: "自創招式",
   vocab: "詞彙",
 };
 
@@ -110,7 +109,7 @@ function normalizeQuestions(list) {
       zh: q.zh || null,
       // 預設隱藏答案文字（聽音拼字才有練習效果）
       hideDisplayNameUntilClear: q.hideDisplayNameUntilClear !== false,
-      rewardMode: q.rewardMode || (q.contentType === "skill" || q.contentType === "custom_skill" ? "cast_skill" : "celebrate"),
+      rewardMode: q.rewardMode || (q.contentType === "skill" ? "cast_skill" : "celebrate"),
       image: q.image || defaultImageFor(q),
       castVideo: q.castVideo || null,
     };
@@ -121,7 +120,7 @@ function questionPromptTitle(q) {
   return `聽音拼假名（${q.kanaSequence.length} 格）`;
 }
 function defaultImageFor(q) {
-  if (q.contentType === "skill" || q.contentType === "custom_skill") return "assets/characters/rin.webp";
+  if (q.contentType === "skill") return "assets/characters/rin.webp";
   if (q.contentType === "character") return "assets/characters/ao.webp";
   return "assets/characters/ya.webp";
 }
@@ -328,25 +327,26 @@ function scriptOfSeq(seq) {
   if (kata && !hira) return "kata";
   return "mixed";
 }
+function selectBattleQuestions(options) {
+  let list = ALL_QUESTIONS.slice();
+  if (options.category !== "all") list = list.filter((q) => q.category === options.category);
+  if (options.maxLen > 0) list = list.filter((q) => q.kanaSequence.length <= options.maxLen);
+  if (options.script === "hira" || options.script === "kata") {
+    list = list.filter((q) => scriptOfSeq(q.kanaSequence) === options.script);
+  }
+  if (list.length) return list;
+
+  // 篩太嚴時保留類別，依序放寬假名與長度；只有「全部類別」才回全庫。
+  list = options.category === "all"
+    ? ALL_QUESTIONS.slice()
+    : ALL_QUESTIONS.filter((q) => q.category === options.category);
+  if (options.maxLen > 0) {
+    const limited = list.filter((q) => q.kanaSequence.length <= options.maxLen);
+    if (limited.length) list = limited;
+  }
+  return list;
+}
 function buildBattleDeck() {
   readBattleOptsFromUi();
-  let list = ALL_QUESTIONS.slice();
-  if (battleOpts.category !== "all") {
-    list = list.filter((q) => q.category === battleOpts.category);
-  }
-  if (battleOpts.maxLen > 0) {
-    list = list.filter((q) => q.kanaSequence.length <= battleOpts.maxLen);
-  }
-  if (battleOpts.script === "hira" || battleOpts.script === "kata") {
-    list = list.filter((q) => scriptOfSeq(q.kanaSequence) === battleOpts.script);
-  }
-  if (!list.length) {
-    // 篩太嚴時回退：保留類別、放寬假名條件，再不行用全庫
-    list = battleOpts.category === "all" ? ALL_QUESTIONS.slice() : ALL_QUESTIONS.filter((q) => q.category === battleOpts.category);
-    if (battleOpts.maxLen > 0) {
-      const limited = list.filter((q) => q.kanaSequence.length <= battleOpts.maxLen);
-      if (limited.length) list = limited;
-    }
-  }
-  return shuffle(list);
+  return shuffle(selectBattleQuestions(battleOpts));
 }

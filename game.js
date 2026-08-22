@@ -346,13 +346,15 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       const nodes = $(this.slotsId).querySelectorAll(".slot");
       let wrong = 0;
       this.slots.forEach((v, i) => {
-        nodes[i].classList.remove("correct", "wrong", "locked-gold");
+        const node = nodes[i];
+        if (!node) { wrong += 1; return; }
+        node.classList.remove("correct", "wrong", "locked-gold");
         if (v && v.kana === seq[i]) {
-          nodes[i].classList.add("correct");
-          nodes[i].setAttribute("aria-label", `第 ${i + 1} 格，${v.kana}，正確`);
+          node.classList.add("correct");
+          node.setAttribute("aria-label", `第 ${i + 1} 格，${v.kana}，正確`);
         } else {
-          nodes[i].classList.add("wrong");
-          nodes[i].setAttribute("aria-label", `第 ${i + 1} 格，${v?.kana || "空格"}，錯誤`);
+          node.classList.add("wrong");
+          node.setAttribute("aria-label", `第 ${i + 1} 格，${v?.kana || "空格"}，錯誤`);
           wrong += 1;
         }
       });
@@ -408,6 +410,7 @@ let combo = { 1: 0, 2: 0 }; // consecutive correct → N COMBO
 let gaugeHits = { 1: 0, 2: 0 }; // correct answers toward special (need GAUGE_HITS_TO_FULL)
 let blockUntil = { 1: 0, 2: 0 }; // performance.now() deadline for block window
 let submitLockUntil = { 1: 0, 2: 0 }; // locked from submitting (foe skill)
+let submitCooldownUntil = { 1: 0, 2: 0 }; // prevent repeated local miss submissions during feedback
 let attackLockUntil = { 1: 0, 2: 0 }; // locked from attacking (ya frost_seal)
 let ampHits = { 1: 0, 2: 0 }; // extra hits on next attack (go active)
 let skillTimers = { 1: { block: 0, lock: 0, attack: 0 }, 2: { block: 0, lock: 0, attack: 0 } };
@@ -804,8 +807,10 @@ function updateHpUi() {
   $("hp2-bar").style.width = (hp2 / MAX_HP * 100) + "%";
   $("hp-meter-1")?.setAttribute("aria-valuenow", String(hp1));
   $("hp-meter-2")?.setAttribute("aria-valuenow", String(hp2));
-  $("hp1-name").textContent = "P1 " + (pickP1?.name || "");
-  $("hp2-name").textContent = "P2 " + (pickP2?.name || "");
+  if (!document.body.classList.contains("online-battle")) {
+    $("hp1-name").textContent = "P1 " + (pickP1?.name || "");
+    $("hp2-name").textContent = "P2 " + (pickP2?.name || "");
+  }
 }
 /** 攻擊鈕顯示與實際結算共用同一條公式，避免兩邊算出不同數字 */
 function projectedAttackDamage(player) {
@@ -924,9 +929,10 @@ function updateSkillUi(player) {
   }
   const btnSubmit = $("btn-submit-" + player);
   if (btnSubmit) {
+    const pending = player === 1 && window.KanaBattleOnline?.isSubmitPending?.();
     const locked = isSubmitLocked(player);
-    btnSubmit.disabled = locked;
-    btnSubmit.textContent = locked ? "封鎖中" : "提交";
+    btnSubmit.disabled = pending || locked;
+    btnSubmit.textContent = pending ? "判定中…" : (locked ? "封鎖中" : "提交");
   }
 }
 function battleActivateBlock(player) {
@@ -1145,6 +1151,7 @@ function startBattle() {
   gaugeHits = { 1: 0, 2: 0 };
   blockUntil = { 1: 0, 2: 0 };
   submitLockUntil = { 1: 0, 2: 0 };
+  submitCooldownUntil = { 1: 0, 2: 0 };
   attackLockUntil = { 1: 0, 2: 0 };
   ampHits = { 1: 0, 2: 0 };
   clearSkillTimers(1);
@@ -1573,6 +1580,7 @@ function tickBattleClock() {
 
 function showDmgFloat(player, dmg, hitIndex) {
   const el = $("dmg" + player);
+  if (!el) return;
   el.textContent = "-" + dmg;
   el.classList.remove("show", "hit-lg");
   if (hitIndex >= 4) el.classList.add("hit-lg");
@@ -1788,13 +1796,19 @@ function battleSubmit(player) {
   }
   const b = boards[player];
   if (b.locked) return;
+  if (nowMs() < submitCooldownUntil[player]) return;
   const q = playerQ(player);
   if (!q) return;
   if (b.slots.some(function (v) { return !v; })) { b.setFeedback("還有空格。", "bad"); return; }
+  if (isListenBattle() && listenRoundClaimed) {
+    b.setFeedback("本輪已被搶走", "bad");
+    return;
+  }
 
   playSfx("ready", 0.45);
   const wrong = b.markSlots(q.kanaSequence);
   if (wrong) {
+    submitCooldownUntil[player] = nowMs() + 450;
     const dmg = Math.max(1, wrong * MISS_SELF_DMG_PER_WRONG);
     combo[player] = 0;
     updatePlayerMeters(player);
@@ -1804,10 +1818,6 @@ function battleSubmit(player) {
   }
 
   if (isListenBattle()) {
-    if (listenRoundClaimed) {
-      b.setFeedback("本輪已被搶走", "bad");
-      return;
-    }
     listenRoundClaimed = true;
     combo[player] += 1;
     gaugeHits[player] += gaugeGainOf(player);

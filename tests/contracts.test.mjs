@@ -74,9 +74,14 @@ test("reviewed bank removes obscure names and provides categorized learning vari
   assert.equal(loanwords.length, 30, "dedicated loanword category should contain 30 questions");
   assert.ok(loanwords.every((q) => q.kanaSequence.every((part) => /^[\u30A0-\u30FFー]+$/.test(part))), "loanwords must practice katakana only");
   const actions = ALL_QUESTIONS.filter((q) => q.category === "action");
-  assert.equal(actions.length, 25, "action category should contain 25 dictionary-form verbs");
-  assert.ok(actions.every((q) => !q.speakText.endsWith("ます")), "action verbs must use dictionary form instead of polite form");
+  assert.equal(actions.length, 34, "action category should include dictionary and polite-form verbs");
+  assert.ok(actions.some((q) => q.id === "tabemasu"), "polite-form verbs must not fall back to daily conversation");
   assert.ok(actions.some((q) => q.id === "okiru" && q.speakText === "おきる"), "converted action ids and readings must stay aligned");
+  assert.equal(ALL_QUESTIONS.filter((q) => q.category === "daily").length, 28);
+  assert.equal(ALL_QUESTIONS.filter((q) => q.category === "food").length, 17);
+  assert.equal(ALL_QUESTIONS.filter((q) => q.category === "animals").length, 4);
+  assert.equal(ALL_QUESTIONS.find((q) => q.id === "ramen")?.category, "food");
+  assert.equal(ALL_QUESTIONS.find((q) => q.id === "haru")?.category, "time_nature");
 });
 
 test("all referenced local media exist except explicitly deferred audio", () => {
@@ -155,10 +160,13 @@ test("local two-player gestures preserve fast play without blocking accessibilit
 test("document and worker responses carry baseline browser security policy", () => {
   const html = read("index.html");
   const worker = read("worker/src/index.mjs");
+  const policy = read("worker/src/http-policy.mjs");
   assert.match(html, /http-equiv="Content-Security-Policy"/);
   assert.match(html, /object-src 'none'; base-uri 'none'; form-action 'none'/);
   assert.match(worker, /"cache-control": "no-store"/);
   assert.match(worker, /"x-content-type-options": "nosniff"/);
+  assert.match(policy, /return !!origin && allowedOrigins\(env\)\.includes\(origin\)/);
+  assert.match(worker, /sec-websocket-protocol/);
 });
 
 test("online room entry and battle interception stay wired", () => {
@@ -171,7 +179,7 @@ test("online room entry and battle interception stay wired", () => {
   assert.match(html, /src="online\.js\?v=[^"]+"/);
   assert.match(html, /src="game-online\.js\?v=[^"]+"/);
   assert.match(html, /id="online-category"/);
-  assert.match(online, /q\.category === config\.category/);
+  assert.match(online, /selectBattleQuestions\(config\)/);
   assert.match(html, /id="online-character-image"/);
   assert.match(html, /id="online-character-intro"/);
   assert.match(html, /aria-label="上一位角色"/);
@@ -353,10 +361,26 @@ test("mobile audio restores after returning to the browser and on the next gestu
 });
 
 test("online submit acknowledges touch immediately while the server remains authoritative", () => {
+  const game = read("game.js");
   const online = read("game-online.js");
   const css = read("styles.css");
   assert.match(online, /setSubmitPending\(true\);\s*boards\[1\]\.setFeedback\("判定中…"\)/);
   assert.match(online, /if \(submitPending\) return/);
+  assert.match(online, /button\.disabled = true;\s*button\.textContent = "判定中…"/);
+  assert.match(game, /window\.KanaBattleOnline\?\.isSubmitPending\?\.\(\)/);
   assert.match(online, /client\.submit\(localQuestionId/);
   assert.match(css, /\.btn-submit:active,[\s\S]*?\.btn-submit\.is-pending/);
+});
+
+test("rematch and submit guards keep client battle state consistent", () => {
+  const game = read("game.js");
+  const online = read("game-online.js");
+  assert.match(online, /if \(active && priorPhase !== "lobby"\) \{\s*active = false;\s*battleOpen = false/);
+  assert.match(online, /stopBattleBgm\(\);\s*pauseOverlay\(false\);\s*document\.body\.classList\.remove\("online-battle"\)/);
+  assert.doesNotMatch(online, /listenRoundClaimed = room\.battle\.listenClaimed;\s*setSubmitPending\(false\)/);
+  assert.match(online, /if \(localQuestionId !== localId\) setSubmitPending\(false\)/);
+  assert.match(game, /if \(isListenBattle\(\) && listenRoundClaimed\)[\s\S]*?const wrong = b\.markSlots/);
+  assert.match(game, /nowMs\(\) < submitCooldownUntil\[player\]/);
+  assert.match(game, /!document\.body\.classList\.contains\("online-battle"\)/);
+  assert.match(game, /function showDmgFloat[\s\S]*?if \(!el\) return/);
 });

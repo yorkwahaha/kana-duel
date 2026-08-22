@@ -1,3 +1,6 @@
+import "../../questions-data.js";
+import "../../questions-expansion-data.js";
+
 export const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 export const MAX_HP = 2400;
 
@@ -8,6 +11,9 @@ const LISTEN_NEXT_LEAD_MS = 2200;
 const LISTEN_SPECIAL_LEAD_MS = 10800;
 const VALID_CHARACTERS = new Set(["ao", "rin", "ya", "go", "ran", "gen", "sho", "yo"]);
 const VALID_CATEGORIES = new Set(["all", "daily", "action", "school_work", "food", "household", "clothing", "health", "places_transport", "shopping_numbers", "time_nature", "animals", "description", "loanword", "anime", "fantasy_battle"]);
+const CANONICAL_QUESTIONS = new Map(
+  (globalThis.KANA_QUESTIONS || []).map((question) => [question.id, question]),
+);
 const CHARACTER_RULES = {
   ao: { gaugePerCorrect: 2, active: "submit_lock" },
   rin: { chargeMult: 0.9, specialMult: 1.9, active: "steal" },
@@ -43,17 +49,54 @@ export function sanitizeConfig(input = {}) {
   return { mode, script, maxLen, category, distractors: input.distractors !== false };
 }
 
-export function sanitizeDeck(input) {
+function scriptOfSequence(sequence) {
+  let hira = 0;
+  let kata = 0;
+  (sequence || []).forEach((part) => {
+    for (const character of part) {
+      const code = character.codePointAt(0);
+      if (code >= 0x3041 && code <= 0x3096) hira += 1;
+      else if (code >= 0x30A1 && code <= 0x30FA) kata += 1;
+    }
+  });
+  if (hira && !kata) return "hira";
+  if (kata && !hira) return "kata";
+  return "mixed";
+}
+
+function questionsForConfig(config) {
+  const all = [...CANONICAL_QUESTIONS.values()];
+  let list = all;
+  if (config.category !== "all") list = list.filter((question) => question.category === config.category);
+  if (config.maxLen > 0) list = list.filter((question) => question.kanaSequence.length <= config.maxLen);
+  if (config.script === "hira" || config.script === "kata") {
+    list = list.filter((question) => scriptOfSequence(question.kanaSequence) === config.script);
+  }
+  if (list.length) return list;
+
+  list = config.category === "all"
+    ? all
+    : all.filter((question) => question.category === config.category);
+  if (config.maxLen > 0) {
+    const limited = list.filter((question) => question.kanaSequence.length <= config.maxLen);
+    if (limited.length) list = limited;
+  }
+  return list;
+}
+
+export function sanitizeDeck(input, configInput = {}) {
   if (!Array.isArray(input) || input.length < 2 || input.length > MAX_DECK_SIZE) {
     throw new Error("INVALID_DECK");
   }
+  const config = sanitizeConfig(configInput);
+  const allowedIds = new Set(questionsForConfig(config).map((question) => question.id));
+  if (input.length !== allowedIds.size) throw new Error("INVALID_DECK");
   const seen = new Set();
   return input.map((entry) => {
     const id = cleanText(entry?.id, 80);
-    const answer = Array.isArray(entry?.answer)
-      ? entry.answer.map((part) => cleanText(part, 8)).filter(Boolean).slice(0, 16)
-      : [];
-    if (!id || seen.has(id) || !answer.length) throw new Error("INVALID_DECK");
+    const canonical = CANONICAL_QUESTIONS.get(id);
+    const answer = canonical?.kanaSequence?.map((part) => cleanText(part, 8)).filter(Boolean).slice(0, 16) || [];
+    if (!id || !allowedIds.has(id) || seen.has(id) || !answer.length) throw new Error("INVALID_DECK");
     seen.add(id);
     return { id, answer };
   });
@@ -116,13 +159,14 @@ function resetLobby(room) {
 }
 
 export function createRoomState({ roomCode, hostName, hostToken, config, deck, now = Date.now() }) {
+  const nextConfig = sanitizeConfig(config);
   return {
     roomCode: sanitizeRoomCode(roomCode),
     version: 1,
     phase: "lobby",
     hostSeat: 0,
-    config: sanitizeConfig(config),
-    deck: sanitizeDeck(deck),
+    config: nextConfig,
+    deck: sanitizeDeck(deck, nextConfig),
     players: [{
       name: sanitizePlayerName(hostName, "房主"),
       token: hostToken,
@@ -190,7 +234,7 @@ export function configureRoom(room, seat, config, deck, now = Date.now()) {
   if (seat !== hostSeat(room)) return { ok: false, error: "ONLY_HOST_CAN_CONFIGURE" };
   try {
     const nextConfig = sanitizeConfig(config);
-    const nextDeck = deck ? sanitizeDeck(deck) : room.deck;
+    const nextDeck = sanitizeDeck(deck || room.deck, nextConfig);
     room.config = nextConfig;
     room.deck = nextDeck;
   } catch (error) {
@@ -313,6 +357,10 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
   if (fighter.submitLockUntil > now) return { ok: false, error: "SUBMIT_LOCKED" };
   const question = questionAt(room, seat);
   if (!question || question.id !== cleanText(questionId, 80)) return { ok: false, error: "STALE_QUESTION" };
+  if (room.config.mode === "listen") {
+    if (room.battle.listenClaimed) return { ok: false, error: "ROUND_ALREADY_CLAIMED" };
+    if (now < Number(room.battle.listenCue?.playAt || 0)) return { ok: false, error: "ROUND_NOT_STARTED" };
+  }
   const submitted = Array.isArray(answer) ? answer.map((part) => cleanText(part, 8)).slice(0, 16) : [];
   const wrong = question.answer.reduce((count, part, index) => count + (submitted[index] === part ? 0 : 1), 0);
   if (submitted.length !== question.answer.length || wrong > 0) {
@@ -326,7 +374,6 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
     bump(room, now);
     return { ok: true, correct: false };
   }
-  if (room.config.mode === "listen" && room.battle.listenClaimed) return { ok: false, error: "ROUND_ALREADY_CLAIMED" };
   fighter.combo += 1;
   fighter.maxCombo = Math.max(fighter.maxCombo, fighter.combo);
   fighter.corrects += 1;

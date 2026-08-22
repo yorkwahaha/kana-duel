@@ -23,8 +23,16 @@ window.KanaBattleOnlineClient = (() => {
     OPPONENT_UNAVAILABLE: "對手目前離線，對戰已暫停。",
     STALE_STATE: "戰況剛更新，已重新同步。",
     STALE_QUESTION: "題目已更新，請依新題目作答。",
+    ROUND_ALREADY_CLAIMED: "本輪已被對手搶先答對。",
+    ROUND_NOT_STARTED: "題目語音尚未開始，請先聽完提示。",
     SUBMIT_LOCKED: "目前被封鎖，暫時不能提交。",
     ATTACK_LOCKED: "目前被封鎖，暫時不能攻擊。",
+    SKIP_NOT_ALLOWED: "聽力搶答不能跳過題目。",
+    AUTO_ATTACK_MODE: "聽力搶答會自動攻擊。",
+    GAME_NOT_ACTIVE: "目前沒有進行中的對戰。",
+    NOT_IN_LOBBY: "目前不在房間大廳。",
+    ONLY_HOST_CAN_CONFIGURE: "只有房主可以調整房間設定。",
+    UNKNOWN_SKILL: "無法使用這個技能。",
     NOT_ENOUGH_COMBO: "COMBO 不足。",
     NO_CHARGE: "目前沒有可發動的蓄力。",
     HP_FULL: "目前體力已滿。",
@@ -77,7 +85,7 @@ window.KanaBattleOnlineClient = (() => {
 
   function websocketUrl() {
     const base = API_BASE.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
-    return `${base}/rooms/${encodeURIComponent(roomCode)}/ws?token=${encodeURIComponent(token)}`;
+    return `${base}/rooms/${encodeURIComponent(roomCode)}/ws`;
   }
 
   function clearReconnect() {
@@ -117,7 +125,7 @@ window.KanaBattleOnlineClient = (() => {
     emitConnection(reconnectAttempts ? "reconnecting" : "connecting");
     let currentSocket;
     try {
-      currentSocket = new window.WebSocket(websocketUrl());
+      currentSocket = new window.WebSocket(websocketUrl(), ["kana-voice-match-v1", `kana-token.${token}`]);
       socket = currentSocket;
     } catch {
       scheduleReconnect();
@@ -146,7 +154,7 @@ window.KanaBattleOnlineClient = (() => {
         if (room.phase !== "lobby") clearReadySync();
         handlers.onState(room);
       }
-      if (message.type === "error" && message.code !== "STALE_STATE") emitError(message.code);
+      if (message.type === "error") emitError(message.code);
     });
     currentSocket.addEventListener("close", (event) => {
       if (socket !== currentSocket) return;

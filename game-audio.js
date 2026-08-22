@@ -228,7 +228,7 @@ async function scheduleQuestionAudio(question, { delayMs = 0 } = {}) {
     currentQuestionAudioResolve = done;
     source.onended = () => done(true);
     source.start(ctx.currentTime + Math.max(0, target - performance.now()) / 1000);
-    setTtsStatus(true, "題目 MP3 · " + TTS_VOICE);
+    setTtsStatus(true, "本地題目 MP3");
   });
 }
 async function speakQuestionAudio(question) {
@@ -307,7 +307,7 @@ function playHitSfx(hitIndex) {
 async function preloadBattleSfx() {
   const ctx = await ensureAudioCtx();
   if (!ctx) return;
-  const names = ["hit1", "hit2", "hit3", "hit4", "hit5", "sfx_hit", "sfx_click", "sfx_miss", "ready", "skillpop", "fanfare"];
+  const names = ["hit1", "hit2", "hit3", "hit4", "hit5", "sfx_hit", "sfx_click", "sfx_miss", "ready", "skillpop", "fanfare", "win"];
   await Promise.all(names.map(async (name) => {
     if (sfxBufCache.has(name)) return;
     try {
@@ -502,6 +502,6 @@ window.addEventListener("focus", () => requestBattleAudioRestore());
   }, { capture: true, passive: true });
 });
 
-// —— 墨域言靈闘場 · 第 1 期 4 角（v1.0）——
+// —— 墨域言靈闘場 · 8 角角色語音與大招影片 ——
 // voiceHit / voiceDefeat：受擊／敗北語音；大招喊招改由 castVideo 內建音軌
 // castVideo: 約 6 秒大招影片（含喊招＋發動音效）

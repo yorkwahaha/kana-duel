@@ -1,4 +1,4 @@
-/* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, boards, categoryLabelOf */
+/* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, boards, categoryLabelOf, selectBattleQuestions */
 /* global battleOpts:writable, battleDeck:writable, battleOpen:writable, battleEpoch:writable */
 /* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable, showAnswerGain */
 /* global ampHits:writable, blockUntil:writable, submitLockUntil:writable, attackLockUntil:writable */
@@ -9,7 +9,7 @@
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
 /* global showCombo, showDmgFloat, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
 /* global startCharacterSelectBgm, stopCharacterSelectBgm */
-/* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, ensureCastLayers, preloadFighterPoses */
+/* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, updateSkillUi, ensureCastLayers, preloadFighterPoses */
 /* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
 /* global spawnBlockParry, splitComboDamage, wait, playBattleDefeatOutro */
 (() => {
@@ -55,28 +55,12 @@
   }
 
   function deckForConfig(config) {
-    let list = ALL_QUESTIONS.slice();
-    if (config.category !== "all") list = list.filter((q) => q.category === config.category);
-    if (config.maxLen > 0) list = list.filter((q) => q.kanaSequence.length <= config.maxLen);
-    if (config.script === "hira" || config.script === "kata") {
-      list = list.filter((q) => {
-        let hira = 0; let kata = 0;
-        q.kanaSequence.forEach((part) => {
-          for (const ch of part) {
-            const code = ch.codePointAt(0);
-            if (code >= 0x3041 && code <= 0x3096) hira += 1;
-            else if (code >= 0x30A1 && code <= 0x30FA) kata += 1;
-          }
-        });
-        return config.script === "hira" ? hira > 0 && kata === 0 : kata > 0 && hira === 0;
-      });
-    }
-    if (!list.length) list = ALL_QUESTIONS.slice();
+    const list = selectBattleQuestions(config).slice();
     for (let i = list.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [list[i], list[j]] = [list[j], list[i]];
     }
-    return list.map((q) => ({ id: q.id, answer: q.kanaSequence }));
+    return list.map((q) => ({ id: q.id }));
   }
 
   function questionById(id) {
@@ -200,7 +184,11 @@
     if (!button) return;
     button.classList.toggle("is-pending", submitPending);
     button.setAttribute("aria-busy", submitPending ? "true" : "false");
-    if (submitPending) button.textContent = "判定中…";
+    if (submitPending) {
+      button.disabled = true;
+      button.textContent = "判定中…";
+    }
+    else updateSkillUi(1);
   }
 
   function loadOnlineQuestion(force = false) {
@@ -208,6 +196,7 @@
     const localId = room.currentQuestionId;
     const localQ = questionById(localId);
     if (localQ && (force || localQuestionId !== localId)) {
+      if (localQuestionId !== localId) setSubmitPending(false);
       localQuestionId = localId;
       battleDeck = [localQ];
       boards[1].load(localQ.kanaSequence, {
@@ -263,7 +252,6 @@
     playerQi = { 1: mine.qi, 2: 0 };
     sharedQi = room.battle.sharedQi;
     listenRoundClaimed = room.battle.listenClaimed;
-    setSubmitPending(false);
     updateHpUi();
     updatePlayerMeters(1);
     updatePlayerMeters(2);
@@ -448,6 +436,7 @@
     if (!event || event.id <= lastEventId) return;
     lastEventId = event.id;
     const player = displaySeat(event.seat);
+    if (player === 1 && ["correct", "miss", "attack"].includes(event.type)) setSubmitPending(false);
     if (event.type === "correct") {
       boards[player]?.setFeedback("");
       showAnswerGain(player, player === 1 ? `答對 · +${event.gain}` : "對手答對");
@@ -543,11 +532,14 @@
       });
     } else {
       if (active && priorPhase !== "lobby") {
+        active = false;
         battleOpen = false;
         battleEpoch += 1;
         cancelAnimationFrame(timerRaf);
         stopBattleBgm();
         pauseOverlay(false);
+        document.body.classList.remove("online-battle");
+        $("board2")?.removeAttribute("aria-hidden");
         showScreen("online");
       }
       renderLobby();
@@ -654,6 +646,7 @@
   });
   window.KanaBattleOnline = {
     isActive() { return active; },
+    isSubmitPending() { return active && submitPending; },
     handleAction(player, action) {
       if (!active || player !== 1 || room?.phase !== "playing") return;
       if (!room.players.every((entry) => entry?.connected)) { setError("對手重新連線中，對戰暫停。 "); return; }

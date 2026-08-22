@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { originAllowed } from "./http-policy.mjs";
 import {
   ROOM_TTL_MS,
   applyAttack,
@@ -43,13 +44,11 @@ async function readJson(request) {
   return JSON.parse(text || "{}");
 }
 
-function allowedOrigins(env) {
-  return String(env.ALLOWED_ORIGINS || "").split(",").map((value) => value.trim()).filter(Boolean);
-}
-
-function originAllowed(request, env) {
-  const origin = request.headers.get("origin");
-  return !origin || allowedOrigins(env).includes(origin);
+function websocketToken(request) {
+  const protocols = String(request.headers.get("sec-websocket-protocol") || "")
+    .split(",")
+    .map((value) => value.trim());
+  return protocols.find((value) => value.startsWith("kana-token."))?.slice("kana-token.".length) || "";
 }
 
 function corsHeaders(request, env) {
@@ -145,7 +144,7 @@ export class RoomObject extends DurableObject {
       return json({ ok: true });
     }
     if (url.pathname === "/ws" && request.headers.get("upgrade") === "websocket") {
-      const seat = seatForToken(this.room, url.searchParams.get("token") || "");
+      const seat = seatForToken(this.room, websocketToken(request));
       if (seat < 0) return json({ error: "INVALID_SESSION" }, 401);
       this.ctx.getWebSockets(`seat:${seat}`).forEach((previous) => {
         try { previous.close(4001, "Reconnected from another tab"); } catch (_) {}
@@ -157,7 +156,11 @@ export class RoomObject extends DurableObject {
       setConnected(this.room, seat, true);
       await this.save();
       this.broadcast();
-      return new Response(null, { status: 101, webSocket: client });
+      return new Response(null, {
+        status: 101,
+        webSocket: client,
+        headers: { "sec-websocket-protocol": "kana-voice-match-v1" },
+      });
     }
     return json({ error: "NOT_FOUND" }, 404);
   }
@@ -230,11 +233,13 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const cors = corsHeaders(request, env);
+    if (url.pathname === "/health" && request.method === "GET") {
+      return json({ ok: true, service: "kana-voice-match-online" }, 200, cors);
+    }
     if (request.method === "OPTIONS") {
       return originAllowed(request, env) ? new Response(null, { status: 204, headers: cors }) : json({ error: "ORIGIN_NOT_ALLOWED" }, 403, cors);
     }
     if (!originAllowed(request, env)) return json({ error: "ORIGIN_NOT_ALLOWED" }, 403, cors);
-    if (url.pathname === "/health" && request.method === "GET") return json({ ok: true, service: "kana-voice-match-online" }, 200, cors);
     if (url.pathname === "/rooms" && request.method === "POST") {
       let body;
       try { body = await readJson(request); } catch (error) { return json({ error: error.message || "INVALID_JSON" }, 400, cors); }
@@ -269,7 +274,12 @@ export default {
     }
     const ws = url.pathname.match(/^\/rooms\/([A-Z2-9]{6})\/ws$/i);
     if (ws && request.headers.get("upgrade") === "websocket") {
-      return proxyRoom(env, sanitizeRoomCode(ws[1]), `/ws?token=${encodeURIComponent(url.searchParams.get("token") || "")}`, { headers: { upgrade: "websocket" } });
+      return proxyRoom(env, sanitizeRoomCode(ws[1]), "/ws", {
+        headers: {
+          upgrade: "websocket",
+          "sec-websocket-protocol": request.headers.get("sec-websocket-protocol") || "",
+        },
+      });
     }
     return json({ error: "NOT_FOUND" }, 404, cors);
   },
