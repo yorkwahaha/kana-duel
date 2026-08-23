@@ -222,10 +222,18 @@ test("online invite, lobby, and VS intro use the phone-first interaction contrac
   assert.match(css, /\.online-lobby-actions \{[\s\S]*?position: fixed[\s\S]*?grid-template-columns: 1fr 1\.25fr 1fr/);
   assert.match(game, /function playOnlineVsIntro\(\)/);
   assert.match(game, /priorPhase === "lobby"\) playOnlineVsIntro\(\)/);
-  assert.match(game, /stage\?\.querySelector\(":scope > \.vs-face\.p1"\)/);
-  assert.match(game, /onlineFace\?\.querySelector\("\.vs-fighter\.p1 img"\)/);
-  assert.match(css, /\.vs-stage\.online-vs > \.vs-face\.p2 \{ display: none; \}/);
+  assert.match(html, /class="vs-face online-vs-face"/);
+  assert.match(html, /id="online-vs-mine-image"[\s\S]*?id="online-vs-foe-image"/);
+  assert.match(game, /const snapshot = \{[\s\S]*?mine:[\s\S]*?foe:[\s\S]*?rule:/);
+  assert.match(game, /\$\("online-vs-mine-image"\)/);
+  assert.match(game, /\$\("online-vs-foe-image"\)/);
+  assert.doesNotMatch(game, /stage\?\.querySelector\(":scope > \.vs-face\.p1"\)/);
+  assert.match(css, /\.vs-stage\.online-vs > \.vs-face \{ display: none; \}/);
+  assert.match(css, /\.vs-stage\.online-vs > \.online-vs-face \{[\s\S]*?display: grid/);
+  assert.match(css, /@media \(orientation: portrait\) and \(max-width: 900px\)/);
   assert.match(css, /\.vs-stage\.online-vs \.vs-inner \{[\s\S]*?grid-template-rows: minmax\(0, 1fr\) auto minmax\(0, 1fr\)/);
+  assert.match(css, /\.vs-stage\.online-vs \.vs-fighter \{ height: auto; \}/);
+  assert.match(css, /\.vs-stage\.online-vs \.vs-fighter img \{ position: absolute; inset: 0; \}/);
 });
 
 test("character selection reserves a BGM path and uses the kana click sound", () => {

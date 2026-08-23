@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260823-grok-audit-fixes" />
+  <link rel="stylesheet" href="styles.css?v=20260823-online-vs-isolation" />
 </head>
 <body>
   <div class="combo-float" id="combo-float"></div>
@@ -64,6 +64,24 @@
           <span class="vs-side">2P</span>
           <img data-vs="img2" alt="P2" />
           <div class="vs-name" data-vs="name2">P2</div>
+        </div>
+      </div>
+    </div>
+    <div class="vs-face online-vs-face">
+      <div class="vs-inner">
+        <div class="vs-fighter p1">
+          <span class="vs-side">1P</span>
+          <img id="online-vs-mine-image" alt="我方角色" />
+          <div class="vs-name" id="online-vs-mine-name">我方</div>
+        </div>
+        <div class="vs-center">
+          <div class="vs-text">VS</div>
+          <div class="vs-sub" id="online-vs-rule">BATTLE</div>
+        </div>
+        <div class="vs-fighter p2">
+          <span class="vs-side">2P</span>
+          <img id="online-vs-foe-image" alt="對手角色" />
+          <div class="vs-name" id="online-vs-foe-name">對手</div>
         </div>
       </div>
     </div>
@@ -403,13 +421,13 @@
     </div>
   </div>
 
-  <script src="questions-data.js?v=20260823-grok-audit-fixes"></script>
-  <script src="questions-expansion-data.js?v=20260823-grok-audit-fixes"></script>
-  <script src="game-content.js?v=20260823-grok-audit-fixes"></script>
-  <script src="game-audio.js?v=20260823-grok-audit-fixes"></script>
-  <script src="game-vfx.js?v=20260823-grok-audit-fixes"></script>
-  <script src="online.js?v=20260823-grok-audit-fixes"></script>
-  <script src="game.js?v=20260823-grok-audit-fixes"></script>
-  <script src="game-online.js?v=20260823-grok-audit-fixes"></script>
+  <script src="questions-data.js?v=20260823-online-vs-isolation"></script>
+  <script src="questions-expansion-data.js?v=20260823-online-vs-isolation"></script>
+  <script src="game-content.js?v=20260823-online-vs-isolation"></script>
+  <script src="game-audio.js?v=20260823-online-vs-isolation"></script>
+  <script src="game-vfx.js?v=20260823-online-vs-isolation"></script>
+  <script src="online.js?v=20260823-online-vs-isolation"></script>
+  <script src="game.js?v=20260823-online-vs-isolation"></script>
+  <script src="game-online.js?v=20260823-online-vs-isolation"></script>
 </body>
 </html>

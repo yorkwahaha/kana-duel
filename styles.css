@@ -1886,16 +1886,24 @@ input:focus-visible,
 @keyframes fadeIn { to { opacity: 1; } }
 
 /* Online VS intro · one upright screen, opponent above and local player below on phones. */
+.vs-stage > .online-vs-face { display: none; }
 .vs-stage.online-vs { grid-template-rows: 1fr; }
-.vs-stage.online-vs > .vs-face.p2 { display: none; }
-.vs-stage.online-vs > .vs-face.p1 { grid-row: 1; transform: none; }
+.vs-stage.online-vs > .vs-face { display: none; }
+.vs-stage.online-vs > .online-vs-face {
+  display: grid;
+  grid-row: 1;
+  transform: none;
+}
 .vs-stage.online-vs .vs-inner { grid-template-columns: 1fr auto 1fr; }
 
-@media (orientation: portrait) and (max-width: 640px) {
+@media (orientation: portrait) and (max-width: 900px) {
   .vs-stage.online-vs .vs-inner {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+    min-height: 0;
   }
+  .vs-stage.online-vs .vs-fighter { height: auto; }
+  .vs-stage.online-vs .vs-fighter img { position: absolute; inset: 0; }
   .vs-stage.online-vs .vs-fighter.p2 { grid-row: 1; }
   .vs-stage.online-vs .vs-center { grid-row: 2; padding: 5px 10px; }
   .vs-stage.online-vs .vs-fighter.p1 { grid-row: 3; }

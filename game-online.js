@@ -316,20 +316,39 @@
     if (!room || battleIntroPending || active) return;
     battleIntroPending = true;
     stopCharacterSelectBgm();
-    const mineCharacter = characterById(localPlayer()?.characterId, 0);
-    const foeCharacter = characterById(remotePlayer()?.characterId, 1);
+    const minePlayer = localPlayer();
+    const foePlayer = remotePlayer();
+    const mineCharacter = characterById(minePlayer?.characterId, 0);
+    const foeCharacter = characterById(foePlayer?.characterId, 1);
+    const snapshot = {
+      mine: {
+        image: mineCharacter?.image || "",
+        label: `${minePlayer?.name || "我方"} · ${mineCharacter?.name || ""}`,
+      },
+      foe: {
+        image: foeCharacter?.image || "",
+        label: `${foePlayer?.name || "對手"} · ${foeCharacter?.name || ""}`,
+      },
+      rule: room.config.mode === "listen" ? "LISTEN DUEL" : "SPEED DUEL",
+    };
     const stage = $("vs-stage");
-    const onlineFace = stage?.querySelector(":scope > .vs-face.p1");
-    const mineImage = onlineFace?.querySelector(".vs-fighter.p1 img");
-    const foeImage = onlineFace?.querySelector(".vs-fighter.p2 img");
-    const mineName = onlineFace?.querySelector(".vs-fighter.p1 .vs-name");
-    const foeName = onlineFace?.querySelector(".vs-fighter.p2 .vs-name");
-    const rule = onlineFace?.querySelector(".vs-center .vs-sub");
-    if (mineImage) mineImage.src = mineCharacter?.image || "";
-    if (foeImage) foeImage.src = foeCharacter?.image || "";
-    if (mineName) mineName.textContent = `${localPlayer()?.name || "我方"} · ${mineCharacter?.name || ""}`;
-    if (foeName) foeName.textContent = `${remotePlayer()?.name || "對手"} · ${foeCharacter?.name || ""}`;
-    if (rule) rule.textContent = room.config.mode === "listen" ? "LISTEN DUEL" : "SPEED DUEL";
+    const mineImage = $("online-vs-mine-image");
+    const foeImage = $("online-vs-foe-image");
+    const mineName = $("online-vs-mine-name");
+    const foeName = $("online-vs-foe-name");
+    const rule = $("online-vs-rule");
+    if (!stage || !mineImage || !foeImage || !mineName || !foeName || !rule) {
+      battleIntroPending = false;
+      beginOnlineBattle();
+      return;
+    }
+    mineImage.src = snapshot.mine.image;
+    mineImage.alt = snapshot.mine.label;
+    foeImage.src = snapshot.foe.image;
+    foeImage.alt = snapshot.foe.label;
+    mineName.textContent = snapshot.mine.label;
+    foeName.textContent = snapshot.foe.label;
+    rule.textContent = snapshot.rule;
     stage?.classList.remove("show");
     stage?.classList.add("online-vs");
     void stage?.offsetWidth;
