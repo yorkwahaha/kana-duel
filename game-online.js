@@ -1,4 +1,4 @@
-/* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, boards, categoryLabelOf, selectBattleQuestions */
+/* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, battleModeIntroLabel, battleModeLabel, boards, categoryLabelOf, selectBattleQuestions */
 /* global battleOpts:writable, battleDeck:writable, battleOpen:writable, battleEpoch:writable */
 /* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable, showAnswerGain */
 /* global ampHits:writable, blockUntil:writable, submitLockUntil:writable, attackLockUntil:writable */
@@ -45,8 +45,9 @@
   }
 
   function configFromUi() {
+    const selectedMode = $("online-mode")?.value;
     return {
-      mode: $("online-mode")?.value === "listen" ? "listen" : "race",
+      mode: ["listen", "zh-race"].includes(selectedMode) ? selectedMode : "race",
       distractors: !!$("online-distractors")?.checked,
       maxLen: Number($("online-maxlen")?.value) || 0,
       script: $("online-script")?.value || "all",
@@ -200,7 +201,8 @@
       localQuestionId = localId;
       battleDeck = [localQ];
       boards[1].load(localQ.kanaSequence, {
-        showRomaji: room.config.mode !== "listen",
+        showRomaji: room.config.mode === "race",
+        promptText: room.config.mode === "zh-race" ? localQ.zh : "",
         noDistractors: !room.config.distractors,
         distractorDelta: room.config.distractors ? (pickP1?.passive?.distractorDelta || 0) : 0,
       });
@@ -295,7 +297,7 @@
     $("board2")?.setAttribute("aria-hidden", "true");
     document.querySelector(".duel-stage")?.classList.toggle("listen-mode", room.config.mode === "listen");
     $("btn-battle-listen")?.classList.toggle("hidden", room.config.mode !== "listen");
-    if ($("rule-chip")) $("rule-chip").textContent = `${room.config.mode === "listen" ? "聽力搶答" : "競速"} · ${categoryLabelOf(room.config.category)}`;
+    if ($("rule-chip")) $("rule-chip").textContent = `${battleModeLabel(room.config.mode)} · ${categoryLabelOf(room.config.category)}`;
     showScreen("battle");
     syncBattleState();
     battleStartedAt = performance.now() - Math.max(0, Number(room.serverNow) - Number(room.battle.startedAt));
@@ -329,7 +331,7 @@
         image: foeCharacter?.image || "",
         label: `${foePlayer?.name || "對手"} · ${foeCharacter?.name || ""}`,
       },
-      rule: room.config.mode === "listen" ? "LISTEN DUEL" : "SPEED DUEL",
+      rule: battleModeIntroLabel(room.config.mode),
     };
     const stage = $("vs-stage");
     const mineImage = $("online-vs-mine-image");

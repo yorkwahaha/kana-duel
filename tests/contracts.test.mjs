@@ -20,7 +20,7 @@ function loadContentData() {
   vm.runInContext(read("questions-data.js"), sandbox, { filename: "questions-data.js" });
   vm.runInContext(read("questions-expansion-data.js"), sandbox, { filename: "questions-expansion-data.js" });
   vm.runInContext(
-    read("game-content.js") + "\n;globalThis.__testData = { CHARACTERS, KANA_ROMAJI, ALL_QUESTIONS };",
+    read("game-content.js") + "\n;globalThis.__testData = { CHARACTERS, KANA_ROMAJI, ALL_QUESTIONS, selectBattleQuestions };",
     sandbox,
     { filename: "game-content.js" },
   );
@@ -40,6 +40,19 @@ test("question bank keeps valid, unique, playable entries", () => {
       assert.ok(KANA_ROMAJI[kana], `${q.id}: missing romaji mapping for ${kana}`);
     }
   }
+});
+
+test("Chinese-to-Japanese race uses only questions with Traditional Chinese prompts", () => {
+  const { selectBattleQuestions } = loadContentData();
+  const questions = selectBattleQuestions({
+    mode: "zh-race",
+    category: "all",
+    maxLen: 0,
+    script: "all",
+  });
+  assert.equal(questions.length, 360);
+  assert.ok(questions.every((question) => typeof question.zh === "string" && question.zh.trim()));
+  assert.equal(questions.some((question) => question.id === "domain"), false);
 });
 
 test("approved Fish Audio pack covers every question exactly once", () => {
@@ -179,7 +192,10 @@ test("online room entry and battle interception stay wired", () => {
   assert.match(html, /src="online\.js\?v=[^"]+"/);
   assert.match(html, /src="game-online\.js\?v=[^"]+"/);
   assert.match(html, /id="online-category"/);
+  assert.match(html, /option value="zh-race">中翻日競速<\/option>/);
+  assert.equal((html.match(/class="question-clue hidden"/g) || []).length, 2);
   assert.match(online, /selectBattleQuestions\(config\)/);
+  assert.match(online, /promptText: room\.config\.mode === "zh-race" \? localQ\.zh : ""/);
   assert.match(html, /id="online-character-image"/);
   assert.match(html, /id="online-character-intro"/);
   assert.match(html, /aria-label="上一位角色"/);

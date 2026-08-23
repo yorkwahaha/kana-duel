@@ -299,6 +299,17 @@ function buildPool(seq, distractorDelta = 0, opts = {}) {
 
 let battleOpts = { mode: "race", distractors: true, maxLen: 0, script: "all", category: "all" };
 function isListenBattle() { return battleOpts.mode === "listen"; }
+function isChineseRaceBattle() { return battleOpts.mode === "zh-race"; }
+function battleModeLabel(mode) {
+  if (mode === "listen") return "聽力搶答";
+  if (mode === "zh-race") return "中翻日競速";
+  return "羅馬字競速";
+}
+function battleModeIntroLabel(mode) {
+  if (mode === "listen") return "LISTEN DUEL";
+  if (mode === "zh-race") return "中翻日 DUEL";
+  return "SPEED DUEL";
+}
 function readBattleOptsFromUi() {
   const dist = $("opt-distractors");
   const maxEl = $("opt-maxlen");
@@ -306,7 +317,7 @@ function readBattleOptsFromUi() {
   const categoryEl = $("opt-category");
   const modeEl = $("opt-battle-mode");
   battleOpts = {
-    mode: modeEl && modeEl.value === "listen" ? "listen" : "race",
+    mode: modeEl && ["listen", "zh-race"].includes(modeEl.value) ? modeEl.value : "race",
     distractors: dist ? !!dist.checked : true,
     maxLen: maxEl ? (Number(maxEl.value) || 0) : 0,
     script: scriptEl ? (scriptEl.value || "all") : "all",
@@ -328,7 +339,10 @@ function scriptOfSeq(seq) {
   return "mixed";
 }
 function selectBattleQuestions(options) {
-  let list = ALL_QUESTIONS.slice();
+  const eligible = options.mode === "zh-race"
+    ? ALL_QUESTIONS.filter((q) => typeof q.zh === "string" && q.zh.trim())
+    : ALL_QUESTIONS.slice();
+  let list = eligible.slice();
   if (options.category !== "all") list = list.filter((q) => q.category === options.category);
   if (options.maxLen > 0) list = list.filter((q) => q.kanaSequence.length <= options.maxLen);
   if (options.script === "hira" || options.script === "kata") {
@@ -338,8 +352,8 @@ function selectBattleQuestions(options) {
 
   // 篩太嚴時保留類別，依序放寬假名與長度；只有「全部類別」才回全庫。
   list = options.category === "all"
-    ? ALL_QUESTIONS.slice()
-    : ALL_QUESTIONS.filter((q) => q.category === options.category);
+    ? eligible.slice()
+    : eligible.filter((q) => q.category === options.category);
   if (options.maxLen > 0) {
     const limited = list.filter((q) => q.kanaSequence.length <= options.maxLen);
     if (limited.length) list = limited;

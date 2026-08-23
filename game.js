@@ -5,7 +5,7 @@
 /* global SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO, SUBMIT_LOCK_MS */
 /* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, categoryLabelOf, clearBattleFx */
 /* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf, getSessionToken */
-/* global isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
+/* global battleModeIntroLabel, battleModeLabel, isChineseRaceBattle, isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
 /* global playCastBurst, playHitSfx, playSfx, playSpecialAftermath */
 /* global preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi, speakQuestionAudio */
 /* global romajiSequence, setSfxDuck, setTtsStatus, shakeBattle, showCombo, shuffle */
@@ -282,6 +282,11 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       this.targetSeq = (seq || []).slice();
       this.slots = seq.map(() => null);
       this.promptRoma = opts?.showRomaji ? romajiSequence(seq) : null;
+      const prompt = $("prompt" + this.id);
+      if (prompt) {
+        prompt.textContent = opts?.promptText || "";
+        prompt.classList.toggle("hidden", !opts?.promptText);
+      }
       this.pool = buildPool(seq, opts?.distractorDelta || 0, {
         noDistractors: !!opts?.noDistractors,
       });
@@ -1106,7 +1111,7 @@ function playVsThenBattle() {
     el.textContent = pickP2.name + " · " + (pickP2.passive?.label || pickP2.skill || pickP2.title);
   });
   document.querySelectorAll('[data-vs="rule"]').forEach((el) => {
-    el.textContent = isListenBattle() ? "LISTEN DUEL" : "SPEED DUEL";
+    el.textContent = battleModeIntroLabel(battleOpts.mode);
   });
   const stage = $("vs-stage");
   stage.classList.remove("online-vs");
@@ -1135,7 +1140,7 @@ function startBattle() {
   const listen = isListenBattle();
   const rule = $("rule-chip");
   if (rule) {
-    const bits = [listen ? "聽力搶答" : "競速對決"];
+    const bits = [battleModeLabel(battleOpts.mode)];
     if (!battleOpts.distractors) bits.push("無干擾");
     if (battleOpts.maxLen > 0) bits.push("≤" + battleOpts.maxLen + "字");
     if (battleOpts.script === "hira") bits.push("平假名");
@@ -1504,7 +1509,8 @@ function loadPlayerQuestion(player) {
   const ch = charOf(player);
   const noDistractors = !battleOpts.distractors;
   boards[player].load(q.kanaSequence, {
-    showRomaji: !isListenBattle(),
+    showRomaji: !isListenBattle() && !isChineseRaceBattle(),
+    promptText: isChineseRaceBattle() ? q.zh : "",
     noDistractors,
     distractorDelta: noDistractors ? 0 : (ch?.passive?.distractorDelta || 0),
   });

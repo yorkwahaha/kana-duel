@@ -1481,6 +1481,24 @@ input:focus-visible,
   gap: 4px;
   flex: 0 0 auto;
 }
+.question-clue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 36px;
+  padding: 5px 10px;
+  border: 1px solid rgba(224, 184, 74, 0.38);
+  border-radius: 9px;
+  background: linear-gradient(180deg, rgba(224, 184, 74, 0.16), rgba(224, 184, 74, 0.07));
+  color: #fff1bd;
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 3.2vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
 .board .slot {
   flex: 0 1 calc((100% - 24px) / 7);
   width: calc((100% - 24px) / 7);

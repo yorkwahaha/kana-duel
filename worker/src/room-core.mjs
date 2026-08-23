@@ -42,7 +42,7 @@ export function sanitizeRoomCode(value) {
 }
 
 export function sanitizeConfig(input = {}) {
-  const mode = input.mode === "listen" ? "listen" : "race";
+  const mode = ["listen", "zh-race"].includes(input.mode) ? input.mode : "race";
   const script = ["all", "hira", "kata"].includes(input.script) ? input.script : "all";
   const maxLen = [0, 4, 5, 8].includes(Number(input.maxLen)) ? Number(input.maxLen) : 0;
   const category = VALID_CATEGORIES.has(input.category) ? input.category : "all";
@@ -66,7 +66,10 @@ function scriptOfSequence(sequence) {
 
 function questionsForConfig(config) {
   const all = [...CANONICAL_QUESTIONS.values()];
-  let list = all;
+  const eligible = config.mode === "zh-race"
+    ? all.filter((question) => typeof question.zh === "string" && question.zh.trim())
+    : all;
+  let list = eligible;
   if (config.category !== "all") list = list.filter((question) => question.category === config.category);
   if (config.maxLen > 0) list = list.filter((question) => question.kanaSequence.length <= config.maxLen);
   if (config.script === "hira" || config.script === "kata") {
@@ -75,8 +78,8 @@ function questionsForConfig(config) {
   if (list.length) return list;
 
   list = config.category === "all"
-    ? all
-    : all.filter((question) => question.category === config.category);
+    ? eligible
+    : eligible.filter((question) => question.category === config.category);
   if (config.maxLen > 0) {
     const limited = list.filter((question) => question.kanaSequence.length <= config.maxLen);
     if (limited.length) list = limited;

@@ -77,6 +77,8 @@ function createPlayingRoom(mode = "race") {
 test("online rooms require the complete configured question set and ignore host-supplied answers", () => {
   assert.equal(sanitizeConfig({ category: "loanword" }).category, "loanword");
   assert.equal(sanitizeConfig({ category: "unknown" }).category, "all");
+  assert.equal(sanitizeConfig({ mode: "zh-race" }).mode, "zh-race");
+  assert.equal(sanitizeConfig({ mode: "forged" }).mode, "race");
   const animals = [{ id: "neko", answer: ["あ"] }, { id: "inu" }, { id: "tori" }, { id: "sakana" }];
   const deck = sanitizeDeck(animals, { category: "animals" });
   assert.deepEqual(deck[0], { id: "neko", answer: ["ね", "こ"] });
@@ -125,6 +127,16 @@ test("the server validates answers and owns damage state", () => {
   assert.equal(room.battle.fighters[1].hp, beforeMiss - 72);
   assert.equal(room.battle.fighters[1].mistakes, 1);
   assert.equal(publicRoomState(room, 0).battle.fighters[1].mistakes, 1);
+});
+
+test("Chinese-to-Japanese race keeps independent question progress and normal attacks", () => {
+  const room = createPlayingRoom("zh-race");
+  assert.equal(room.config.mode, "zh-race");
+  assert.equal(room.battle.listenCue, null);
+  assert.equal(applySubmit(room, 0, { questionId: "neko", answer: ["ね", "こ"] }, 1100).correct, true);
+  assert.equal(publicRoomState(room, 0).currentQuestionId, "inu");
+  assert.equal(publicRoomState(room, 1).currentQuestionId, "neko");
+  assert.equal(applyAttack(room, 0, 1110).ok, true);
 });
 
 test("listen mode preserves the winner streak across automatic attacks", () => {
