@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { originAllowed } from "./http-policy.mjs";
+import { originAllowed, rateLimitAllowed } from "./http-policy.mjs";
 import {
   ROOM_TTL_MS,
   applyAttack,
@@ -241,6 +241,9 @@ export default {
     }
     if (!originAllowed(request, env)) return json({ error: "ORIGIN_NOT_ALLOWED" }, 403, cors);
     if (url.pathname === "/rooms" && request.method === "POST") {
+      if (!await rateLimitAllowed(request, env.CREATE_RATE_LIMITER, "create")) {
+        return json({ error: "RATE_LIMITED" }, 429, { ...cors, "retry-after": "60" });
+      }
       let body;
       try { body = await readJson(request); } catch (error) { return json({ error: error.message || "INVALID_JSON" }, 400, cors); }
       for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -257,6 +260,9 @@ export default {
     }
     const join = url.pathname.match(/^\/rooms\/([A-Z2-9]{6})\/join$/i);
     if (join && request.method === "POST") {
+      if (!await rateLimitAllowed(request, env.JOIN_RATE_LIMITER, "join")) {
+        return json({ error: "RATE_LIMITED" }, 429, { ...cors, "retry-after": "60" });
+      }
       const code = sanitizeRoomCode(join[1]);
       let body;
       try { body = await readJson(request); } catch (error) { return json({ error: error.message || "INVALID_JSON" }, 400, cors); }

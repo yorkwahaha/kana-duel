@@ -379,8 +379,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .online-head h2 { margin: 1px 0 0; font-family: var(--serif); color: #f5ead7; }
 .online-kicker { font-size: 0.68rem; color: #9db2e8; letter-spacing: 0.18em; font-weight: 800; }
-.online-connection { font-size: 0.76rem; color: var(--muted); }
-.online-connection.connected { color: var(--ok); }
 .online-entry { display: grid; gap: 18px; padding: 24px 0 8px; }
 .online-entry-actions { display: grid; grid-template-columns: 1fr auto minmax(150px, 1fr) auto; align-items: end; gap: 10px; }
 .online-entry-actions > span { align-self: center; color: var(--muted); font-size: 0.75rem; }
@@ -456,10 +454,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 #screen-online.invite-mode #btn-online-join,
 #screen-online.invite-mode #btn-online-invite-exit { min-height: 52px; }
 
-body.online-battle .duel-half.p2 .board { opacity: 0.72; }
-body.online-battle .duel-half.p2 .tile { pointer-events: none; }
-body.online-battle .duel-half.p2 .actions,
-body.online-battle .duel-half.p2 .skill-bar { visibility: hidden; }
 .online-pause {
   position: fixed; inset: 0; z-index: 120; display: grid; place-items: center;
   background: rgba(4,4,5,0.68); backdrop-filter: blur(5px); color: #fff;
@@ -3019,8 +3013,6 @@ body.online-battle .duel-half.p1 .skill-bar .btn-skill {
 .online-head { border-bottom-color: rgba(82, 62, 39, 0.22); }
 .online-head h2 { color: #30241b; }
 .online-kicker { color: #4e6190; }
-.online-connection { color: #6d6154; }
-.online-connection.connected { color: #176f59; }
 .online-field > span,
 .online-player span,
 .online-check,
@@ -3032,15 +3024,6 @@ body.online-battle .duel-half.p1 .skill-bar .btn-skill {
   background: rgba(255, 253, 247, 0.76);
   box-shadow: inset 0 1px 2px rgba(75, 55, 35, 0.08);
 }
-.online-room-card {
-  border-color: rgba(63, 83, 129, 0.32);
-  background: rgba(220, 228, 244, 0.64);
-}
-.online-room-card > span { color: #655c53; }
-.online-room-card strong { color: #26365d; }
-.online-room-card > span,
-.online-room-card strong,
-.online-room-card .btn { flex-shrink: 0; white-space: nowrap; }
 .online-player {
   border-color: rgba(83, 63, 42, 0.25);
   background: rgba(255, 252, 244, 0.58);
@@ -3157,9 +3140,7 @@ body.online-battle #screen-result .btn-ghost {
   body.online-battle .btn { font-size: 0.94rem; }
   #screen-online .btn-sm { min-height: 46px; height: auto; }
   .online-kicker,
-  .online-connection,
   .online-field > span,
-  .online-room-card > span,
   .online-player span,
   .online-check,
   .online-note,

@@ -4,6 +4,7 @@
   "description": "**v1.1** — 假名聽音拼字對決（單人練習／本機雙人／線上雙人）。",
   "main": "game.js",
   "scripts": {
+    "serve": "node scripts/serve-local.mjs",
     "lint": "eslint .",
     "test": "node --test tests/*.test.mjs"
   },

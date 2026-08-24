@@ -489,10 +489,24 @@ function renderCharGrid() {
       btn.setAttribute("aria-current", i === focus ? "true" : "false");
       btn.setAttribute("aria-pressed", mine?.id === c.id ? "true" : "false");
       if (taken) btn.setAttribute("aria-disabled", "true");
-      btn.innerHTML = `
-        <span class="badge">${c.title}</span>
-        <img src="${c.image}" alt="${c.name}" draggable="false" />
-        <div class="meta"><strong>${c.name}</strong><span>${c.skill}</span><span class="passive">${c.passive?.label || ""}：${c.passive?.desc || ""}${c.active ? " · 主動「" + c.active.label + "」" : ""}</span></div>`;
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = c.title;
+      const image = document.createElement("img");
+      image.src = c.image;
+      image.alt = c.name;
+      image.draggable = false;
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const name = document.createElement("strong");
+      name.textContent = c.name;
+      const skill = document.createElement("span");
+      skill.textContent = c.skill;
+      const passive = document.createElement("span");
+      passive.className = "passive";
+      passive.textContent = `${c.passive?.label || ""}：${c.passive?.desc || ""}${c.active ? " · 主動「" + c.active.label + "」" : ""}`;
+      meta.append(name, skill, passive);
+      btn.append(badge, image, meta);
       if (!locked && !taken) {
         bindTap(btn, () => {
           if (performance.now() - (lastCharSwipeAt[player] || 0) < 320) return;
@@ -1277,8 +1291,8 @@ function formatAnswerSec(ms) {
 }
 function buildBattleStatsRows() {
   if (!battleStats) return "";
-  const p1Name = pickP1?.name || "P1";
-  const p2Name = pickP2?.name || "P2";
+  const p1Name = escapeResultText(pickP1?.name || "P1");
+  const p2Name = escapeResultText(pickP2?.name || "P2");
   const p1 = '<span class="tag-p1">P1</span>';
   const p2 = '<span class="tag-p2">P2</span>';
   const winMark = function (player) {
@@ -1907,7 +1921,7 @@ function battleSkip(player) {
 
 async function enterMode(mode) {
   try { await getSessionToken(); setTtsStatus(true, "session OK"); }
-  catch { setTtsStatus(false, "請用 localhost:8001"); }
+  catch { setTtsStatus(true, "題目 MP3 可用 · 雲端後備離線"); }
   if (mode === "battle") {
     pickP1 = CHARACTERS[0] || null;
     pickP2 = CHARACTERS[1] || CHARACTERS[0] || null;
@@ -2067,9 +2081,8 @@ document.querySelectorAll("[data-act]").forEach((btn) => {
   });
 });
 
-if (location.protocol === "file:") setTtsStatus(false, "請用 localhost:8001");
-else if (!/^https?:\/\/(localhost|127\.0\.0\.1):8001$/.test(location.origin)) setTtsStatus(false, "建議 localhost:8001");
-else setTtsStatus(true, "來源 OK");
+if (location.protocol === "file:") setTtsStatus(false, "請用本機伺服器開啟");
+else setTtsStatus(true, "題目 MP3 優先");
 const qmeta = $("qbank-meta");
 if (qmeta) {
   qmeta.textContent = ALL_QUESTIONS.length

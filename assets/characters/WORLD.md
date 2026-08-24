@@ -20,7 +20,7 @@
 | sho | 符筆・章 | 符筆 | 万符封言 | `sho.webp`（`sho-atk.webp` / `sho-hit.webp`） |
 | yo | 光扇・陽 | 光扇 | 扇華断空 | `yo.webp`（`yo-atk.webp` / `yo-hit.webp`） |
 
-> 第 2 期 `*-atk.webp` / `*-hit.webp` 暫以 idle 立繪佔位，可另補攻擊／受擊姿勢後覆寫。
+> 第 2 期已各自提供 idle、攻擊與受擊三種立繪。
 
 ## 媒體
 

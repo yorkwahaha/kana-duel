@@ -10,7 +10,7 @@ target.KANA_QUESTIONS = [
 
   // —— 示範保留 ——
   { id: "goku", contentType: "character", displayName: "孫悟空", kanaSequence: ["ご", "く", "う"], kanji: "孫悟空", zh: "孫悟空", speakText: "ごくう", rewardMode: "celebrate", tags: ["角色", "入門"] },
-  { id: "domain", contentType: "skill", displayName: "領域展開", kanaSequence: ["りょ", "う", "い", "き", "て", "ん", "か", "い"], kanji: "領域展開", speakText: "りょういきてんかい", castSpeakText: "りょういきてんかい！", castSubtitle: "領域展開", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
+  { id: "domain", contentType: "skill", displayName: "領域展開", kanaSequence: ["りょ", "う", "い", "き", "て", "ん", "か", "い"], kanji: "領域展開", zh: "領域展開", speakText: "りょういきてんかい", castSpeakText: "りょういきてんかい！", castSubtitle: "領域展開", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
 
   // —— 角色名 ——
   { id: "naruto", contentType: "character", displayName: "ナルト", kanaSequence: ["ナ", "ル", "ト"], zh: "鳴人", speakText: "ナルト", rewardMode: "celebrate", tags: ["角色", "片仮名"] },
@@ -32,25 +32,25 @@ target.KANA_QUESTIONS = [
   { id: "kirito", contentType: "character", displayName: "キリト", kanaSequence: ["キ", "リ", "ト"], zh: "桐人", speakText: "キリト", rewardMode: "celebrate", tags: ["角色"] },
 
   // —— 招式名 ——
-  { id: "kamehameha", contentType: "skill", displayName: "かめはめ波", kanaSequence: ["か", "め", "は", "め", "は"], kanji: "かめはめ波", speakText: "かめはめは", castSpeakText: "かめはめはー！", castSubtitle: "かめはめ波", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "rasengan", contentType: "skill", displayName: "螺旋丸", kanaSequence: ["ら", "せ", "ん", "が", "ん"], kanji: "螺旋丸", speakText: "らせんがん", castSpeakText: "らせんがん！", castSubtitle: "螺旋丸", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "chidori", contentType: "skill", displayName: "千鳥", kanaSequence: ["ち", "ど", "り"], kanji: "千鳥", speakText: "ちどり", castSpeakText: "ちどり！", castSubtitle: "千鳥", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "bankai", contentType: "skill", displayName: "卍解", kanaSequence: ["ば", "ん", "か", "い"], kanji: "卍解", speakText: "ばんかい", castSpeakText: "ばんかい！", castSubtitle: "卍解", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "getsuga", contentType: "skill", displayName: "月牙天衝", kanaSequence: ["げ", "つ", "が", "て", "ん", "しょ", "う"], kanji: "月牙天衝", speakText: "げつがてんしょう", castSpeakText: "げつがてんしょう！", castSubtitle: "月牙天衝", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "finalflash", contentType: "skill", displayName: "ファイナルフラッシュ", kanaSequence: ["ファ", "イ", "ナ", "ル", "フ", "ラ", "ッ", "シュ"], speakText: "ファイナルフラッシュ", castSpeakText: "ファイナルフラッシュ！", castSubtitle: "ファイナルフラッシュ", rewardMode: "cast_skill", tags: ["招式", "片仮名"] },
-  { id: "spiritbomb", contentType: "skill", displayName: "元気玉", kanaSequence: ["げ", "ん", "き", "だ", "ま"], kanji: "元気玉", speakText: "げんきだま", castSpeakText: "げんきだま！", castSubtitle: "元気玉", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "sharingan", contentType: "skill", displayName: "写輪眼", kanaSequence: ["しゃ", "り", "ん", "が", "ん"], kanji: "写輪眼", speakText: "しゃりんがん", castSpeakText: "しゃりんがん！", castSubtitle: "写輪眼", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
-  { id: "susanoo", contentType: "skill", displayName: "須佐能乎", kanaSequence: ["す", "さ", "の", "お"], kanji: "須佐能乎", speakText: "すさのお", castSpeakText: "すさのお！", castSubtitle: "須佐能乎", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "amaterasu", contentType: "skill", displayName: "天照", kanaSequence: ["あ", "ま", "て", "ら", "す"], kanji: "天照", speakText: "あまてらす", castSpeakText: "あまてらす！", castSubtitle: "天照", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "hijutsu", contentType: "skill", displayName: "影分身の術", kanaSequence: ["か", "げ", "ぶ", "ん", "し", "ん", "の", "じゅ", "つ"], kanji: "影分身の術", speakText: "かげぶんしんのじゅつ", castSpeakText: "かげぶんしんのじゅつ！", castSubtitle: "影分身の術", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "omoiyari", contentType: "skill", displayName: "水の呼吸", kanaSequence: ["み", "ず", "の", "こ", "きゅ", "う"], kanji: "水の呼吸", speakText: "みずのこきゅう", castSpeakText: "みずのこきゅう！", castSubtitle: "水の呼吸", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
-  { id: "hinokami", contentType: "skill", displayName: "ヒノカミ神楽", kanaSequence: ["ヒ", "ノ", "カ", "ミ", "か", "ぐ", "ら"], kanji: "ヒノカミ神楽", speakText: "ヒノカミかぐら", castSpeakText: "ヒノカミかぐら！", castSubtitle: "ヒノカミ神楽", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "oneforall", contentType: "skill", displayName: "ワン・フォー・オール", kanaSequence: ["ワ", "ン", "フォ", "ー", "オ", "ー", "ル"], speakText: "ワンフォーオール", castSpeakText: "ワンフォーオール！", castSubtitle: "ワン・フォー・オール", rewardMode: "cast_skill", tags: ["招式", "片仮名"] },
-  { id: "gumgum", contentType: "skill", displayName: "ゴムゴムのピストル", kanaSequence: ["ゴ", "ム", "ゴ", "ム", "の", "ピ", "ス", "ト", "ル"], speakText: "ゴムゴムのピストル", castSpeakText: "ゴムゴムのピストル！", castSubtitle: "ゴムゴムのピストル", rewardMode: "cast_skill", tags: ["招式", "長詞"] },
-  { id: "gearsecond", contentType: "skill", displayName: "ギア・セカンド", kanaSequence: ["ギ", "ア", "セ", "カ", "ン", "ド"], speakText: "ギアセカンド", castSpeakText: "ギアセカンド！", castSubtitle: "ギア・セカンド", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "blackflash", contentType: "skill", displayName: "黒閃", kanaSequence: ["こ", "く", "せ", "ん"], kanji: "黒閃", speakText: "こくせん", castSpeakText: "こくせん！", castSubtitle: "黒閃", rewardMode: "cast_skill", tags: ["招式"] },
-  { id: "hollowpurple", contentType: "skill", displayName: "虚式茈", kanaSequence: ["きょ", "し", "き", "む", "ら", "さ", "き"], kanji: "虚式茈", speakText: "きょしきむらさき", castSpeakText: "きょしきむらさき！", castSubtitle: "虚式茈", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
-  { id: "infinitevoid", contentType: "skill", displayName: "無量空処", kanaSequence: ["む", "りょ", "う", "く", "う", "しょ"], kanji: "無量空処", speakText: "むりょうくうしょ", castSpeakText: "むりょうくうしょ！", castSubtitle: "無量空処", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
+  { id: "kamehameha", contentType: "skill", displayName: "かめはめ波", kanaSequence: ["か", "め", "は", "め", "は"], kanji: "かめはめ波", zh: "龜派氣功", speakText: "かめはめは", castSpeakText: "かめはめはー！", castSubtitle: "かめはめ波", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "rasengan", contentType: "skill", displayName: "螺旋丸", kanaSequence: ["ら", "せ", "ん", "が", "ん"], kanji: "螺旋丸", zh: "螺旋丸", speakText: "らせんがん", castSpeakText: "らせんがん！", castSubtitle: "螺旋丸", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "chidori", contentType: "skill", displayName: "千鳥", kanaSequence: ["ち", "ど", "り"], kanji: "千鳥", zh: "千鳥", speakText: "ちどり", castSpeakText: "ちどり！", castSubtitle: "千鳥", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "bankai", contentType: "skill", displayName: "卍解", kanaSequence: ["ば", "ん", "か", "い"], kanji: "卍解", zh: "卍解", speakText: "ばんかい", castSpeakText: "ばんかい！", castSubtitle: "卍解", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "getsuga", contentType: "skill", displayName: "月牙天衝", kanaSequence: ["げ", "つ", "が", "て", "ん", "しょ", "う"], kanji: "月牙天衝", zh: "月牙天衝", speakText: "げつがてんしょう", castSpeakText: "げつがてんしょう！", castSubtitle: "月牙天衝", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "finalflash", contentType: "skill", displayName: "ファイナルフラッシュ", kanaSequence: ["ファ", "イ", "ナ", "ル", "フ", "ラ", "ッ", "シュ"], zh: "終極閃光", speakText: "ファイナルフラッシュ", castSpeakText: "ファイナルフラッシュ！", castSubtitle: "ファイナルフラッシュ", rewardMode: "cast_skill", tags: ["招式", "片仮名"] },
+  { id: "spiritbomb", contentType: "skill", displayName: "元気玉", kanaSequence: ["げ", "ん", "き", "だ", "ま"], kanji: "元気玉", zh: "元氣彈", speakText: "げんきだま", castSpeakText: "げんきだま！", castSubtitle: "元気玉", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "sharingan", contentType: "skill", displayName: "写輪眼", kanaSequence: ["しゃ", "り", "ん", "が", "ん"], kanji: "写輪眼", zh: "寫輪眼", speakText: "しゃりんがん", castSpeakText: "しゃりんがん！", castSubtitle: "写輪眼", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
+  { id: "susanoo", contentType: "skill", displayName: "須佐能乎", kanaSequence: ["す", "さ", "の", "お"], kanji: "須佐能乎", zh: "須佐能乎", speakText: "すさのお", castSpeakText: "すさのお！", castSubtitle: "須佐能乎", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "amaterasu", contentType: "skill", displayName: "天照", kanaSequence: ["あ", "ま", "て", "ら", "す"], kanji: "天照", zh: "天照", speakText: "あまてらす", castSpeakText: "あまてらす！", castSubtitle: "天照", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "hijutsu", contentType: "skill", displayName: "影分身の術", kanaSequence: ["か", "げ", "ぶ", "ん", "し", "ん", "の", "じゅ", "つ"], kanji: "影分身の術", zh: "影分身之術", speakText: "かげぶんしんのじゅつ", castSpeakText: "かげぶんしんのじゅつ！", castSubtitle: "影分身の術", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "mizunokokyu", contentType: "skill", displayName: "水の呼吸", kanaSequence: ["み", "ず", "の", "こ", "きゅ", "う"], kanji: "水の呼吸", zh: "水之呼吸", speakText: "みずのこきゅう", castSpeakText: "みずのこきゅう！", castSubtitle: "水の呼吸", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
+  { id: "hinokami", contentType: "skill", displayName: "ヒノカミ神楽", kanaSequence: ["ヒ", "ノ", "カ", "ミ", "か", "ぐ", "ら"], kanji: "ヒノカミ神楽", zh: "火之神神樂", speakText: "ヒノカミかぐら", castSpeakText: "ヒノカミかぐら！", castSubtitle: "ヒノカミ神楽", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "oneforall", contentType: "skill", displayName: "ワン・フォー・オール", kanaSequence: ["ワ", "ン", "フォ", "ー", "オ", "ー", "ル"], zh: "One For All", speakText: "ワンフォーオール", castSpeakText: "ワンフォーオール！", castSubtitle: "ワン・フォー・オール", rewardMode: "cast_skill", tags: ["招式", "片仮名"] },
+  { id: "gumgum", contentType: "skill", displayName: "ゴムゴムのピストル", kanaSequence: ["ゴ", "ム", "ゴ", "ム", "の", "ピ", "ス", "ト", "ル"], zh: "橡膠橡膠手槍", speakText: "ゴムゴムのピストル", castSpeakText: "ゴムゴムのピストル！", castSubtitle: "ゴムゴムのピストル", rewardMode: "cast_skill", tags: ["招式", "長詞"] },
+  { id: "gearsecond", contentType: "skill", displayName: "ギア・セカンド", kanaSequence: ["ギ", "ア", "セ", "カ", "ン", "ド"], zh: "二檔", speakText: "ギアセカンド", castSpeakText: "ギアセカンド！", castSubtitle: "ギア・セカンド", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "blackflash", contentType: "skill", displayName: "黒閃", kanaSequence: ["こ", "く", "せ", "ん"], kanji: "黒閃", zh: "黑閃", speakText: "こくせん", castSpeakText: "こくせん！", castSubtitle: "黒閃", rewardMode: "cast_skill", tags: ["招式"] },
+  { id: "hollowpurple", contentType: "skill", displayName: "虚式茈", kanaSequence: ["きょ", "し", "き", "む", "ら", "さ", "き"], kanji: "虚式茈", zh: "虛式茈", speakText: "きょしきむらさき", castSpeakText: "きょしきむらさき！", castSubtitle: "虚式茈", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
+  { id: "infinitevoid", contentType: "skill", displayName: "無量空処", kanaSequence: ["む", "りょ", "う", "く", "う", "しょ"], kanji: "無量空処", zh: "無量空處", speakText: "むりょうくうしょ", castSpeakText: "むりょうくうしょ！", castSubtitle: "無量空処", rewardMode: "cast_skill", tags: ["招式", "拗音"] },
 
   // —— 日常・N5 詞彙 ——
   { id: "arigatou", contentType: "vocab", displayName: "ありがとう", kanaSequence: ["あ", "り", "が", "と", "う"], zh: "謝謝", speakText: "ありがとう", rewardMode: "celebrate", tags: ["日常", "入門"] },

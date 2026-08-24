@@ -39,6 +39,7 @@ window.KanaBattleOnlineClient = (() => {
     NO_TARGET_CHARGE: "對手目前沒有可奪取的蓄力。",
     AMP_ALREADY_READY: "連鳴已待機。",
     ORIGIN_NOT_ALLOWED: "目前網站來源未獲准使用線上房間。",
+    RATE_LIMITED: "操作太頻繁，請一分鐘後再試。",
     NETWORK_UNAVAILABLE: "目前無法連上線上房間。",
   };
 

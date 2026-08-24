@@ -43,16 +43,16 @@ test("question bank keeps valid, unique, playable entries", () => {
 });
 
 test("Chinese-to-Japanese race uses only questions with Traditional Chinese prompts", () => {
-  const { selectBattleQuestions } = loadContentData();
+  const { ALL_QUESTIONS, selectBattleQuestions } = loadContentData();
   const questions = selectBattleQuestions({
     mode: "zh-race",
     category: "all",
     maxLen: 0,
     script: "all",
   });
-  assert.equal(questions.length, 360);
+  assert.equal(questions.length, ALL_QUESTIONS.length);
   assert.ok(questions.every((question) => typeof question.zh === "string" && question.zh.trim()));
-  assert.equal(questions.some((question) => question.id === "domain"), false);
+  assert.equal(questions.some((question) => question.id === "domain"), true);
 });
 
 test("approved Fish Audio pack covers every question exactly once", () => {
@@ -95,6 +95,9 @@ test("reviewed bank removes obscure names and provides categorized learning vari
   assert.equal(ALL_QUESTIONS.filter((q) => q.category === "animals").length, 4);
   assert.equal(ALL_QUESTIONS.find((q) => q.id === "ramen")?.category, "food");
   assert.equal(ALL_QUESTIONS.find((q) => q.id === "haru")?.category, "time_nature");
+  assert.ok(ALL_QUESTIONS.every((q) => q.zh), "every question must support Chinese-to-Japanese mode");
+  assert.equal(ALL_QUESTIONS.some((q) => q.id === "omoiyari"), false, "stale water-breathing id must stay removed");
+  assert.equal(ALL_QUESTIONS.find((q) => q.id === "mizunokokyu")?.speakText, "みずのこきゅう");
 });
 
 test("all referenced local media exist except explicitly deferred audio", () => {
@@ -252,6 +255,13 @@ test("online invite, lobby, and VS intro use the phone-first interaction contrac
   assert.match(css, /\.vs-stage\.online-vs \.vs-fighter img \{ position: absolute; inset: 0; \}/);
 });
 
+test("production CSP excludes loopback Worker endpoints", () => {
+  const html = read("index.html");
+  const localServer = read("scripts/serve-local.mjs");
+  assert.doesNotMatch(html, /(?:http|ws):\/\/127\.0\.0\.1:8787/);
+  assert.match(localServer, /http:\/\/127\.0\.0\.1:8787 ws:\/\/127\.0\.0\.1:8787/);
+});
+
 test("character selection reserves a BGM path and uses the kana click sound", () => {
   const audio = read("game-audio.js");
   const game = read("game.js");
@@ -273,6 +283,8 @@ test("battle BGM preload fetches only the selected track", () => {
 test("result text is escaped before player tags are colorized", () => {
   const game = read("game.js");
   assert.match(game, /function escapeResultText\(text\)/);
+  assert.match(game, /const p1Name = escapeResultText\(pickP1\?\.name \|\| "P1"\)/);
+  assert.doesNotMatch(game.slice(game.indexOf("function renderCharGrid"), game.indexOf("function stepCharFocus")), /btn\.innerHTML/);
   assert.match(game, /function colorizePlayerTags\(text\) \{\s*return escapeResultText\(text\)/);
 });
 

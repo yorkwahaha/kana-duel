@@ -7,7 +7,7 @@
 先在專案根目錄啟動前端：
 
 ```powershell
-python -m http.server 8001
+npm run serve
 ```
 
 另一個終端啟動 Worker：
@@ -16,7 +16,7 @@ python -m http.server 8001
 npx wrangler dev --config worker/wrangler.jsonc
 ```
 
-本機前端會自動使用 `http://127.0.0.1:8787`。
+本機伺服器只在回傳 `index.html` 時加入本機 Worker 的 CSP 放行；正式版 `index.html` 不再允許連到 loopback。前端在 `localhost`／`127.0.0.1` 仍會自動使用 `http://127.0.0.1:8787`。
 
 ## 部署
 
