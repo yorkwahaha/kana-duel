@@ -96,6 +96,7 @@ test("reviewed bank removes obscure names and provides categorized learning vari
   assert.equal(ALL_QUESTIONS.find((q) => q.id === "ramen")?.category, "food");
   assert.equal(ALL_QUESTIONS.find((q) => q.id === "haru")?.category, "time_nature");
   assert.ok(ALL_QUESTIONS.every((q) => q.zh), "every question must support Chinese-to-Japanese mode");
+  assert.equal(ALL_QUESTIONS.find((q) => q.id === "oneforall")?.zh, "我為人人（One For All）");
   assert.equal(ALL_QUESTIONS.some((q) => q.id === "omoiyari"), false, "stale water-breathing id must stay removed");
   assert.equal(ALL_QUESTIONS.find((q) => q.id === "mizunokokyu")?.speakText, "みずのこきゅう");
 });
