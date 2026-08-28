@@ -417,9 +417,6 @@
       await playSpecialAftermath(theme.id);
       if (!active || actionEpoch !== battleEpoch) return false;
       await preloadBattleSfx().catch(() => {});
-      playAttackBolt(player, foe, theme, true);
-      await wait(90);
-      playAttackBolt(player, foe, theme, true);
     } else {
       playCastBurst(attacker, theme);
       await playAttackBolt(player, foe, theme, hits >= 3);
@@ -438,7 +435,9 @@
       showDmgFloat(foe, parts[index], hitNo);
       if (event.guarded) spawnBlockParry(defender, hitNo === 1 || hitNo === parts.length);
       else spawnHitBurst(defender, theme, hitNo + (event.special ? 2 : 0));
-      playAttackBolt(player, foe, theme, event.special || hitNo >= 3 || hitNo === parts.length);
+      if (!event.special) {
+        playAttackBolt(player, foe, theme, hitNo >= 3 || hitNo === parts.length);
+      }
       shakeBattle(event.special || hitNo >= 3 || hitNo === parts.length);
       pulseDeviceImpact(event.special || hitNo === parts.length);
       defender?.classList.remove("hit", "hit-strong", "block-absorb");

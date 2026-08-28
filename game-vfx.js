@@ -685,21 +685,167 @@ function clearBattleFx() {
   const after = $("special-aftermath");
   if (after) {
     after.classList.remove("go");
+    after.replaceChildren();
     after.setAttribute("aria-hidden", "true");
   }
   document.querySelector(".duel-stage")?.classList.remove("fx-shake", "fx-shake-lg");
 }
+
+const SPECIAL_AFTERMATH_DURATION = Object.freeze({
+  ao: 1320,
+  gen: 1420,
+  go: 1480,
+  ran: 1380,
+  rin: 1780,
+  sho: 1720,
+  ya: 1540,
+  yo: 1600,
+});
+
+function addUltimateParts(parent, className, count, configure) {
+  for (let index = 0; index < count; index += 1) {
+    const part = document.createElement("i");
+    part.className = className;
+    part.setAttribute("aria-hidden", "true");
+    part.style.setProperty("--i", index);
+    if (configure) configure(part, index, count);
+    parent.appendChild(part);
+  }
+}
+
+function addUltimateSvgPart(parent, tagName, className, attributes) {
+  const part = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+  if (className) part.setAttribute("class", className);
+  Object.entries(attributes || {}).forEach(([name, value]) => part.setAttribute(name, value));
+  parent.appendChild(part);
+  return part;
+}
+
+function buildSpecialAftermath(themeId) {
+  const scene = document.createElement("div");
+  scene.className = `ultimate-impact ultimate-impact--${themeId}`;
+  scene.setAttribute("aria-hidden", "true");
+
+  const flash = document.createElement("div");
+  flash.className = "ultimate-impact__flash";
+  scene.appendChild(flash);
+
+  if (themeId === "ao") {
+    addUltimateParts(scene, "ultimate-ao-cleave", 3, (part, index) => {
+      part.style.setProperty("--offset", `${(index - 1) * 4.5}vw`);
+      part.style.setProperty("--delay", `${index * 54}ms`);
+    });
+    addUltimateParts(scene, "ultimate-ao-shard", 12, (part, index) => {
+      part.style.setProperty("--angle", `${index * 30}deg`);
+      part.style.setProperty("--distance", `${34 + (index % 3) * 7}vmax`);
+    });
+  } else if (themeId === "gen") {
+    const ink = document.createElement("div");
+    ink.className = "ultimate-gen-ink";
+    scene.appendChild(ink);
+    addUltimateParts(scene, "ultimate-gen-cleave", 4, (part, index) => {
+      part.style.setProperty("--offset", `${(index - 1.5) * 3.5}vh`);
+      part.style.setProperty("--delay", `${index * 45}ms`);
+    });
+    addUltimateParts(scene, "ultimate-gen-drop", 15, (part, index) => {
+      part.style.setProperty("--x", `${6 + ((index * 29) % 88)}vw`);
+      part.style.setProperty("--y", `${12 + ((index * 41) % 76)}vh`);
+      part.style.setProperty("--size", `${5 + (index % 4) * 4}px`);
+      part.style.setProperty("--height", `${9 + (index % 4) * 7}px`);
+      part.style.setProperty("--dx", `${((index * 37) % 34) - 17}vw`);
+      part.style.setProperty("--delay", `${110 + (index % 5) * 36}ms`);
+    });
+  } else if (themeId === "sho") {
+    addUltimateParts(scene, "ultimate-sho-talisman", 12, (part, index, count) => {
+      part.textContent = "爆";
+      part.style.setProperty("--angle", `${index * (360 / count)}deg`);
+      part.style.setProperty("--radius", `${31 + (index % 3) * 5}vmin`);
+      part.style.setProperty("--delay", `${index * 32}ms`);
+    });
+    addUltimateParts(scene, "ultimate-sho-blast", 6, (part, index) => {
+      part.style.setProperty("--x", `${18 + ((index * 27) % 66)}%`);
+      part.style.setProperty("--y", `${22 + ((index * 31) % 58)}%`);
+      part.style.setProperty("--delay", `${420 + index * 78}ms`);
+    });
+  } else if (themeId === "ya") {
+    addUltimateParts(scene, "ultimate-ya-spear", 14, (part, index, count) => {
+      const angle = index * (360 / count);
+      part.style.setProperty("--angle", `${angle}deg`);
+      part.style.setProperty("--distance", `${54 + (index % 4) * 6}vmax`);
+      part.style.setProperty("--delay", `${index * 24}ms`);
+      part.style.setProperty("--scale", `${0.72 + (index % 3) * 0.18}`);
+    });
+    const core = document.createElement("div");
+    core.className = "ultimate-ya-core";
+    scene.appendChild(core);
+  } else if (themeId === "yo") {
+    addUltimateParts(scene, "ultimate-yo-leaf", 24, (part, index) => {
+      part.classList.add(index % 2 ? "is-light" : "is-dark");
+      part.style.setProperty("--angle", `${index * 137.5}deg`);
+      part.style.setProperty("--radius", `${28 + (index % 6) * 7}vmin`);
+      part.style.setProperty("--delay", `${(index % 8) * 34}ms`);
+      part.style.setProperty("--spin", `${index % 2 ? 540 : -540}deg`);
+    });
+    const focus = document.createElement("div");
+    focus.className = "ultimate-yo-focus";
+    scene.appendChild(focus);
+  } else if (themeId === "rin") {
+    const dragon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    dragon.className = "ultimate-rin-dragon";
+    dragon.setAttribute("viewBox", "0 0 1000 600");
+    dragon.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    const bodyPath = "M38 414 C170 86 366 560 548 264 C686 40 780 332 882 250";
+    addUltimateSvgPart(dragon, "path", "ultimate-rin-body ultimate-rin-body--outer", { d: bodyPath });
+    addUltimateSvgPart(dragon, "path", "ultimate-rin-body ultimate-rin-body--inner", { d: bodyPath });
+    addUltimateSvgPart(dragon, "path", "ultimate-rin-body ultimate-rin-body--core", { d: bodyPath });
+    addUltimateSvgPart(dragon, "path", "ultimate-rin-spine", { d: "M150 222 l-42 -105 l91 67 M330 326 l-12 -116 l78 83 M535 250 l18 -112 l62 92 M708 208 l40 -91 l38 108" });
+    addUltimateSvgPart(dragon, "path", "ultimate-rin-head", { d: "M830 166 L932 126 L910 188 L988 218 L922 250 L982 306 L884 292 L820 340 L834 278 L774 244 Z" });
+    addUltimateSvgPart(dragon, "path", "ultimate-rin-jaw", { d: "M858 257 L968 250 L914 324 L842 302 Z" });
+    addUltimateSvgPart(dragon, "path", "ultimate-rin-horn", { d: "M846 188 L814 78 L892 165 M888 160 L914 68 L938 184" });
+    addUltimateSvgPart(dragon, "circle", "ultimate-rin-eye", { cx: "914", cy: "218", r: "13" });
+    scene.appendChild(dragon);
+  } else if (themeId === "ran") {
+    addUltimateParts(scene, "ultimate-ran-arc", 7, (part, index) => {
+      part.style.setProperty("--angle", `${-42 + index * 13}deg`);
+      part.style.setProperty("--delay", `${index * 48}ms`);
+      part.style.setProperty("--scale", `${0.72 + index * 0.09}`);
+    });
+    const heel = document.createElement("div");
+    heel.className = "ultimate-ran-heel";
+    scene.appendChild(heel);
+  } else {
+    const fist = document.createElement("div");
+    fist.className = "ultimate-go-fist";
+    addUltimateParts(fist, "ultimate-go-knuckle", 4);
+    scene.appendChild(fist);
+    addUltimateParts(scene, "ultimate-go-bolt", 10, (part, index) => {
+      part.style.setProperty("--angle", `${index * 36}deg`);
+      part.style.setProperty("--delay", `${(index % 5) * 34}ms`);
+    });
+    addUltimateParts(scene, "ultimate-go-ring", 3, (part, index) => {
+      part.style.setProperty("--delay", `${360 + index * 105}ms`);
+    });
+  }
+
+  return scene;
+}
+
 async function playSpecialAftermath(themeId) {
   const el = $("special-aftermath");
   if (!el) return;
-  el.dataset.theme = themeId || "ao";
+  const resolvedTheme = SPECIAL_AFTERMATH_DURATION[themeId] ? themeId : "ao";
+  const duration = SPECIAL_AFTERMATH_DURATION[resolvedTheme];
+  el.dataset.theme = resolvedTheme;
+  el.style.setProperty("--ultimate-duration", `${duration}ms`);
   el.classList.remove("go");
+  el.replaceChildren(buildSpecialAftermath(resolvedTheme));
   void el.offsetWidth;
   el.classList.add("go");
   el.setAttribute("aria-hidden", "false");
   if (prefersReducedMotion()) {
-    await wait(120);
+    await wait(180);
     el.classList.remove("go");
+    el.replaceChildren();
     el.setAttribute("aria-hidden", "true");
     return;
   }
@@ -713,7 +859,8 @@ async function playSpecialAftermath(themeId) {
     setTimeout(() => flash.remove(), 420);
   }
   shakeBattle(true);
-  await wait(980);
+  await wait(duration);
   el.classList.remove("go");
+  el.replaceChildren();
   el.setAttribute("aria-hidden", "true");
 }

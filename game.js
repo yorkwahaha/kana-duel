@@ -1440,7 +1440,7 @@ function hideSpecialStage() {
   try { vid.pause(); vid.removeAttribute("src"); vid.load(); } catch {}
 }
 
-/** 大招：播 6s 影片（內建喊招＋音效），結束後才接連打；畫面朝對手正向 */
+/** 大招：播 4s 影片（內建喊招＋音效），結束後接角色專屬全畫面攻擊；畫面朝對手正向 */
 async function playSpecialUltimate(player) {
   cancelAllDrags();
   const ch = charOf(player);
@@ -1476,7 +1476,7 @@ async function playSpecialUltimate(player) {
       if (pulse) clearInterval(pulse);
       done();
     };
-    const hard = setTimeout(finish, 7000);
+    const hard = setTimeout(finish, 6000);
     pulse = setInterval(keepBattleBgmAlive, 120);
     const usePortrait = () => {
       if (pulse) { clearInterval(pulse); pulse = null; }
@@ -1662,11 +1662,6 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     if (!battleOpen || actionEpoch !== battleEpoch) return false;
     if (audioCtx && audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
     await preloadBattleSfx().catch(() => {});
-    // 大招開場連射兩道
-    playAttackBolt(player, foe, atkTheme, true);
-    await wait(90);
-    await playAttackBolt(player, foe, atkTheme, true);
-    shakeBattle(true);
   } else {
     playCastBurst(atk, atkTheme);
     setFighterPose(player, "atk");
@@ -1722,10 +1717,9 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
       void flash.offsetWidth;
       flash.classList.add("go");
     }
-    // 每下都補軌跡；大招／尾段更密
-    playAttackBolt(player, foe, atkTheme, isSpecial || hitNo >= 3 || hitNo === hits);
-    if (isSpecial && hitNo % 2 === 0) {
-      setTimeout(() => playAttackBolt(player, foe, atkTheme, true), 40);
+    // 普攻保留角色軌跡；大招已由影片後的專屬全畫面特效完成攻擊。
+    if (!isSpecial) {
+      playAttackBolt(player, foe, atkTheme, hitNo >= 3 || hitNo === hits);
     }
     await wait(230 + Math.min(hitNo, 5) * 18);
     if (!battleOpen || actionEpoch !== battleEpoch) return false;

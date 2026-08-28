@@ -1,0 +1,478 @@
+/* Character-specific ultimate aftermaths. The cast video hands its final pose
+   into one readable, full-screen strike instead of reusing the basic bolt. */
+.special-aftermath {
+  isolation: isolate;
+  overflow: hidden;
+  background: transparent;
+  mix-blend-mode: normal;
+  contain: strict;
+}
+.special-aftermath::before,
+.special-aftermath::after { content: none; }
+.special-aftermath.go {
+  animation: ultimateStage var(--ultimate-duration, 1500ms) linear forwards;
+}
+.ultimate-impact {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: rgba(4, 5, 8, 0.9);
+  transform: translateZ(0);
+}
+.ultimate-impact__flash {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: #fff;
+  opacity: 0;
+  animation: ultimateFlash var(--ultimate-duration, 1500ms) ease-out forwards;
+}
+@keyframes ultimateStage {
+  0% { opacity: 0; }
+  4%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes ultimateFlash {
+  0% { opacity: 0.38; }
+  7% { opacity: 0.03; }
+  54% { opacity: 0; }
+  61% { opacity: 0.38; }
+  69%, 100% { opacity: 0; }
+}
+
+/* 蒼 · a sharp vertical cleave that splits the frame. */
+.ultimate-impact--ao {
+  background:
+    radial-gradient(circle at 50% 58%, rgba(32, 220, 255, 0.3), transparent 28%),
+    linear-gradient(90deg, #020608 0 49.4%, #e6fbff 49.8% 50.2%, #020608 50.6% 100%);
+}
+.ultimate-ao-cleave {
+  position: absolute;
+  z-index: 5;
+  top: -15%;
+  left: 50%;
+  width: clamp(6px, 1.8vw, 18px);
+  height: 130%;
+  border-radius: 100%;
+  background: linear-gradient(90deg, transparent, #fff 35% 65%, transparent);
+  box-shadow: 0 0 12px #eaffff, 0 0 40px #39dfff, 0 0 90px rgba(0, 145, 255, 0.8);
+  opacity: 0;
+  transform: translateX(calc(-50% + var(--offset))) scaleY(0.04) skewY(-5deg);
+  transform-origin: 50% 0;
+  animation: aoCleave 820ms var(--delay) cubic-bezier(0.16, 0.86, 0.2, 1) forwards;
+}
+.ultimate-ao-shard {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 54%;
+  width: clamp(3px, 0.7vw, 8px);
+  height: clamp(36px, 10vmin, 90px);
+  background: linear-gradient(#fff, #23ccff 48%, transparent);
+  clip-path: polygon(50% 0, 100% 80%, 50% 100%, 0 80%);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scaleY(0.2);
+  animation: aoShard 760ms 360ms ease-out forwards;
+}
+@keyframes aoCleave {
+  0% { opacity: 0; transform: translateX(calc(-50% + var(--offset))) scaleY(0.04) skewY(-5deg); }
+  10%, 56% { opacity: 1; }
+  58% { transform: translateX(calc(-50% + var(--offset))) scaleY(1) skewY(-1deg); }
+  100% { opacity: 0; transform: translateX(calc(-50% + var(--offset))) scaleY(1.15) scaleX(4); }
+}
+@keyframes aoShard {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0) scaleY(0.2); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(0px - var(--distance))) scaleY(1.2); }
+}
+
+/* 玄 · one unmistakable horizontal sumi-e cut. */
+.ultimate-impact--gen {
+  background:
+    radial-gradient(ellipse at center, rgba(255,255,255,0.96) 0 48%, rgba(223,220,211,0.95) 75%),
+    #eeeae0;
+}
+.ultimate-gen-ink {
+  position: absolute;
+  inset: -12%;
+  background:
+    radial-gradient(ellipse at 50% 51%, rgba(0,0,0,0.96) 0 5%, transparent 22%),
+    radial-gradient(ellipse at 30% 48%, rgba(0,0,0,0.85), transparent 20%),
+    radial-gradient(ellipse at 72% 54%, rgba(12,10,17,0.8), transparent 24%);
+  opacity: 0;
+  filter: blur(2px) contrast(1.45);
+  animation: genInk 1180ms 120ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.ultimate-gen-cleave {
+  position: absolute;
+  z-index: 5;
+  left: -10%;
+  top: 50%;
+  width: 120%;
+  height: clamp(5px, 1.5vh, 14px);
+  background: linear-gradient(90deg, transparent, #08060c 5% 82%, transparent);
+  box-shadow: 0 -8px 0 rgba(15, 11, 20, 0.24), 0 7px 0 rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transform: translateY(var(--offset)) rotate(-6deg) scaleX(0);
+  transform-origin: 0 50%;
+  animation: genCleave 760ms var(--delay) cubic-bezier(0.14, 0.78, 0.18, 1) forwards;
+}
+.ultimate-gen-drop {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--height);
+  border-radius: 65% 35% 62% 38%;
+  background: #050408;
+  opacity: 0;
+  animation: genDrop 760ms var(--delay) ease-out forwards;
+}
+@keyframes genInk {
+  0% { opacity: 0; transform: scaleX(0.08); }
+  22%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: scaleX(1.25); filter: blur(8px) contrast(1.2); }
+}
+@keyframes genCleave {
+  0% { opacity: 0; transform: translateY(var(--offset)) rotate(-6deg) scaleX(0); }
+  8%, 64% { opacity: 1; }
+  68% { transform: translateY(var(--offset)) rotate(-6deg) scaleX(1); }
+  100% { opacity: 0; transform: translateY(var(--offset)) rotate(-6deg) scaleX(1.08) scaleY(3); }
+}
+@keyframes genDrop {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.2); }
+  20% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(var(--dx), 10vh) scale(1.4); }
+}
+
+/* 章 · a sealing ring that detonates in sequence. */
+.ultimate-impact--sho {
+  background:
+    radial-gradient(circle at center, rgba(255, 225, 170, 0.2), transparent 26%),
+    radial-gradient(circle at center, #5d0809 0, #170304 58%, #050202 100%);
+}
+.ultimate-sho-talisman {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: clamp(34px, 9vmin, 70px);
+  height: clamp(84px, 22vmin, 170px);
+  display: grid;
+  place-items: center;
+  border: 2px solid #ff3d28;
+  background: #f3dec0;
+  color: #9c0d0b;
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 5vmin, 2.5rem);
+  font-weight: 900;
+  box-shadow: inset 0 0 0 4px #f3dec0, inset 0 0 0 6px #b3130d, 0 0 22px rgba(255, 52, 30, 0.75);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(0px - var(--radius))) rotate(calc(0deg - var(--angle))) scale(0.3);
+  animation: shoSeal 1040ms var(--delay) cubic-bezier(0.18, 0.8, 0.2, 1) forwards;
+}
+.ultimate-sho-blast {
+  position: absolute;
+  z-index: 8;
+  left: var(--x);
+  top: var(--y);
+  width: 7vmin;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff8cb;
+  box-shadow: 0 0 0 2vmin #ff6a22, 0 0 0 6vmin rgba(255, 20, 10, 0.48), 0 0 12vmin #ff1b0b;
+  opacity: 0;
+  animation: shoBlast 520ms var(--delay) ease-out forwards;
+}
+@keyframes shoSeal {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(0px - var(--radius))) rotate(calc(0deg - var(--angle))) scale(0.3); }
+  18%, 58% { opacity: 1; }
+  62% { transform: translate(-50%, -50%) rotate(calc(var(--angle) + 38deg)) translateY(calc(0px - var(--radius))) rotate(calc(0deg - var(--angle) - 38deg)) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(calc(var(--angle) + 92deg)) translateY(0) rotate(calc(0deg - var(--angle) - 92deg)) scale(0.08); }
+}
+@keyframes shoBlast {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.05); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(5); filter: blur(5px); }
+}
+
+/* 夜 · sharp ice spears fly in from every edge. */
+.ultimate-impact--ya {
+  background: radial-gradient(circle at center, #7bdcff 0, #17395a 22%, #030a16 68%);
+}
+.ultimate-ya-spear {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: clamp(16px, 4.2vmin, 38px);
+  height: clamp(100px, 32vmin, 280px);
+  background: linear-gradient(90deg, #79bde7, #fff 48%, #8de7ff 58%, #3773b0);
+  clip-path: polygon(50% 0, 100% 72%, 68% 63%, 78% 100%, 50% 86%, 22% 100%, 32% 63%, 0 72%);
+  filter: drop-shadow(0 0 12px #9cecff);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(0px - var(--distance))) scale(var(--scale));
+  transform-origin: 50% 88%;
+  animation: yaSpear 1120ms var(--delay) cubic-bezier(0.12, 0.82, 0.2, 1) forwards;
+}
+.ultimate-ya-core {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 50%;
+  width: 10vmin;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 2vmin #fff, 0 0 9vmin #5bd8ff, 0 0 18vmin #2684ff;
+  opacity: 0;
+  animation: yaCore 620ms 640ms ease-out forwards;
+}
+@keyframes yaSpear {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(0px - var(--distance))) scale(var(--scale)); }
+  12%, 66% { opacity: 1; }
+  70% { transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-5vmin) scale(var(--scale)); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateY(7vmin) scale(var(--scale)) scaleY(0.2); }
+}
+@keyframes yaCore {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(12); }
+}
+
+/* 陽 · black and white leaves collapse into one focused strike. */
+.ultimate-impact--yo {
+  background:
+    radial-gradient(circle at center, rgba(255,255,255,0.95) 0 10%, transparent 26%),
+    conic-gradient(from 20deg, #f1eee4, #121113, #e8e3d6, #09090a, #f1eee4);
+}
+.ultimate-yo-leaf {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: clamp(16px, 4vmin, 38px);
+  height: clamp(34px, 9vmin, 78px);
+  border-radius: 100% 0 100% 0;
+  background: #09090a;
+  box-shadow: 0 0 8px rgba(255,255,255,0.25);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--radius)) rotate(0) scale(0.3);
+  animation: yoLeaf 1120ms var(--delay) cubic-bezier(0.18, 0.8, 0.22, 1) forwards;
+}
+.ultimate-yo-leaf.is-light {
+  background: #fffdf5;
+  box-shadow: 0 0 10px rgba(255,255,255,0.75);
+}
+.ultimate-yo-focus {
+  position: absolute;
+  z-index: 7;
+  left: -10%;
+  top: 52%;
+  width: 120%;
+  height: clamp(7px, 1.4vh, 15px);
+  background: #fff;
+  box-shadow: 0 0 18px #fff, 0 0 48px #dfb547;
+  opacity: 0;
+  transform: rotate(-13deg) scaleX(0);
+  animation: yoFocus 560ms 720ms ease-out forwards;
+}
+@keyframes yoLeaf {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--radius)) rotate(0) scale(0.3); }
+  16%, 58% { opacity: 1; }
+  68% { transform: translate(-50%, -50%) rotate(calc(var(--angle) + 230deg)) translateX(14vmin) rotate(var(--spin)) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(calc(var(--angle) + 410deg)) translateX(0) rotate(var(--spin)) scale(0.1); }
+}
+@keyframes yoFocus {
+  0% { opacity: 0; transform: rotate(-13deg) scaleX(0); }
+  14%, 62% { opacity: 1; }
+  65% { transform: rotate(-13deg) scaleX(1); }
+  100% { opacity: 0; transform: rotate(-13deg) scaleX(1.15) scaleY(8); }
+}
+
+/* 燐 · one readable, serpentine fire dragon crosses the battlefield. */
+.ultimate-impact--rin {
+  background: radial-gradient(circle at 48% 50%, #8f1606, #210302 56%, #050101 100%);
+}
+.ultimate-rin-dragon {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: 132vmin;
+  height: 82vmin;
+  overflow: visible;
+  transform: translate(-125vw, -50%) rotate(-8deg) scale(0.72);
+  filter: drop-shadow(0 0 16px #ff4a0c) drop-shadow(0 0 36px rgba(255, 177, 30, 0.7));
+  animation: rinDragon 1560ms cubic-bezier(0.13, 0.74, 0.17, 1) forwards;
+}
+.ultimate-rin-body {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1500;
+  stroke-dashoffset: 1500;
+  animation: rinBodyDraw 820ms 80ms cubic-bezier(0.15, 0.82, 0.2, 1) forwards;
+}
+.ultimate-rin-body--outer { stroke: #b91e04; stroke-width: 190; opacity: 0.88; }
+.ultimate-rin-body--inner { stroke: #ff7310; stroke-width: 126; }
+.ultimate-rin-body--core { stroke: #ffe66b; stroke-width: 34; filter: drop-shadow(0 0 16px #fff4a0); }
+.ultimate-rin-spine {
+  fill: none;
+  stroke: #ff9d19;
+  stroke-width: 42;
+  stroke-linecap: round;
+  stroke-linejoin: miter;
+}
+.ultimate-rin-head { fill: #ff7a12; stroke: #ffe56b; stroke-width: 18; stroke-linejoin: round; }
+.ultimate-rin-jaw { fill: #d92505; stroke: #ffb525; stroke-width: 13; stroke-linejoin: round; }
+.ultimate-rin-horn { fill: none; stroke: #ffd84a; stroke-width: 25; stroke-linecap: round; stroke-linejoin: round; }
+.ultimate-rin-eye { fill: #fff; stroke: #5a0800; stroke-width: 9; filter: drop-shadow(0 0 10px #fff); }
+@keyframes rinDragon {
+  0% { opacity: 0; transform: translate(-125vw, -50%) rotate(-8deg) scale(0.72); }
+  10% { opacity: 1; }
+  52% { transform: translate(-56%, -54%) rotate(7deg) scale(1.02); }
+  76% { opacity: 1; transform: translate(-36%, -47%) rotate(-4deg) scale(1.24); }
+  100% { opacity: 0; transform: translate(90vw, -35%) rotate(12deg) scale(1.55); }
+}
+@keyframes rinBodyDraw { to { stroke-dashoffset: 0; } }
+
+/* 嵐 · a heel-led chain of cutting wind arcs. */
+.ultimate-impact--ran {
+  background: radial-gradient(circle at 55% 52%, rgba(136,255,235,0.28), transparent 26%), linear-gradient(145deg, #031819, #020708);
+}
+.ultimate-ran-arc {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: 88vmax;
+  height: 38vmax;
+  border: clamp(5px, 1.3vmin, 12px) solid #bdfff3;
+  border-left-color: transparent;
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 10px #28e6cd) drop-shadow(0 0 24px #0b9f91);
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--angle)) scale(0.08, var(--scale));
+  animation: ranArc 880ms var(--delay) cubic-bezier(0.12, 0.82, 0.17, 1) forwards;
+}
+.ultimate-ran-heel {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 50%;
+  width: 18vmin;
+  height: 42vmin;
+  border-radius: 65% 35% 40% 60%;
+  background: linear-gradient(110deg, #efffff, #24d7c5 48%, transparent 50%);
+  filter: drop-shadow(0 0 24px #38ffe1);
+  opacity: 0;
+  transform: translate(68vw, -64vh) rotate(38deg);
+  animation: ranHeel 820ms 250ms cubic-bezier(0.15, 0.82, 0.18, 1) forwards;
+}
+@keyframes ranArc {
+  0% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--angle)) scale(0.08, var(--scale)); }
+  14%, 68% { opacity: 1; }
+  72% { transform: translate(-50%, -50%) rotate(calc(var(--angle) + 18deg)) scale(1, var(--scale)); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(calc(var(--angle) + 28deg)) scale(1.14, var(--scale)); }
+}
+@keyframes ranHeel {
+  0% { opacity: 0; transform: translate(68vw, -64vh) rotate(38deg); }
+  16%, 70% { opacity: 1; }
+  74% { transform: translate(-50%, -50%) rotate(-38deg); }
+  100% { opacity: 0; transform: translate(-68vw, 56vh) rotate(-74deg) scale(1.4); }
+}
+
+/* 轟 · the fist arrives first, then electricity detonates from its knuckles. */
+.ultimate-impact--go {
+  background: radial-gradient(circle at center, #46228a 0, #16062f 36%, #030106 74%);
+}
+.ultimate-go-fist {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  top: 50%;
+  width: clamp(110px, 34vmin, 300px);
+  height: clamp(145px, 44vmin, 390px);
+  border-radius: 46% 48% 42% 38%;
+  background: linear-gradient(135deg, #f5e8ff, #a776ff 38%, #3c1288 76%);
+  box-shadow: inset -3vmin -2vmin 0 rgba(30, 5, 80, 0.38), 0 0 3vmin #fff, 0 0 10vmin #9a56ff;
+  opacity: 0;
+  transform: translate(-120vw, 80vh) rotate(-38deg) scale(0.22);
+  animation: goFist 980ms 90ms cubic-bezier(0.12, 0.88, 0.16, 1) forwards;
+}
+.ultimate-go-fist > i {
+  position: absolute;
+  top: -9%;
+  width: 27%;
+  aspect-ratio: 0.8;
+  border-radius: 48% 48% 35% 35%;
+  background: linear-gradient(135deg, #fff, #a775ff 62%, #5220a0);
+  box-shadow: 0 0 1.2vmin #fff;
+}
+.ultimate-go-fist > i:nth-child(1) { left: -2%; }
+.ultimate-go-fist > i:nth-child(2) { left: 24%; }
+.ultimate-go-fist > i:nth-child(3) { left: 50%; }
+.ultimate-go-fist > i:nth-child(4) { left: 76%; }
+.ultimate-go-bolt {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 50%;
+  width: 68vmax;
+  height: clamp(8px, 1.5vmin, 15px);
+  background: #f7ecff;
+  clip-path: polygon(0 30%, 36% 0, 45% 46%, 74% 12%, 100% 45%, 62% 62%, 51% 100%, 30% 64%);
+  box-shadow: 0 0 12px #fff, 0 0 28px #a65cff;
+  opacity: 0;
+  transform-origin: 0 50%;
+  transform: rotate(var(--angle)) scaleX(0);
+  animation: goBolt 680ms var(--delay) ease-out forwards;
+}
+.ultimate-go-ring {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  width: 10vmin;
+  aspect-ratio: 1;
+  border: 1.5vmin solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 2vmin #fff, 0 0 6vmin #9c5dff;
+  opacity: 0;
+  animation: goRing 620ms var(--delay) ease-out forwards;
+}
+@keyframes goFist {
+  0% { opacity: 0; transform: translate(-120vw, 80vh) rotate(-38deg) scale(0.22); }
+  18% { opacity: 1; }
+  66% { transform: translate(-50%, -50%) rotate(8deg) scale(1); }
+  78% { opacity: 1; transform: translate(-50%, -50%) rotate(-3deg) scale(1.16); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(0) scale(2.4); filter: blur(4px); }
+}
+@keyframes goBolt {
+  0% { opacity: 0; transform: rotate(var(--angle)) scaleX(0); }
+  16%, 66% { opacity: 1; }
+  72% { transform: rotate(var(--angle)) scaleX(1); }
+  100% { opacity: 0; transform: rotate(var(--angle)) scaleX(1.18) scaleY(3); }
+}
+@keyframes goRing {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .special-aftermath.go {
+    opacity: 1 !important;
+    animation: ultimateReduced 180ms ease-out forwards !important;
+  }
+  .ultimate-impact { background: rgba(4, 5, 8, 0.92); }
+  .ultimate-impact > * { animation: none !important; opacity: 0 !important; }
+  .ultimate-impact__flash { opacity: 0.45 !important; }
+}
+@keyframes ultimateReduced {
+  0% { opacity: 0; }
+  35% { opacity: 1; }
+  100% { opacity: 0; }
+}

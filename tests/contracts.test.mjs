@@ -156,7 +156,7 @@ test("split scripts load in dependency order", () => {
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
   const releaseVersions = [...html.matchAll(/(?:src|href)="[^"]+\?v=([^"]+)"/g)].map((match) => match[1]);
-  assert.equal(releaseVersions.length, 9, "all CSS and scripts need a release cache version");
+  assert.equal(releaseVersions.length, 10, "all CSS and scripts need a release cache version");
   assert.equal(new Set(releaseVersions).size, 1, "CSS and scripts must share one release cache version");
 });
 
