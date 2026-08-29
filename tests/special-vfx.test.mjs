@@ -19,7 +19,7 @@ test("all eight ultimates keep a cast video and a dedicated aftermath scene", ()
     assert.match(css, new RegExp(`\\.ultimate-impact--${hero}\\b`), `${hero}: missing visual identity`);
   }
 
-  assert.match(html, /special-vfx\.css\?v=20260829-ultimate-aftermath/);
+  assert.match(html, /special-vfx\.css\?v=20260829-skill-rebalance/);
   assert.match(vfx, /el\.replaceChildren\(buildSpecialAftermath\(resolvedTheme\)\)/);
   assert.match(vfx, /prefersReducedMotion\(\)[\s\S]*?await wait\(180\)/);
 });
