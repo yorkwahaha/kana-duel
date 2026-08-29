@@ -1,13 +1,13 @@
 /* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, battleModeIntroLabel, battleModeLabel, boards, categoryLabelOf, selectBattleQuestions */
 /* global battleOpts:writable, battleDeck:writable, battleOpen:writable, battleEpoch:writable */
 /* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable, showAnswerGain */
-/* global ampHits:writable, blockUntil:writable, submitLockUntil:writable, attackLockUntil:writable */
+/* global attackBoost:writable, blockReady:writable, dodgeChance:writable, mistakeGuardReady:writable, reflectReady:writable, regenState:writable, submitLockUntil:writable, attackLockUntil:writable */
 /* global pickP1:writable, pickP2:writable, gameMode:writable, playerQi:writable, sharedQi:writable */
 /* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, timerRaf */
 /* global bindTap, cancelAllDrags, clearBattleFx, clearSkillTimers, hideSpecialStage, noteQuestionOpen */
 /* global getSessionToken, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio, speakQuestionAudio */
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
-/* global showCombo, showDmgFloat, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
+/* global showCombo, showDmgFloat, showEffectForBoth, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
 /* global startCharacterSelectBgm, stopCharacterSelectBgm */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, updateSkillUi, ensureCastLayers, preloadFighterPoses */
 /* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
@@ -27,16 +27,17 @@
   let pendingCharacterId = "";
   let battleIntroPending = false;
   let battleIntroTimer = 0;
+  let lastBoardDisruptSeq = 0;
 
   const CHARACTER_INTROS = {
-    ao: "快速累積大招，擅長封鎖對手提交。",
-    rin: "高爆發大招，能奪取對手的蓄力。",
-    ya: "減少題目干擾，並封鎖對手攻擊。",
-    go: "連段攻擊專家，可強化下一次攻擊。",
-    ran: "蓄力速度快，能解除封鎖並保護自己。",
-    gen: "穩定增加連擊，擅長封鎖對手提交。",
-    sho: "減少干擾字，控制對手的攻擊節奏。",
-    yo: "高倍率大招，可吸取對手的蓄力。",
+    ao: "清空對手字盤，並加入額外干擾字。",
+    rin: "奪取對手蓄力，轉化為自己的攻擊資源。",
+    ya: "準備霜返，反彈下一次實際承受傷害。",
+    go: "強化下一次攻擊，與大招相乘可達 ×1.8。",
+    ran: "保住下一次答錯時的 COMBO，並減輕自傷。",
+    gen: "累積下一次攻擊的閃避率，最高可達 80%。",
+    sho: "隨機削減對手 3～5 COMBO。",
+    yo: "啟動 30 秒持續回血，穩定拉回血線。",
   };
 
   function setError(message = "") {
@@ -89,8 +90,8 @@
     if ($("online-character-title")) $("online-character-title").textContent = character.title;
     if ($("online-character-heading")) $("online-character-heading").textContent = character.name;
     if ($("online-character-intro")) $("online-character-intro").textContent = CHARACTER_INTROS[character.id] || "選擇適合自己的戰鬥風格。";
-    if ($("online-character-passive")) $("online-character-passive").textContent = character.passive?.label || "—";
-    if ($("online-character-passive-desc")) $("online-character-passive-desc").textContent = character.passive?.desc || "—";
+    if ($("online-character-ultimate")) $("online-character-ultimate").textContent = character.skill || "大招";
+    if ($("online-character-ultimate-desc")) $("online-character-ultimate-desc").textContent = "攻擊傷害 ×1.5 · 專屬過場與特效";
     if ($("online-character-active")) $("online-character-active").textContent = character.active?.label || "—";
     if ($("online-character-active-desc")) $("online-character-active-desc").textContent = character.active?.desc || "—";
     if ($("online-character") && $("online-character").value !== character.id) $("online-character").value = character.id;
@@ -175,10 +176,6 @@
     return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
   }
 
-  function remainingDeadline(serverDeadline) {
-    return performance.now() + Math.max(0, Number(serverDeadline || 0) - Number(room?.serverNow || Date.now()));
-  }
-
   function setSubmitPending(pending) {
     submitPending = !!pending;
     const button = $("btn-submit-1");
@@ -192,7 +189,7 @@
     else updateSkillUi(1);
   }
 
-  function loadOnlineQuestion(force = false) {
+  function loadOnlineQuestion(force = false, extraDistractors = 0) {
     if (!room?.battle) return;
     const localId = room.currentQuestionId;
     const localQ = questionById(localId);
@@ -204,7 +201,7 @@
         showRomaji: room.config.mode === "race",
         promptText: room.config.mode === "zh-race" ? localQ.zh : "",
         noDistractors: !room.config.distractors,
-        distractorDelta: room.config.distractors ? (pickP1?.passive?.distractorDelta || 0) : 0,
+        distractorDelta: extraDistractors,
       });
       boards[1].locked = false;
       $("board1")?.classList.remove("locked");
@@ -247,10 +244,17 @@
     charge = { 1: mine.charge, 2: foe.charge };
     combo = { 1: mine.combo, 2: foe.combo };
     gaugeHits = { 1: mine.gauge, 2: foe.gauge };
-    ampHits = { 1: mine.ampHits, 2: foe.ampHits };
-    blockUntil = { 1: remainingDeadline(mine.blockUntil), 2: remainingDeadline(foe.blockUntil) };
-    submitLockUntil = { 1: remainingDeadline(mine.submitLockUntil), 2: remainingDeadline(foe.submitLockUntil) };
-    attackLockUntil = { 1: remainingDeadline(mine.attackLockUntil), 2: remainingDeadline(foe.attackLockUntil) };
+    attackBoost = { 1: mine.attackBoost || 1, 2: foe.attackBoost || 1 };
+    blockReady = { 1: !!mine.blockReady, 2: !!foe.blockReady };
+    reflectReady = { 1: !!mine.reflectReady, 2: !!foe.reflectReady };
+    mistakeGuardReady = { 1: !!mine.mistakeGuardReady, 2: !!foe.mistakeGuardReady };
+    dodgeChance = { 1: mine.dodgeChance || 0, 2: foe.dodgeChance || 0 };
+    regenState = {
+      1: mine.regenTicksLeft > 0 ? { ticksLeft: mine.regenTicksLeft, timer: 0 } : null,
+      2: foe.regenTicksLeft > 0 ? { ticksLeft: foe.regenTicksLeft, timer: 0 } : null,
+    };
+    submitLockUntil = { 1: 0, 2: 0 };
+    attackLockUntil = { 1: 0, 2: 0 };
     playerQi = { 1: mine.qi, 2: 0 };
     sharedQi = room.battle.sharedQi;
     listenRoundClaimed = room.battle.listenClaimed;
@@ -259,7 +263,10 @@
     updatePlayerMeters(2);
     document.querySelectorAll('[data-p="2"]').forEach((button) => { button.disabled = true; });
     updateOpponentStatus();
-    loadOnlineQuestion();
+    const disruptSeq = Number(mine.boardDisruptSeq || 0);
+    const newlyDisrupted = disruptSeq > lastBoardDisruptSeq && mine.boardDisruptQuestionId === room.currentQuestionId;
+    if (disruptSeq > lastBoardDisruptSeq) lastBoardDisruptSeq = disruptSeq;
+    loadOnlineQuestion(newlyDisrupted, newlyDisrupted ? 3 : 0);
     syncListenCue();
   }
 
@@ -271,6 +278,7 @@
     lastEventId = 0;
     localQuestionId = "";
     lastListenCueSeq = 0;
+    lastBoardDisruptSeq = 0;
     document.body.classList.add("online-battle");
     gameMode = "online";
     battleOpts = { ...room.config };
@@ -394,6 +402,9 @@
     fighter?.classList.remove("hit", "hit-strong");
     void fighter?.offsetWidth;
     fighter?.classList.add(wrong >= 2 ? "hit-strong" : "hit");
+    if (event.protectedMiss) {
+      showEffectForBoth(player, "風閃發動 · COMBO 保留", "P" + player + " 失誤保護已觸發");
+    }
     await wait(330);
     fighter?.classList.remove("hit", "hit-strong");
     if (active && actionEpoch === battleEpoch && (hp[player] || 0) > 0) setFighterPose(player, "idle");
@@ -422,6 +433,15 @@
       await playAttackBolt(player, foe, theme, hits >= 3);
     }
 
+    if (event.dodged) {
+      showCombo("閃避!", "md");
+      showEffectForBoth(foe, "影閃成功 · 0 傷害", "攻擊被閃避", "bad");
+      attacker?.classList.remove("attacking");
+      setFighterPose(player, "idle");
+      setFighterPose(foe, "idle");
+      return true;
+    }
+
     if (event.guarded) {
       showCombo("格擋!", "sm");
       spawnBlockParry(defender, true);
@@ -446,6 +466,11 @@
       await wait(210 + Math.min(hitNo, 5) * 16);
     }
     defender?.classList.remove("hit", "hit-strong", "block-absorb");
+    if (event.reflected && event.reflectedDamage > 0) {
+      showDmgFloat(player, event.reflectedDamage, 1);
+      showEffectForBoth(foe, "霜返 " + event.reflectedDamage + " 傷害", "反彈傷害 −" + event.reflectedDamage, "bad");
+      playHitSfx(2);
+    }
     attacker?.classList.remove("attacking");
     setFighterPose(player, "idle");
     if ((hp[foe] || 0) > 0) setFighterPose(foe, "idle");
@@ -463,7 +488,7 @@
       showWordReveal(player, questionById(event.questionId));
       playSfx("skillpop", 0.4);
     } else if (event.type === "miss") {
-      boards[player]?.setFeedback(`${player === 1 ? "答錯" : "對手答錯"} · -${event.damage}`, "bad");
+      boards[player]?.setFeedback(`${player === 1 ? "答錯" : "對手答錯"} · -${event.damage}${event.protectedMiss ? " · COMBO 保留" : ""}`, "bad");
       queueOnlineAnimation((actionEpoch) => animateMiss(event, player, actionEpoch));
     } else if (event.type === "attack") {
       const foe = displaySeat(event.foeSeat);
@@ -474,9 +499,38 @@
       }
       queueOnlineAnimation((actionEpoch) => animateAttack(event, player, foe, actionEpoch));
     } else if (event.type === "skill") {
+      let mineText = "技能發動";
+      let foeText = "P" + player + " 發動技能";
+      if (event.effect === "block") {
+        mineText = "護盾 80% 待機"; foeText = "P" + player + " 護盾 80% 待機"; playBlockActivate(player);
+      } else if (event.effect === "heal") {
+        mineText = "回墨 +" + event.amount + " HP"; foeText = "P" + player + " 回復 +" + event.amount + " HP";
+      } else if (event.active === "disrupt") {
+        mineText = "墨鎖成功"; foeText = "已選字清空 · +3 干擾";
+      } else if (event.active === "steal") {
+        mineText = "奪焰 +" + event.amount + " 蓄力"; foeText = "蓄力 −" + event.amount;
+      } else if (event.active === "reflect") {
+        mineText = "霜返 50% 待機"; foeText = "P" + player + " 反彈 50% 待機";
+      } else if (event.active === "boost") {
+        mineText = "連鳴 ×1.2 待機"; foeText = "P" + player + " 下次攻擊 ×1.2";
+      } else if (event.active === "mistake_guard") {
+        mineText = "風閃待機"; foeText = "P" + player + " 下次失誤保留 COMBO";
+      } else if (event.active === "dodge") {
+        mineText = "影閃 " + event.value + "%"; foeText = "P" + player + " 閃避率 " + event.value + "%";
+      } else if (event.active === "combo_drain") {
+        mineText = "符削 −" + event.amount + " COMBO"; foeText = "COMBO −" + event.amount;
+      } else if (event.active === "regen") {
+        mineText = "光癒開始 · 10 次"; foeText = "P" + player + " 持續回血 30 秒";
+      }
       showCombo(event.skill === "block" ? "格擋" : event.skill === "heal" ? "回墨" : "專屬技能", "sm");
-      if (event.skill === "block") playBlockActivate(player);
+      showEffectForBoth(player, mineText, foeText, event.active === "disrupt" || event.active === "combo_drain" ? "bad" : "");
       playSfx("ready", 0.45);
+    } else if (event.type === "regen") {
+      (event.heals || []).forEach((heal) => {
+        if (heal.amount <= 0) return;
+        const healedPlayer = displaySeat(heal.seat);
+        showEffectForBoth(healedPlayer, "光癒 +" + heal.amount + " HP", "P" + healedPlayer + " 回復 +" + heal.amount + " HP", "good");
+      });
     } else if (event.type === "left") {
       setError("對手已離開房間。你可以等待新玩家加入。 ");
     }
@@ -497,7 +551,8 @@
   async function finishOnlineBattle() {
     if (battleResultShown || !room?.battle) return;
     battleResultShown = true;
-    const won = room.battle.winnerSeat === localSeat();
+    const draw = room.battle.winnerSeat == null;
+    const won = !draw && room.battle.winnerSeat === localSeat();
     const mine = room.battle.fighters[localSeat()];
     const foe = room.battle.fighters[remoteSeat()];
     const seconds = Math.max(0, (Number(room.battle.completedAt) - Number(room.battle.startedAt)) / 1000);
@@ -514,15 +569,22 @@
       statRow("平均答題", answerSeconds(mine, true), answerSeconds(foe, true)),
       statRow("錯誤次數", mine.mistakes || 0, foe.mistakes || 0),
     ].join("");
-    try {
-      await playBattleDefeatOutro(won ? 2 : 1, won ? 1 : 2);
-    } catch (error) {
-      console.error("Online defeat outro failed", error);
+    if (!draw) {
+      try {
+        await playBattleDefeatOutro(won ? 2 : 1, won ? 1 : 2);
+      } catch (error) {
+        console.error("Online defeat outro failed", error);
+      }
+    } else {
+      battleOpen = false;
+      stopBattleBgm();
+      showCombo("DOUBLE KO", "lg");
+      await wait(prefersReducedMotion() ? 300 : 800);
     }
     document.querySelectorAll(".btn-again-home").forEach((button) => { button.textContent = "離開對戰"; });
     document.querySelectorAll(".btn-again").forEach((button) => { button.textContent = "準備再戰"; });
     setResultScreen(
-      won ? "你獲勝！" : "你落敗",
+      draw ? "平手！" : (won ? "你獲勝！" : "你落敗"),
       `對戰時間 ${seconds.toFixed(1)} 秒`,
       false,
       resultRows
@@ -609,7 +671,7 @@
 
   const characterSelect = $("online-character");
   if (characterSelect) {
-    characterSelect.innerHTML = CHARACTERS.map((character) => `<option value="${character.id}">${escapeHtml(character.name)} · ${escapeHtml(character.passive?.label || character.title)}</option>`).join("");
+    characterSelect.innerHTML = CHARACTERS.map((character) => `<option value="${character.id}">${escapeHtml(character.name)} · ${escapeHtml(character.active?.label || character.title)}</option>`).join("");
     characterSelect.addEventListener("change", () => {
       startCharacterSelectBgm().catch(() => {});
       playSfx("sfx_click", 0.3);

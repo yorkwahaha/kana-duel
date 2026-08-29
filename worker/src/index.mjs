@@ -10,12 +10,14 @@ import {
   createRoomState,
   joinRoom,
   leaveRoom,
+  nextTimedEffectAt,
   publicRoomState,
   roomExpired,
   sanitizeRoomCode,
   seatForToken,
   setConnected,
   setReady,
+  settleTimedEffects,
 } from "./room-core.mjs";
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -88,7 +90,9 @@ export class RoomObject extends DurableObject {
   async save() {
     if (!this.room) return;
     await this.ctx.storage.put("room", this.room);
-    await this.ctx.storage.setAlarm(this.room.lastActiveAt + ROOM_TTL_MS);
+    const expiryAt = this.room.lastActiveAt + ROOM_TTL_MS;
+    const timedEffectAt = nextTimedEffectAt(this.room);
+    await this.ctx.storage.setAlarm(timedEffectAt > 0 ? Math.min(expiryAt, timedEffectAt) : expiryAt);
   }
 
   send(ws, payload) {
@@ -197,6 +201,12 @@ export class RoomObject extends DurableObject {
     else if (command.type === "skill") result = applySkill(this.room, seat, command.skill);
     else if (command.type === "leave") result = leaveRoom(this.room, seat);
     if (!result.ok) {
+      // A due regeneration tick may have settled before this command was rejected.
+      // Persist and show that authoritative timer change even though the requested action failed.
+      if (this.room.version !== command.version) {
+        await this.save();
+        this.broadcast();
+      }
       this.send(ws, { type: "error", code: result.error, room: publicRoomState(this.room, seat) });
       return;
     }
@@ -222,7 +232,12 @@ export class RoomObject extends DurableObject {
   async webSocketError(ws) { await this.markDisconnected(ws); }
   async alarm() {
     await this.initialized;
-    if (!roomExpired(this.room)) return this.save();
+    if (!roomExpired(this.room)) {
+      const heals = settleTimedEffects(this.room);
+      await this.save();
+      if (heals.length) this.broadcast();
+      return;
+    }
     this.ctx.getWebSockets().forEach((ws) => { try { ws.close(4000, "Room expired"); } catch (_) {} });
     this.room = null;
     await this.ctx.storage.deleteAll();

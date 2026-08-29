@@ -1,8 +1,8 @@
-/* global $, ALL_QUESTIONS, AMP_HIT_BONUS, ATTACK_LOCK_MS, BLOCK_COMBO_COST */
-/* global BLOCK_DAMAGE_MULT, BLOCK_DURATION_MS, CHARACTERS, COMBO_DAMAGE_PER_HIT */
+/* global $, ALL_QUESTIONS, ATTACK_BOOST_MULT, ATTACK_LOCK_MS, BLOCK_COMBO_COST */
+/* global BLOCK_DAMAGE_MULT, CHARACTERS, COMBO_DAMAGE_PER_HIT */
 /* global DRAG_THRESHOLD, GAUGE_HITS_TO_FULL, HEAL_AMOUNT, HEAL_COMBO_COST */
-/* global MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, PRACTICE_ROUND_SIZE */
-/* global SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO, SUBMIT_LOCK_MS */
+/* global DODGE_MAX_CHANCE, DODGE_START_CHANCE, DODGE_STEP_CHANCE, MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, MISTAKE_GUARD_DAMAGE_MULT, PRACTICE_ROUND_SIZE */
+/* global REFLECT_DAMAGE_RATIO, REGEN_HP_PER_TICK, REGEN_TICK_MS, REGEN_TICKS, SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO, SUBMIT_LOCK_MS */
 /* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, categoryLabelOf, clearBattleFx */
 /* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf, getSessionToken */
 /* global battleModeIntroLabel, battleModeLabel, isChineseRaceBattle, isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
@@ -91,6 +91,17 @@ function cancelAllDrags() {
   document.querySelectorAll(".dragging").forEach((n) => n.classList.remove("dragging"));
   document.querySelectorAll(".slot.over").forEach((s) => s.classList.remove("over"));
 }
+
+function isLocalTwoPlayerBattleActive() {
+  return battleOpen
+    && !document.body.classList.contains("online-battle")
+    && !$("screen-battle")?.classList.contains("hidden");
+}
+function preventLocalBattlePinch(event) {
+  if (event.touches?.length > 1 && isLocalTwoPlayerBattleActive()) event.preventDefault();
+}
+document.addEventListener("touchstart", preventLocalBattlePinch, { passive: false });
+document.addEventListener("touchmove", preventLocalBattlePinch, { passive: false });
 function activateBoardSource(info, focusPlacedSlot) {
   const board = boards[info.boardId];
   if (!board || board.locked) return;
@@ -413,12 +424,17 @@ let listenRoundClaimed = false; // listen: first fully-correct claim
 let charge = { 1: 0, 2: 0 }; // accumulated attack value
 let combo = { 1: 0, 2: 0 }; // consecutive correct → N COMBO
 let gaugeHits = { 1: 0, 2: 0 }; // correct answers toward special (need GAUGE_HITS_TO_FULL)
-let blockUntil = { 1: 0, 2: 0 }; // performance.now() deadline for block window
+let blockReady = { 1: false, 2: false }; // persists until the opponent's next attack
 let submitLockUntil = { 1: 0, 2: 0 }; // locked from submitting (foe skill)
 let submitCooldownUntil = { 1: 0, 2: 0 }; // prevent repeated local miss submissions during feedback
 let attackLockUntil = { 1: 0, 2: 0 }; // locked from attacking (ya frost_seal)
-let ampHits = { 1: 0, 2: 0 }; // extra hits on next attack (go active)
-let skillTimers = { 1: { block: 0, lock: 0, attack: 0 }, 2: { block: 0, lock: 0, attack: 0 } };
+let attackBoost = { 1: 1, 2: 1 }; // go: next attack ×1.2
+let reflectReady = { 1: false, 2: false }; // ya: next actual damage reflects 50%
+let mistakeGuardReady = { 1: false, 2: false }; // ran: next wrong answer keeps combo and halves self damage
+let dodgeChance = { 1: 0, 2: 0 }; // gen: next incoming attack, 60% → 80%
+let inkDisruptedQuestion = { 1: "", 2: "" }; // ao: the same target question can only be disrupted once
+let regenState = { 1: null, 2: null }; // yo: { ticksLeft, timer }
+let skillTimers = { 1: { lock: 0, attack: 0 }, 2: { lock: 0, attack: 0 } };
 let battleStats = null;
 let battleOpen = false;
 let battleStartedAt = 0, timerRaf = 0;
@@ -502,10 +518,10 @@ function renderCharGrid() {
       name.textContent = c.name;
       const skill = document.createElement("span");
       skill.textContent = c.skill;
-      const passive = document.createElement("span");
-      passive.className = "passive";
-      passive.textContent = `${c.passive?.label || ""}：${c.passive?.desc || ""}${c.active ? " · 主動「" + c.active.label + "」" : ""}`;
-      meta.append(name, skill, passive);
+      const traits = document.createElement("span");
+      traits.className = "passive";
+      traits.textContent = `大招 ×1.5 · 主動「${c.active?.label || "—"}」：${c.active?.desc || ""}`;
+      meta.append(name, skill, traits);
       btn.append(badge, image, meta);
       if (!locked && !taken) {
         bindTap(btn, () => {
@@ -520,9 +536,7 @@ function renderCharGrid() {
     });
     const label = document.querySelector('[data-char-picked="' + player + '"]');
     if (label) {
-      label.textContent = mine
-        ? (mine.name + (mine.passive?.label ? " · " + mine.passive.label : ""))
-        : "—";
+      label.textContent = mine ? (mine.name + " · " + (mine.active?.label || mine.skill)) : "—";
     }
     document.querySelectorAll('[data-char-carousel="' + player + '"] .char-nav').forEach((nav) => {
       nav.disabled = !!locked;
@@ -831,14 +845,88 @@ function updateHpUi() {
     $("hp2-name").textContent = "P2 " + (pickP2?.name || "");
   }
 }
+function showEffectPopup(player, text, tone = "") {
+  const fighter = $("fighter" + player);
+  if (!fighter || !text) return;
+  fighter.querySelectorAll(".effect-popup").forEach((node) => node.remove());
+  const popup = document.createElement("div");
+  popup.className = "effect-popup" + (tone ? " " + tone : "");
+  popup.setAttribute("role", "status");
+  popup.textContent = text;
+  fighter.appendChild(popup);
+  popup.addEventListener("animationend", () => popup.remove(), { once: true });
+  setTimeout(() => popup.remove(), 1800);
+}
+function showEffectForBoth(actor, actorText, foeText, tone = "") {
+  const foe = actor === 1 ? 2 : 1;
+  showEffectPopup(actor, actorText, tone);
+  showEffectPopup(foe, foeText || actorText, tone);
+}
+function effectStatusItems(player) {
+  const items = [];
+  if (blockReady[player]) items.push(["護盾", "80%"]);
+  if (reflectReady[player]) items.push(["反彈", "50%"]);
+  if ((attackBoost[player] || 1) > 1) items.push(["攻擊", "×1.2"]);
+  if (mistakeGuardReady[player]) items.push(["失誤保護", "待機"]);
+  if ((dodgeChance[player] || 0) > 0) items.push(["閃避", dodgeChance[player] + "%"]);
+  const regen = regenState[player];
+  if (regen && regen.ticksLeft > 0) items.push(["再生", "36/3秒 · " + regen.ticksLeft + "次"]);
+  return items;
+}
+function updateEffectStatus(player) {
+  const list = $("effect-status-" + player);
+  if (!list) return;
+  const items = effectStatusItems(player);
+  list.replaceChildren(...items.map(([label, value]) => {
+    const chip = document.createElement("span");
+    chip.className = "effect-status-chip";
+    chip.append(document.createTextNode(label + " "));
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    chip.appendChild(strong);
+    return chip;
+  }));
+  list.setAttribute("aria-label", items.length
+    ? "P" + player + " 持續效果：" + items.map((item) => item.join(" ")).join("，")
+    : "P" + player + " 目前沒有持續效果");
+}
+function stopRegen(player) {
+  const regen = regenState[player];
+  if (regen?.timer) clearInterval(regen.timer);
+  regenState[player] = null;
+  updateEffectStatus(player);
+}
+function startLocalRegen(player) {
+  stopRegen(player);
+  const regen = { ticksLeft: REGEN_TICKS, timer: 0 };
+  regen.timer = setInterval(function () {
+    if (!battleOpen || hp[player] <= 0) {
+      stopRegen(player);
+      return;
+    }
+    if (document.hidden) return;
+    const before = hp[player];
+    hp[player] = Math.min(MAX_HP, hp[player] + REGEN_HP_PER_TICK);
+    regen.ticksLeft -= 1;
+    const gained = hp[player] - before;
+    if (gained > 0) showEffectForBoth(player, "光癒 +" + gained + " HP", "P" + player + " 回復 +" + gained + " HP", "good");
+    updateHpUi();
+    updatePlayerMeters(player);
+    if (regen.ticksLeft <= 0) stopRegen(player);
+  }, REGEN_TICK_MS);
+  regenState[player] = regen;
+  updateEffectStatus(player);
+}
 /** 攻擊鈕顯示與實際結算共用同一條公式，避免兩邊算出不同數字 */
 function projectedAttackDamage(player) {
   const special = gaugeHits[player] >= GAUGE_HITS_TO_FULL;
   let dmg = charge[player] || 0;
   if (dmg <= 0) return { dmg: 0, hits: 0, special };
-  if (special) dmg = Math.round(dmg * specialMultOf(player));
-  const hits = Math.max(1, (combo[player] || 1) + hitBonusOf(player) + (ampHits[player] || 0));
-  return { dmg: Math.round(dmg * (1 + (hits - 1) * COMBO_DAMAGE_PER_HIT)), hits, special };
+  if (special) dmg = Math.round(dmg * SPECIAL_MULT);
+  const hits = Math.max(1, combo[player] || 1);
+  dmg = Math.round(dmg * (1 + (hits - 1) * COMBO_DAMAGE_PER_HIT));
+  dmg = Math.round(dmg * (attackBoost[player] || 1));
+  return { dmg, hits, special };
 }
 function updatePlayerMeters(player) {
   const c = charge[player];
@@ -861,10 +949,11 @@ function updatePlayerMeters(player) {
   }
   const f = $("fighter" + player);
   if (f) f.classList.toggle("active-turn", ready && !isAttackLocked(player));
+  updateEffectStatus(player);
   updateSkillUi(player);
 }
 function nowMs() { return performance.now(); }
-function isBlocking(player) { return nowMs() < (blockUntil[player] || 0); }
+function isBlocking(player) { return !!blockReady[player]; }
 function isSubmitLocked(player) { return nowMs() < (submitLockUntil[player] || 0); }
 function isAttackLocked(player) { return nowMs() < (attackLockUntil[player] || 0); }
 function spendCombo(player, cost) {
@@ -872,23 +961,16 @@ function spendCombo(player, cost) {
   combo[player] -= cost;
   return true;
 }
+function currentQuestionKey(player) {
+  const q = playerQ(player);
+  const index = isListenBattle() ? sharedQi : playerQi[player];
+  return (isListenBattle() ? "shared:" : "p" + player + ":") + index + ":" + (q?.id || q?.text || q?.zh || "question");
+}
 function clearSkillTimers(player) {
   const t = skillTimers[player];
   if (!t) return;
-  if (t.block) { clearTimeout(t.block); t.block = 0; }
   if (t.lock) { clearTimeout(t.lock); t.lock = 0; }
   if (t.attack) { clearTimeout(t.attack); t.attack = 0; }
-}
-function scheduleBlockExpire(player) {
-  const t = skillTimers[player];
-  if (t.block) clearTimeout(t.block);
-  const left = Math.max(0, (blockUntil[player] || 0) - nowMs());
-  t.block = setTimeout(function () {
-    t.block = 0;
-    const f = $("fighter" + player);
-    if (f) f.classList.remove("blocking");
-    updateSkillUi(player);
-  }, left + 16);
 }
 function scheduleSubmitLockExpire(player) {
   const t = skillTimers[player];
@@ -920,9 +1002,9 @@ function updateSkillUi(player) {
   if (f) f.classList.toggle("blocking", blocking);
   const btnBlock = $("btn-skill-block-" + player);
   if (btnBlock) {
-    btnBlock.disabled = !battleOpen || (combo[player] || 0) < BLOCK_COMBO_COST;
+    btnBlock.disabled = !battleOpen || blocking || (dodgeChance[player] || 0) > 0 || (combo[player] || 0) < BLOCK_COMBO_COST;
     btnBlock.classList.toggle("is-active", blocking);
-    btnBlock.textContent = blocking ? "格擋中" : "格擋";
+    btnBlock.textContent = blocking ? "格擋 80%" : ((dodgeChance[player] || 0) > 0 ? "閃避待機中" : "格擋");
   }
   const btnHeal = $("btn-skill-heal-" + player);
   if (btnHeal) {
@@ -933,18 +1015,36 @@ function updateSkillUi(player) {
   const act = ch?.active;
   const btnU = $("btn-skill-unique-" + player);
   if (btnU) {
-    const cost = act?.cost || 2;
-    btnU.textContent = act?.label || "專屬";
-    btnU.title = act?.desc || "";
+    const foe = player === 1 ? 2 : 1;
+    const cost = act?.id === "shadow_dodge" && (dodgeChance[player] || 0) > 0 ? 1 : (act?.cost || 2);
+    btnU.textContent = act?.id === "shadow_dodge" && (dodgeChance[player] || 0) > 0
+      ? (act.label + " +10%")
+      : (act?.label || "專屬");
+    btnU.title = (act?.desc || "") + (act ? "（本次耗 " + cost + " COMBO）" : "");
     let can = battleOpen && !!act && (combo[player] || 0) >= cost;
-    if (act?.id === "ember_steal" || act?.id === "light_drain") {
-      const foe = player === 1 ? 2 : 1;
+    if (act?.id === "ink_seal") {
+      can = can && inkDisruptedQuestion[foe] !== currentQuestionKey(foe);
+    } else if (act?.id === "ember_steal") {
       can = can && (charge[foe] || 0) > 0;
+    } else if (act?.id === "frost_reflect") {
+      can = can && !reflectReady[player];
     } else if (act?.id === "thunder_amp") {
-      can = can && (ampHits[player] || 0) <= 0;
+      can = can && (attackBoost[player] || 1) <= 1;
+    } else if (act?.id === "wind_step") {
+      can = can && !mistakeGuardReady[player];
+    } else if (act?.id === "shadow_dodge") {
+      can = can && !blockReady[player] && (dodgeChance[player] || 0) < DODGE_MAX_CHANCE;
+    } else if (act?.id === "seal_break") {
+      can = can && (combo[foe] || 0) > 0;
+    } else if (act?.id === "light_regen") {
+      can = can && !regenState[player] && hp[player] < MAX_HP;
     }
     btnU.disabled = !can;
-    btnU.classList.toggle("is-active", act?.id === "thunder_amp" && (ampHits[player] || 0) > 0);
+    btnU.classList.toggle("is-active", (act?.id === "thunder_amp" && (attackBoost[player] || 1) > 1)
+      || (act?.id === "frost_reflect" && reflectReady[player])
+      || (act?.id === "wind_step" && mistakeGuardReady[player])
+      || (act?.id === "shadow_dodge" && (dodgeChance[player] || 0) > 0)
+      || (act?.id === "light_regen" && !!regenState[player]));
   }
   const btnSubmit = $("btn-submit-" + player);
   if (btnSubmit) {
@@ -956,17 +1056,25 @@ function updateSkillUi(player) {
 }
 function battleActivateBlock(player) {
   if (!battleOpen) return;
+  if ((dodgeChance[player] || 0) > 0) {
+    boards[player]?.setFeedback("閃避待機中，不能同時使用格擋", "bad");
+    return;
+  }
+  if (isBlocking(player)) {
+    boards[player]?.setFeedback("格擋已待機，不可疊加", "bad");
+    return;
+  }
   if (!spendCombo(player, BLOCK_COMBO_COST)) {
     boards[player]?.setFeedback("需要 " + BLOCK_COMBO_COST + " COMBO", "bad");
     return;
   }
-  blockUntil[player] = nowMs() + BLOCK_DURATION_MS;
-  scheduleBlockExpire(player);
+  blockReady[player] = true;
   playSfx("ready", 0.55);
   playSfx("skillpop", 0.35);
   playBlockActivate(player);
   showCombo("格擋", "sm");
-  boards[player]?.setFeedback("格擋 " + (BLOCK_DURATION_MS / 1000) + " 秒 · 傷半", "ok");
+  showEffectForBoth(player, "護盾 80% 待機", "P" + player + " 護盾 80% 待機");
+  boards[player]?.setFeedback("格擋待機 · 下次攻擊傷害降低 80%", "ok");
   updatePlayerMeters(player);
 }
 function battleActivateHeal(player) {
@@ -984,6 +1092,7 @@ function battleActivateHeal(player) {
   const gained = hp[player] - before;
   playSfx("fanfare", 0.28);
   showCombo("+" + gained + " HP", "sm");
+  showEffectForBoth(player, "回墨 +" + gained + " HP", "P" + player + " 回復 +" + gained + " HP", "good");
   boards[player]?.setFeedback("回墨 +" + gained, "ok");
   updateHpUi();
   updatePlayerMeters(player);
@@ -992,94 +1101,143 @@ function battleActivateUnique(player) {
   if (!battleOpen) return;
   const act = charOf(player)?.active;
   if (!act) return;
-  const cost = act.cost || 2;
   const foe = player === 1 ? 2 : 1;
-  if (act.id === "ink_seal" || act.id === "shadow_bind") {
-    if (!spendCombo(player, cost)) {
-      boards[player]?.setFeedback("需要 " + cost + " COMBO", "bad");
+  let cost = act.cost || 2;
+  if (act.id === "shadow_dodge" && (dodgeChance[player] || 0) > 0) cost = 1;
+  function spendOrWarn() {
+    if (spendCombo(player, cost)) return true;
+    boards[player]?.setFeedback("需要 " + cost + " COMBO", "bad");
+    return false;
+  }
+
+  if (act.id === "ink_seal") {
+    const key = currentQuestionKey(foe);
+    if (inkDisruptedQuestion[foe] === key) {
+      boards[player]?.setFeedback("這一題已受墨鎖干擾", "bad");
       return;
     }
-    const label = act.label || "封鎖";
-    submitLockUntil[foe] = nowMs() + SUBMIT_LOCK_MS;
-    scheduleSubmitLockExpire(foe);
-    playSfx("skillpop", 0.4);
-    showCombo(label, "sm");
-    boards[player]?.setFeedback(label + " · 對手提交封鎖", "ok");
-    boards[foe]?.setFeedback("提交被封鎖！", "bad");
+    if (!spendOrWarn()) return;
+    inkDisruptedQuestion[foe] = key;
+    cancelDragsForBoard(String(foe));
+    loadPlayerQuestion(foe, 3, false);
+    playSfx("skillpop", 0.45);
+    showCombo("墨鎖", "sm");
+    showEffectForBoth(player, "墨鎖成功", "已選字清空 · +3 干擾", "bad");
+    boards[player]?.setFeedback("墨鎖 · 對手字盤已重置", "ok");
+    boards[foe]?.setFeedback("墨鎖干擾：已選字清空，增加 3 個干擾字", "bad");
     updatePlayerMeters(player);
-    updateSkillUi(foe);
     return;
   }
-  if (act.id === "ember_steal" || act.id === "light_drain") {
+  if (act.id === "ember_steal") {
     const avail = charge[foe] || 0;
     if (avail <= 0) {
       boards[player]?.setFeedback("對手沒有蓄力", "bad");
       return;
     }
-    if (!spendCombo(player, cost)) {
-      boards[player]?.setFeedback("需要 " + cost + " COMBO", "bad");
-      return;
-    }
+    if (!spendOrWarn()) return;
     const stolen = Math.min(avail, Math.max(STEAL_CHARGE_MIN, Math.round(avail * STEAL_CHARGE_RATIO)));
     charge[foe] -= stolen;
     charge[player] += stolen;
-    const label = act.label || "奪取";
     playSfx("skillpop", 0.45);
-    showCombo(label + " +" + stolen, "md");
-    boards[player]?.setFeedback(label + " +" + stolen, "ok");
+    showCombo("奪焰 +" + stolen, "md");
+    showEffectForBoth(player, "奪焰 +" + stolen + " 蓄力", "蓄力 −" + stolen, "bad");
+    boards[player]?.setFeedback("奪焰 +" + stolen, "ok");
     boards[foe]?.setFeedback("蓄力被奪 −" + stolen, "bad");
     updatePlayerMeters(player);
     updatePlayerMeters(foe);
     return;
   }
-  if (act.id === "frost_seal" || act.id === "seal_silence") {
-    if (!spendCombo(player, cost)) {
-      boards[player]?.setFeedback("需要 " + cost + " COMBO", "bad");
+  if (act.id === "frost_reflect") {
+    if (reflectReady[player]) {
+      boards[player]?.setFeedback("霜返已待機，不可疊加", "bad");
       return;
     }
-    const label = act.label || "封鎖";
-    attackLockUntil[foe] = nowMs() + ATTACK_LOCK_MS;
-    scheduleAttackLockExpire(foe);
-    playSfx("skillpop", 0.4);
-    showCombo(label, "sm");
-    boards[player]?.setFeedback(label + " · 對手攻擊封鎖", "ok");
-    boards[foe]?.setFeedback("攻擊被封鎖！", "bad");
+    if (!spendOrWarn()) return;
+    reflectReady[player] = true;
+    playSfx("ready", 0.45);
+    showEffectForBoth(player, "霜返 50% 待機", "P" + player + " 反彈 50% 待機");
+    boards[player]?.setFeedback("霜返 · 將反彈下一次實際傷害的 50%", "ok");
     updatePlayerMeters(player);
-    updatePlayerMeters(foe);
     return;
   }
   if (act.id === "thunder_amp") {
-    if ((ampHits[player] || 0) > 0) {
+    if ((attackBoost[player] || 1) > 1) {
       boards[player]?.setFeedback("連鳴已待機", "bad");
       return;
     }
-    if (!spendCombo(player, cost)) {
-      boards[player]?.setFeedback("需要 " + cost + " COMBO", "bad");
-      return;
-    }
-    ampHits[player] = AMP_HIT_BONUS;
+    if (!spendOrWarn()) return;
+    attackBoost[player] = ATTACK_BOOST_MULT;
     playSfx("ready", 0.4);
-    showCombo("連鳴 +"+ AMP_HIT_BONUS, "sm");
-    boards[player]?.setFeedback("連鳴 · 下次攻擊 +" + AMP_HIT_BONUS + " 段", "ok");
+    showEffectForBoth(player, "連鳴 ×1.2 待機", "P" + player + " 下次攻擊 ×1.2");
+    boards[player]?.setFeedback("連鳴 · 下次攻擊傷害 ×1.2", "ok");
     updatePlayerMeters(player);
     return;
   }
   if (act.id === "wind_step") {
-    if (!spendCombo(player, cost)) {
-      boards[player]?.setFeedback("需要 " + cost + " COMBO", "bad");
+    if (mistakeGuardReady[player]) {
+      boards[player]?.setFeedback("風閃已待機，不可疊加", "bad");
       return;
     }
-    submitLockUntil[player] = 0;
-    attackLockUntil[player] = 0;
-    blockUntil[player] = nowMs() + 3000;
-    scheduleBlockExpire(player);
+    if (!spendOrWarn()) return;
+    mistakeGuardReady[player] = true;
     playSfx("ready", 0.45);
-    playSfx("skillpop", 0.3);
-    playBlockActivate(player);
-    showCombo("風閃", "sm");
-    boards[player]?.setFeedback("風閃 · 解鎖並格擋 3 秒", "ok");
+    showEffectForBoth(player, "風閃待機", "P" + player + " 下次失誤保留 COMBO");
+    boards[player]?.setFeedback("風閃 · 下次答錯保留 COMBO，且自傷減半", "ok");
     updatePlayerMeters(player);
-    updateSkillUi(player);
+    return;
+  }
+  if (act.id === "shadow_dodge") {
+    if (blockReady[player]) {
+      boards[player]?.setFeedback("護盾待機中，不能同時準備閃避", "bad");
+      return;
+    }
+    if ((dodgeChance[player] || 0) >= DODGE_MAX_CHANCE) {
+      boards[player]?.setFeedback("閃避率已達 80%", "bad");
+      return;
+    }
+    if (!spendOrWarn()) return;
+    dodgeChance[player] = dodgeChance[player]
+      ? Math.min(DODGE_MAX_CHANCE, dodgeChance[player] + DODGE_STEP_CHANCE)
+      : DODGE_START_CHANCE;
+    playSfx("ready", 0.45);
+    showEffectForBoth(player, "影閃 " + dodgeChance[player] + "%", "P" + player + " 閃避率 " + dodgeChance[player] + "%");
+    boards[player]?.setFeedback("影閃 · 下次攻擊閃避率 " + dodgeChance[player] + "%", "ok");
+    updatePlayerMeters(player);
+    return;
+  }
+  if (act.id === "seal_break") {
+    if ((combo[foe] || 0) <= 0) {
+      boards[player]?.setFeedback("對手目前沒有 COMBO", "bad");
+      return;
+    }
+    if (!spendOrWarn()) return;
+    const roll = Math.random();
+    const rolled = roll < 0.7 ? 3 : (roll < 0.9 ? 4 : 5);
+    const reduced = Math.min(combo[foe], rolled);
+    combo[foe] = Math.max(0, combo[foe] - rolled);
+    playSfx("skillpop", 0.45);
+    showEffectForBoth(player, "符削 −" + reduced + " COMBO", "COMBO −" + reduced, "bad");
+    boards[player]?.setFeedback("符削 · 對手 COMBO −" + reduced, "ok");
+    boards[foe]?.setFeedback("符削命中 · COMBO −" + reduced, "bad");
+    updatePlayerMeters(player);
+    updatePlayerMeters(foe);
+    return;
+  }
+  if (act.id === "light_regen") {
+    if (hp[player] >= MAX_HP) {
+      boards[player]?.setFeedback("血量已滿", "bad");
+      return;
+    }
+    if (regenState[player]) {
+      boards[player]?.setFeedback("光癒仍在生效，不可疊加或刷新", "bad");
+      return;
+    }
+    if (!spendOrWarn()) return;
+    startLocalRegen(player);
+    playSfx("fanfare", 0.32);
+    showEffectForBoth(player, "光癒開始 · 10 次", "P" + player + " 持續回血 30 秒");
+    boards[player]?.setFeedback("光癒 · 每 3 秒回復 36 HP，共 10 次", "ok");
+    updatePlayerMeters(player);
   }
 }
 function calcChargeGain(player, q) {
@@ -1087,29 +1245,22 @@ function calcChargeGain(player, q) {
   const streak = combo[player];
   const base = 58 + q.kanaSequence.length * 6;
   const comboMult = 1 + Math.max(0, streak - 1) * 0.08;
-  let gain = Math.max(40, Math.round(base * comboMult));
-  const chargeMult = charOf(player)?.passive?.chargeMult;
-  if (chargeMult != null) gain = Math.max(36, Math.round(gain * chargeMult));
-  return gain;
+  return Math.max(40, Math.round(base * comboMult));
 }
 function gaugeGainOf(player) {
-  return Math.max(1, charOf(player)?.passive?.gaugePerCorrect || 1);
+  return 1;
 }
 function specialMultOf(player) {
-  return charOf(player)?.passive?.specialMult || SPECIAL_MULT;
+  return SPECIAL_MULT;
 }
 function hitBonusOf(player) {
-  return Math.max(0, charOf(player)?.passive?.hitBonus || 0);
+  return 0;
 }
 function syncFighterPassive(player) {
-  const chip = $("passive-chip-" + player);
   const ch = charOf(player);
   const f = $("fighter" + player);
   if (f) f.dataset.theme = ch?.id || "";
-  if (!chip) return;
-  chip.textContent = ch?.passive?.label || "";
-  chip.title = ch?.passive?.desc || "";
-  chip.hidden = !ch?.passive?.label;
+  updateEffectStatus(player);
 }
 
 function playVsThenBattle() {
@@ -1119,10 +1270,10 @@ function playVsThenBattle() {
   document.querySelectorAll('[data-vs="img1"]').forEach((el) => { el.src = pickP1.image; });
   document.querySelectorAll('[data-vs="img2"]').forEach((el) => { el.src = pickP2.image; });
   document.querySelectorAll('[data-vs="name1"]').forEach((el) => {
-    el.textContent = pickP1.name + " · " + (pickP1.passive?.label || pickP1.skill || pickP1.title);
+    el.textContent = pickP1.name + " · " + (pickP1.active?.label || pickP1.skill || pickP1.title);
   });
   document.querySelectorAll('[data-vs="name2"]').forEach((el) => {
-    el.textContent = pickP2.name + " · " + (pickP2.passive?.label || pickP2.skill || pickP2.title);
+    el.textContent = pickP2.name + " · " + (pickP2.active?.label || pickP2.skill || pickP2.title);
   });
   document.querySelectorAll('[data-vs="rule"]').forEach((el) => {
     el.textContent = battleModeIntroLabel(battleOpts.mode);
@@ -1168,11 +1319,18 @@ function startBattle() {
   charge = { 1: 0, 2: 0 };
   combo = { 1: 0, 2: 0 };
   gaugeHits = { 1: 0, 2: 0 };
-  blockUntil = { 1: 0, 2: 0 };
+  blockReady = { 1: false, 2: false };
   submitLockUntil = { 1: 0, 2: 0 };
   submitCooldownUntil = { 1: 0, 2: 0 };
   attackLockUntil = { 1: 0, 2: 0 };
-  ampHits = { 1: 0, 2: 0 };
+  attackBoost = { 1: 1, 2: 1 };
+  reflectReady = { 1: false, 2: false };
+  mistakeGuardReady = { 1: false, 2: false };
+  dodgeChance = { 1: 0, 2: 0 };
+  inkDisruptedQuestion = { 1: "", 2: "" };
+  stopRegen(1);
+  stopRegen(2);
+  regenState = { 1: null, 2: null };
   clearSkillTimers(1);
   clearSkillTimers(2);
   resetBattleStats();
@@ -1389,6 +1547,8 @@ function setResultScreen(title, summary, withBattleStats, customRows = "") {
 async function playBattleDefeatOutro(loser, winner) {
   battleOpen = false;
   battleEpoch += 1;
+  stopRegen(1);
+  stopRegen(2);
   cancelAnimationFrame(timerRaf);
   cancelAllDrags();
   stopTts();
@@ -1429,6 +1589,29 @@ async function finishBattleDefeat(loser, winner, title, summary) {
   await playBattleDefeatOutro(loser, winner);
   setResultScreen(title, summary, true);
   playSfx("fanfare", 0.55);
+}
+
+async function finishBattleDraw(summary) {
+  battleOpen = false;
+  battleEpoch += 1;
+  stopRegen(1);
+  stopRegen(2);
+  cancelAnimationFrame(timerRaf);
+  cancelAllDrags();
+  stopTts();
+  stopBattleBgm();
+  [1, 2].forEach((player) => {
+    const fighter = $("fighter" + player);
+    fighter?.classList.remove("hit", "hit-strong", "attacking", "active-turn");
+    setFighterPose(player, "hit");
+    fighter?.classList.add("defeated");
+  });
+  showCombo("DOUBLE KO", "lg");
+  shakeBattle(true);
+  await wait(prefersReducedMotion() ? 450 : 1200);
+  clearBattleFx();
+  setResultScreen("平手！", summary, true);
+  playSfx("fanfare", 0.4);
 }
 
 function hideSpecialStage() {
@@ -1517,18 +1700,18 @@ function ensureCastLayers() {
   });
 }
 
-function loadPlayerQuestion(player) {
+function loadPlayerQuestion(player, extraDistractors = 0, trackOpen = true) {
   const q = playerQ(player);
   if (!q) return;
-  const ch = charOf(player);
   const noDistractors = !battleOpts.distractors;
   boards[player].load(q.kanaSequence, {
     showRomaji: !isListenBattle() && !isChineseRaceBattle(),
     promptText: isChineseRaceBattle() ? q.zh : "",
     noDistractors,
-    distractorDelta: noDistractors ? 0 : (ch?.passive?.distractorDelta || 0),
+    // 蒼的墨鎖即使在「無干擾」規則下仍會額外加入 3 字，總池維持 12 格上限。
+    distractorDelta: extraDistractors,
   });
-  noteQuestionOpen(player);
+  if (trackOpen) noteQuestionOpen(player);
   updatePlayerMeters(player);
 }
 
@@ -1569,7 +1752,7 @@ async function resolveListenRoundWin(player) {
   if (charge[player] > 0 && !isAttackLocked(player)) {
     const { dmg, hits, special: isSpecial } = projectedAttackDamage(player);
     const segments = Math.min(hits, MAX_ATTACK_SEGMENTS);
-    ampHits[player] = 0;
+    attackBoost[player] = 1;
     charge[player] = 0;
     if (isSpecial) {
       gaugeHits[player] = 0;
@@ -1647,7 +1830,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
   const hits = Math.max(1, hitCount || 1);
   // 演出段數可能被上限截短，報數字時仍用玩家實際累積的 COMBO
   const shownCombo = comboCount || hits;
-  // 攻擊開始時若對方在格擋窗內，整包傷害（含大招長動畫後結算）都減半
+  // 格擋會保留到對手下一次攻擊，整包傷害（含大招長動畫）降低 80%。
   let guarded = isBlocking(foe);
   const label = isSpecial ? "大招" : "攻擊";
   playSfx("skillpop", 0.45);
@@ -1674,6 +1857,22 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     }
   }
 
+  const armedDodge = dodgeChance[foe] || 0;
+  if (armedDodge > 0) {
+    dodgeChance[foe] = 0;
+    updatePlayerMeters(foe);
+    if (Math.random() * 100 < armedDodge) {
+      showCombo("閃避!", "md");
+      showEffectForBoth(foe, "影閃成功 · 0 傷害", "攻擊被閃避", "bad");
+      playSfx("ready", 0.5);
+      atk.classList.remove("attacking");
+      setFighterPose(player, "idle");
+      setFighterPose(foe, "idle");
+      return false;
+    }
+    showEffectForBoth(foe, "影閃失敗", "攻擊命中", "bad");
+  }
+
   // 演出期間若補按格擋，也算擋下本包
   if (isBlocking(foe)) guarded = true;
   if (guarded) {
@@ -1682,14 +1881,16 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     playSfx("ready", 0.5);
   }
 
-  const parts = splitComboDamage(dmg, hits);
+  const willReflect = !!reflectReady[foe];
+  const hpBeforeAttack = hp[foe];
+  const resolvedDamage = guarded ? Math.max(1, Math.round(dmg * BLOCK_DAMAGE_MULT)) : dmg;
+  const parts = splitComboDamage(resolvedDamage, hits);
   setFighterPose(foe, "hit");
   for (let i = 0; i < parts.length; i++) {
     if (!battleOpen || actionEpoch !== battleEpoch || hp[foe] <= 0) break;
     const hitNo = i + 1;
     const sfxNo = Math.min(hitNo, 5);
-    let partDmg = parts[i];
-    if (guarded) partDmg = Math.max(1, Math.round(partDmg * BLOCK_DAMAGE_MULT));
+    const partDmg = parts[i];
     const willKill = hp[foe] - partDmg <= 0;
     playHitSfx(sfxNo);
     // 致命一擊留給敗北慘叫，避免受擊語音蓋過
@@ -1729,12 +1930,25 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
   }
 
   if (guarded) {
-    blockUntil[foe] = 0;
-    if (skillTimers[foe]?.block) { clearTimeout(skillTimers[foe].block); skillTimers[foe].block = 0; }
+    blockReady[foe] = false;
     def?.classList.remove("blocking", "block-absorb");
     const shield = def?.querySelector(".fx-shield");
     if (shield) shield.classList.remove("rise");
-    updateSkillUi(foe);
+    updatePlayerMeters(foe);
+  }
+
+  if (willReflect) {
+    reflectReady[foe] = false;
+    const actualDamage = Math.max(0, hpBeforeAttack - hp[foe]);
+    const reflectedDamage = Math.round(actualDamage * REFLECT_DAMAGE_RATIO);
+    if (reflectedDamage > 0) {
+      hp[player] = Math.max(0, hp[player] - reflectedDamage);
+      updateHpUi();
+      showDmgFloat(player, reflectedDamage, 1);
+      showEffectForBoth(foe, "霜返 " + reflectedDamage + " 傷害", "反彈傷害 −" + reflectedDamage, "bad");
+      playHitSfx(2);
+    }
+    updatePlayerMeters(foe);
   }
 
   atk.classList.remove("attacking");
@@ -1743,6 +1957,21 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     setFighterPose(foe, "idle");
   }
 
+  if (hp[foe] <= 0 && hp[player] <= 0) {
+    await finishBattleDraw(
+      pickP1.name + " vs " + pickP2.name + " · 霜返造成雙方同時倒下"
+    );
+    return true;
+  }
+  if (hp[player] <= 0) {
+    await finishBattleDefeat(
+      player,
+      foe,
+      "P" + foe + " 霜返逆轉！",
+      pickP1.name + " vs " + pickP2.name + " · 反彈決勝"
+    );
+    return true;
+  }
   if (hp[foe] <= 0) {
     await finishBattleDefeat(
       foe,
@@ -1823,10 +2052,17 @@ function battleSubmit(player) {
   const wrong = b.markSlots(q.kanaSequence);
   if (wrong) {
     submitCooldownUntil[player] = nowMs() + 450;
-    const dmg = Math.max(1, wrong * MISS_SELF_DMG_PER_WRONG);
-    combo[player] = 0;
+    const protectedMiss = !!mistakeGuardReady[player];
+    const rawDmg = Math.max(1, wrong * MISS_SELF_DMG_PER_WRONG);
+    const dmg = protectedMiss ? Math.max(1, Math.round(rawDmg * MISTAKE_GUARD_DAMAGE_MULT)) : rawDmg;
+    if (protectedMiss) {
+      mistakeGuardReady[player] = false;
+      showEffectForBoth(player, "風閃發動 · COMBO 保留", "P" + player + " 失誤保護已觸發");
+    } else {
+      combo[player] = 0;
+    }
     updatePlayerMeters(player);
-    b.setFeedback("錯 " + wrong + " 格 · -" + dmg + " · 連擊中斷", "bad");
+    b.setFeedback("錯 " + wrong + " 格 · -" + dmg + (protectedMiss ? " · COMBO 保留" : " · 連擊中斷"), "bad");
     applySelfMissDamage(player, dmg, wrong);
     return;
   }
@@ -1884,7 +2120,7 @@ function battleFireAttack(player) {
   const { dmg, hits, special: isSpecial } = projectedAttackDamage(player);
   // 段數多到一定程度只會拖長演出（對手在演出期間仍可自由作答），故僅上限演出段數
   const segments = Math.min(hits, MAX_ATTACK_SEGMENTS);
-  ampHits[player] = 0;
+  attackBoost[player] = 1;
   charge[player] = 0;
   combo[player] = 0; // 發動後消耗 COMBO
   if (isSpecial) {

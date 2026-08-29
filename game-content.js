@@ -8,8 +8,7 @@ const CHARACTERS = [
     castVideo: "assets/anim/ao-cast.mp4",
     voiceHit: "assets/voice/ao/hit.mp3",
     voiceDefeat: "assets/voice/ao/defeat.mp3",
-    passive: { id: "ink_flow", label: "墨意蓄積", desc: "答對時大招槽 +2", gaugePerCorrect: 2 },
-    active: { id: "ink_seal", label: "墨鎖", desc: "耗 2 COMBO · 鎖對手提交 5 秒", cost: 2 },
+    active: { id: "ink_seal", label: "墨鎖", desc: "耗 3 COMBO · 清空對手已選字，並加入 3 個干擾字", cost: 3 },
   },
   {
     id: "rin", name: "焔詠・燐", title: "焔詠", skill: "焦言劫火",
@@ -19,7 +18,6 @@ const CHARACTERS = [
     castVideo: "assets/anim/rin-cast.mp4",
     voiceHit: "assets/voice/rin/hit.mp3",
     voiceDefeat: "assets/voice/rin/defeat.mp3",
-    passive: { id: "ember_surge", label: "劫火倍加", desc: "大招 ×1.9，蓄力略慢", specialMult: 1.9, chargeMult: 0.9 },
     active: { id: "ember_steal", label: "奪焰", desc: "耗 2 COMBO · 偷對手蓄力約 1/5（至少 40）", cost: 2 },
   },
   {
@@ -30,8 +28,7 @@ const CHARACTERS = [
     castVideo: "assets/anim/ya-cast.mp4",
     voiceHit: "assets/voice/ya/hit.mp3",
     voiceDefeat: "assets/voice/ya/defeat.mp3",
-    passive: { id: "frost_clear", label: "霜鈴澄心", desc: "字池少 2 個干擾字", distractorDelta: -2 },
-    active: { id: "frost_seal", label: "霜封", desc: "耗 2 COMBO · 鎖對手攻擊／大招 4 秒", cost: 2 },
+    active: { id: "frost_reflect", label: "霜返", desc: "耗 2 COMBO · 反彈下一次敵方實際傷害的 50%", cost: 2 },
   },
   {
     id: "go", name: "雷拳・轟", title: "雷拳", skill: "轟鳴崩拳",
@@ -41,8 +38,7 @@ const CHARACTERS = [
     castVideo: "assets/anim/go-cast.mp4",
     voiceHit: "assets/voice/go/hit.mp3",
     voiceDefeat: "assets/voice/go/defeat.mp3",
-    passive: { id: "thunder_chain", label: "連崩雷撃", desc: "攻擊連打多 2 下", hitBonus: 2 },
-    active: { id: "thunder_amp", label: "連鳴", desc: "耗 2 COMBO · 下次攻擊再 +5 段", cost: 2 },
+    active: { id: "thunder_amp", label: "連鳴", desc: "耗 2 COMBO · 下次攻擊傷害 ×1.2", cost: 2 },
   },
   {
     id: "ran", name: "風蹴・嵐", title: "風蹴", skill: "嵐脚千刃",
@@ -52,8 +48,7 @@ const CHARACTERS = [
     castVideo: "assets/anim/ran-cast.mp4",
     voiceHit: "assets/voice/ran/hit.mp3",
     voiceDefeat: "assets/voice/ran/defeat.mp3",
-    passive: { id: "wind_rush", label: "風迅連脚", desc: "蓄力略快", chargeMult: 1.12 },
-    active: { id: "wind_step", label: "風閃", desc: "耗 2 COMBO · 解除自身封鎖並格擋 3 秒", cost: 2 },
+    active: { id: "wind_step", label: "風閃", desc: "耗 1 COMBO · 下次答錯保留 COMBO，且自傷減半", cost: 1 },
   },
   {
     id: "gen", name: "影刃・玄", title: "影刃", skill: "墨影千刹",
@@ -63,8 +58,7 @@ const CHARACTERS = [
     castVideo: "assets/anim/gen-cast.mp4",
     voiceHit: "assets/voice/gen/hit.mp3",
     voiceDefeat: "assets/voice/gen/defeat.mp3",
-    passive: { id: "shadow_cut", label: "影刃連斬", desc: "攻擊連打多 1 下", hitBonus: 1 },
-    active: { id: "shadow_bind", label: "影縛", desc: "耗 2 COMBO · 鎖對手提交 5 秒", cost: 2 },
+    active: { id: "shadow_dodge", label: "影閃", desc: "首次耗 2 COMBO，獲得 60% 閃避；再耗 1 COMBO可 +10%，最高 80%", cost: 2 },
   },
   {
     id: "sho", name: "符筆・章", title: "符筆", skill: "万符封言",
@@ -74,8 +68,7 @@ const CHARACTERS = [
     castVideo: "assets/anim/sho-cast.mp4",
     voiceHit: "assets/voice/sho/hit.mp3",
     voiceDefeat: "assets/voice/sho/defeat.mp3",
-    passive: { id: "seal_eye", label: "符眼", desc: "字池少 1 個干擾字", distractorDelta: -1 },
-    active: { id: "seal_silence", label: "封言", desc: "耗 2 COMBO · 鎖對手攻擊／大招 4 秒", cost: 2 },
+    active: { id: "seal_break", label: "符削", desc: "耗 3 COMBO · 隨機削減對手 3～5 COMBO", cost: 3 },
   },
   {
     id: "yo", name: "光扇・陽", title: "光扇", skill: "扇華断空",
@@ -85,8 +78,7 @@ const CHARACTERS = [
     castVideo: "assets/anim/yo-cast.mp4",
     voiceHit: "assets/voice/yo/hit.mp3",
     voiceDefeat: "assets/voice/yo/defeat.mp3",
-    passive: { id: "light_bloom", label: "光華", desc: "大招 ×1.7，蓄力略慢", specialMult: 1.7, chargeMult: 0.92 },
-    active: { id: "light_drain", label: "奪輝", desc: "耗 2 COMBO · 偷對手蓄力約 1/5（至少 40）", cost: 2 },
+    active: { id: "light_regen", label: "光癒", desc: "耗 2 COMBO · 每 3 秒回復 1.5% HP，持續 30 秒", cost: 2 },
   },
 ];
 
@@ -140,22 +132,28 @@ let QUESTIONS = ALL_QUESTIONS.slice();
 const PRACTICE_ROUND_SIZE = 12; // 單人一輪題數（從大題庫抽）
 const MAX_HP = 2400;
 const GAUGE_HITS_TO_FULL = 8;
-const SPECIAL_MULT = 1.55;
+const SPECIAL_MULT = 1.5;
 const COMBO_DAMAGE_PER_HIT = 0.05; // 每多一段連打 +5% 總傷
 const MAX_ATTACK_SEGMENTS = 8; // 演出段數上限；傷害仍照完整段數計算
 const MISS_SELF_DMG_PER_WRONG = 72; // 答錯每格對自己扣血
 const DRAG_THRESHOLD = 4;
-const BLOCK_COMBO_COST = 1;
-const BLOCK_DURATION_MS = 2000;
-const BLOCK_DAMAGE_MULT = 0.5;
+const BLOCK_COMBO_COST = 3;
+const BLOCK_DAMAGE_MULT = 0.2;
 const HEAL_COMBO_COST = 2;
 const HEAL_AMOUNT = 200;
 const SUBMIT_LOCK_MS = 5000;
 const ATTACK_LOCK_MS = 4000;
 const STEAL_CHARGE_MIN = 40;
 const STEAL_CHARGE_RATIO = 0.2;
-// 發動時已扣 2 COMBO（等於先少 2 段），要淨賺就必須大於成本
-const AMP_HIT_BONUS = 5;
+const ATTACK_BOOST_MULT = 1.2;
+const REFLECT_DAMAGE_RATIO = 0.5;
+const MISTAKE_GUARD_DAMAGE_MULT = 0.5;
+const DODGE_START_CHANCE = 60;
+const DODGE_STEP_CHANCE = 10;
+const DODGE_MAX_CHANCE = 80;
+const REGEN_TICK_MS = 3000;
+const REGEN_TICKS = 10;
+const REGEN_HP_PER_TICK = Math.round(MAX_HP * 0.015);
 
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -284,10 +282,11 @@ function nearDistractors(k) {
 }
 function buildPool(seq, distractorDelta = 0, opts = {}) {
   const correct = seq.map((kana, i) => ({ id: "c"+i+"_"+Math.random().toString(36).slice(2,5), kana, used: false }));
-  if (opts.noDistractors) return shuffle(correct);
   // 手機需保留至少 52px 的觸控寬度：總字池最多 12 格（5×2 或 6×2）。
   // 長題保留所有正確假名，只縮減干擾字。
-  const desiredExtras = Math.max(1, (seq.length <= 4 ? 3 : 4) + (distractorDelta || 0));
+  const baseExtras = opts.noDistractors ? 0 : (seq.length <= 4 ? 3 : 4);
+  const desiredExtras = Math.max(0, baseExtras + (distractorDelta || 0));
+  if (desiredExtras === 0) return shuffle(correct);
   const extraN = Math.min(desiredExtras, Math.max(0, 12 - correct.length));
   const bag = new Set();
   seq.forEach((k) => nearDistractors(k).forEach((d) => bag.add(d)));

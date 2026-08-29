@@ -15,15 +15,21 @@ const CANONICAL_QUESTIONS = new Map(
   (globalThis.KANA_QUESTIONS || []).map((question) => [question.id, question]),
 );
 const CHARACTER_RULES = {
-  ao: { gaugePerCorrect: 2, active: "submit_lock" },
-  rin: { chargeMult: 0.9, specialMult: 1.9, active: "steal" },
-  ya: { active: "attack_lock" },
-  go: { hitBonus: 2, active: "amp" },
-  ran: { chargeMult: 1.12, active: "wind_step" },
-  gen: { hitBonus: 1, active: "submit_lock" },
-  sho: { active: "attack_lock" },
-  yo: { chargeMult: 0.92, specialMult: 1.7, active: "steal" },
+  ao: { active: "disrupt", cost: 3 },
+  rin: { active: "steal", cost: 2 },
+  ya: { active: "reflect", cost: 2 },
+  go: { active: "boost", cost: 2 },
+  ran: { active: "mistake_guard", cost: 1 },
+  gen: { active: "dodge", cost: 2 },
+  sho: { active: "combo_drain", cost: 3 },
+  yo: { active: "regen", cost: 2 },
 };
+const SPECIAL_MULT = 1.5;
+const ATTACK_BOOST_MULT = 1.2;
+const REFLECT_RATIO = 0.5;
+const REGEN_TICK_MS = 3000;
+const REGEN_TICKS = 10;
+const REGEN_HEAL = Math.round(MAX_HP * 0.015);
 
 function cleanText(value, maxLength = 80) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -122,10 +128,16 @@ function blankFighter(now) {
     charge: 0,
     combo: 0,
     gauge: 0,
-    ampHits: 0,
-    blockUntil: 0,
-    submitLockUntil: 0,
-    attackLockUntil: 0,
+    attackBoost: 1,
+    blockReady: false,
+    reflectReady: false,
+    mistakeGuardReady: false,
+    dodgeChance: 0,
+    boardDisruptSeq: 0,
+    boardDisruptQuestionId: "",
+    lastDisruptedQuestionKey: "",
+    regenTicksLeft: 0,
+    regenNextAt: 0,
     corrects: 0,
     mistakes: 0,
     maxCombo: 0,
@@ -147,6 +159,7 @@ function startBattle(room, now = Date.now()) {
     firstSpecialSeat: null,
     listenCueSeq: 0,
     listenCue: null,
+    regenPauseStartedAt: 0,
   };
   scheduleListenCue(room, now, LISTEN_START_LEAD_MS);
   room.eventSeq += 1;
@@ -215,7 +228,18 @@ export function joinRoom(room, { name, token, now = Date.now() }) {
 export function setConnected(room, seat, connected, now = Date.now()) {
   const player = room?.players?.[seat];
   if (!player || player.connected === connected) return false;
+  if (!connected && room.phase === "playing" && room.battle && !room.battle.regenPauseStartedAt) {
+    room.battle.regenPauseStartedAt = now;
+  }
   player.connected = connected;
+  if (connected && room.phase === "playing" && room.battle?.regenPauseStartedAt
+      && room.players.every((entry) => entry?.connected)) {
+    const pausedFor = Math.max(0, now - room.battle.regenPauseStartedAt);
+    room.battle.fighters.forEach((fighter) => {
+      if (fighter.regenTicksLeft > 0 && fighter.regenNextAt > 0) fighter.regenNextAt += pausedFor;
+    });
+    room.battle.regenPauseStartedAt = 0;
+  }
   bump(room, now);
   return true;
 }
@@ -286,6 +310,12 @@ function questionAt(room, seat) {
   return room.deck[index % room.deck.length];
 }
 
+function questionKey(room, seat) {
+  const battle = room.battle;
+  const index = room.config.mode === "listen" ? battle.sharedQi : battle.fighters[seat].qi;
+  return room.config.mode + ":" + index + ":" + (questionAt(room, seat)?.id || "question");
+}
+
 function scheduleListenCue(room, now, delayMs) {
   if (room.config.mode !== "listen" || !room.battle) return;
   const question = questionAt(room, 0);
@@ -302,18 +332,53 @@ function chargeGain(room, seat, answerLength) {
   const fighter = room.battle.fighters[seat];
   const base = 58 + answerLength * 6;
   const comboMult = 1 + Math.max(0, fighter.combo - 1) * 0.08;
-  let gain = Math.max(40, Math.round(base * comboMult));
-  const multiplier = rulesFor(room, seat).chargeMult;
-  if (multiplier != null) gain = Math.max(36, Math.round(gain * multiplier));
-  return gain;
+  return Math.max(40, Math.round(base * comboMult));
+}
+
+export function nextTimedEffectAt(room) {
+  if (!room?.battle || room.phase !== "playing" || room.battle.regenPauseStartedAt
+      || !room.players.every((player) => player?.connected)) return 0;
+  const times = room.battle.fighters
+    .filter((fighter) => fighter.regenTicksLeft > 0 && fighter.regenNextAt > 0)
+    .map((fighter) => fighter.regenNextAt);
+  return times.length ? Math.min(...times) : 0;
+}
+
+export function settleTimedEffects(room, now = Date.now()) {
+  if (!room?.battle || room.phase !== "playing" || room.battle.regenPauseStartedAt
+      || !room.players.every((player) => player?.connected)) return [];
+  const heals = [];
+  room.battle.fighters.forEach((fighter, seat) => {
+    let applied = 0;
+    let amount = 0;
+    while (fighter.regenTicksLeft > 0 && fighter.regenNextAt > 0 && fighter.regenNextAt <= now) {
+      const before = fighter.hp;
+      fighter.hp = Math.min(MAX_HP, fighter.hp + REGEN_HEAL);
+      amount += fighter.hp - before;
+      fighter.regenTicksLeft -= 1;
+      fighter.regenNextAt += REGEN_TICK_MS;
+      applied += 1;
+    }
+    if (fighter.regenTicksLeft <= 0) fighter.regenNextAt = 0;
+    if (applied > 0) heals.push({ seat, amount, ticks: applied, ticksLeft: fighter.regenTicksLeft });
+  });
+  if (heals.length) {
+    setEvent(room, { type: "regen", heals }, now);
+    bump(room, now);
+  }
+  return heals;
 }
 
 function finishIfNeeded(room, now) {
-  const loser = room.battle.fighters.findIndex((fighter) => fighter.hp <= 0);
-  if (loser < 0) return false;
+  const defeated = room.battle.fighters.map((fighter) => fighter.hp <= 0);
+  if (!defeated.some(Boolean)) return false;
   room.phase = "complete";
   room.battle.completedAt = now;
-  room.battle.winnerSeat = loser === 0 ? 1 : 0;
+  room.battle.winnerSeat = defeated.every(Boolean) ? null : (defeated[0] ? 1 : 0);
+  room.battle.fighters.forEach((fighter) => {
+    fighter.regenTicksLeft = 0;
+    fighter.regenNextAt = 0;
+  });
   room.players.forEach((player) => { if (player) player.ready = false; });
   return true;
 }
@@ -323,30 +388,42 @@ function setEvent(room, event, now) {
   room.lastEvent = { id: room.eventSeq, at: now, ...event };
 }
 
-function performAttack(room, seat, now, automatic = false, questionId = "") {
+function performAttack(room, seat, now, automatic = false, questionId = "", random = Math.random) {
   const fighter = room.battle.fighters[seat];
   const foeSeat = seat === 0 ? 1 : 0;
   const foe = room.battle.fighters[foeSeat];
-  if (fighter.attackLockUntil > now) return { ok: false, error: "ATTACK_LOCKED" };
   if (fighter.charge <= 0) return { ok: false, error: "NO_CHARGE" };
-  const rules = rulesFor(room, seat);
   const special = fighter.gauge >= 8;
   if (special && room.battle.firstSpecialSeat == null) room.battle.firstSpecialSeat = seat;
   let damage = fighter.charge;
-  if (special) damage = Math.round(damage * (rules.specialMult || 1.55));
-  const hits = Math.max(1, fighter.combo + (rules.hitBonus || 0) + fighter.ampHits);
+  if (special) damage = Math.round(damage * SPECIAL_MULT);
+  const hits = Math.max(1, fighter.combo || 1);
   damage = Math.round(damage * (1 + (hits - 1) * 0.05));
-  const guarded = foe.blockUntil > now;
+  damage = Math.round(damage * (fighter.attackBoost || 1));
+  const dodgeChance = foe.dodgeChance || 0;
+  const dodged = dodgeChance > 0 && random() * 100 < dodgeChance;
+  if (dodgeChance > 0) foe.dodgeChance = 0;
+  const guarded = !dodged && foe.blockReady;
   if (guarded) {
-    damage = Math.max(1, Math.round(damage * 0.5));
-    foe.blockUntil = 0;
+    damage = Math.max(1, Math.round(damage * 0.2));
+    foe.blockReady = false;
   }
+  if (dodged) damage = 0;
   fighter.charge = 0;
   if (!automatic) fighter.combo = 0;
-  fighter.ampHits = 0;
+  fighter.attackBoost = 1;
   if (special) fighter.gauge = 0;
+  const hpBefore = foe.hp;
   foe.hp = Math.max(0, foe.hp - damage);
-  const event = { type: "attack", seat, foeSeat, damage, hits, special, guarded, automatic };
+  const actualDamage = hpBefore - foe.hp;
+  const reflected = !dodged && foe.reflectReady;
+  let reflectedDamage = 0;
+  if (reflected) {
+    foe.reflectReady = false;
+    reflectedDamage = Math.round(actualDamage * REFLECT_RATIO);
+    fighter.hp = Math.max(0, fighter.hp - reflectedDamage);
+  }
+  const event = { type: "attack", seat, foeSeat, damage: actualDamage, hits, special, guarded, dodged, dodgeChance, reflected, reflectedDamage, automatic };
   if (questionId) event.questionId = questionId;
   setEvent(room, event, now);
   finishIfNeeded(room, now);
@@ -356,8 +433,8 @@ function performAttack(room, seat, now, automatic = false, questionId = "") {
 export function applySubmit(room, seat, { questionId, answer }, now = Date.now()) {
   const playable = ensurePlayable(room, seat);
   if (!playable.ok) return playable;
+  settleTimedEffects(room, now);
   const fighter = room.battle.fighters[seat];
-  if (fighter.submitLockUntil > now) return { ok: false, error: "SUBMIT_LOCKED" };
   const question = questionAt(room, seat);
   if (!question || question.id !== cleanText(questionId, 80)) return { ok: false, error: "STALE_QUESTION" };
   if (room.config.mode === "listen") {
@@ -368,11 +445,13 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
   const wrong = question.answer.reduce((count, part, index) => count + (submitted[index] === part ? 0 : 1), 0);
   if (submitted.length !== question.answer.length || wrong > 0) {
     const totalWrong = Math.max(wrong, Math.abs(submitted.length - question.answer.length), 1);
-    const damage = totalWrong * 72;
-    fighter.combo = 0;
+    const protectedMiss = !!fighter.mistakeGuardReady;
+    const damage = Math.max(1, Math.round(totalWrong * 72 * (protectedMiss ? 0.5 : 1)));
+    if (protectedMiss) fighter.mistakeGuardReady = false;
+    else fighter.combo = 0;
     fighter.mistakes = (fighter.mistakes || 0) + 1;
     fighter.hp = Math.max(0, fighter.hp - damage);
-    setEvent(room, { type: "miss", seat, damage, wrong: totalWrong, questionId: question.id }, now);
+    setEvent(room, { type: "miss", seat, damage, wrong: totalWrong, protectedMiss, questionId: question.id }, now);
     finishIfNeeded(room, now);
     bump(room, now);
     return { ok: true, correct: false };
@@ -386,7 +465,7 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
   const answerMs = Math.max(0, now - (Number.isFinite(answerStartedAt) ? answerStartedAt : now));
   fighter.bestAnswerMs = fighter.bestAnswerMs == null ? answerMs : Math.min(fighter.bestAnswerMs, answerMs);
   fighter.totalAnswerMs += answerMs;
-  fighter.gauge += rulesFor(room, seat).gaugePerCorrect || 1;
+  fighter.gauge += 1;
   const gain = chargeGain(room, seat, question.answer.length);
   fighter.charge += gain;
   if (room.config.mode === "listen") {
@@ -413,6 +492,7 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
 export function applySkip(room, seat, now = Date.now()) {
   const playable = ensurePlayable(room, seat);
   if (!playable.ok) return playable;
+  settleTimedEffects(room, now);
   if (room.config.mode === "listen") return { ok: false, error: "SKIP_NOT_ALLOWED" };
   const fighter = room.battle.fighters[seat];
   fighter.combo = 0;
@@ -423,56 +503,105 @@ export function applySkip(room, seat, now = Date.now()) {
   return { ok: true };
 }
 
-export function applyAttack(room, seat, now = Date.now()) {
+export function applyAttack(room, seat, now = Date.now(), random = Math.random) {
   const playable = ensurePlayable(room, seat);
   if (!playable.ok) return playable;
+  settleTimedEffects(room, now);
   if (room.config.mode === "listen") return { ok: false, error: "AUTO_ATTACK_MODE" };
-  const result = performAttack(room, seat, now, false);
+  const result = performAttack(room, seat, now, false, "", random);
   if (result.ok) bump(room, now);
   return result;
 }
 
-export function applySkill(room, seat, skill, now = Date.now()) {
+export function applySkill(room, seat, skill, now = Date.now(), random = Math.random) {
   const playable = ensurePlayable(room, seat);
   if (!playable.ok) return playable;
+  settleTimedEffects(room, now);
   const fighter = room.battle.fighters[seat];
-  const foe = room.battle.fighters[seat === 0 ? 1 : 0];
+  const foeSeat = seat === 0 ? 1 : 0;
+  const foe = room.battle.fighters[foeSeat];
   const spend = (cost) => {
     if (fighter.combo < cost) return false;
     fighter.combo -= cost;
     return true;
   };
+  let event = { type: "skill", seat, skill };
   if (skill === "block") {
-    if (!spend(1)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
-    fighter.blockUntil = now + 2000;
+    if (fighter.blockReady) return { ok: false, error: "BLOCK_ALREADY_READY" };
+    if (fighter.dodgeChance > 0) return { ok: false, error: "DODGE_ALREADY_READY" };
+    if (!spend(3)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+    fighter.blockReady = true;
+    event = { ...event, effect: "block", value: 80 };
   } else if (skill === "heal") {
     if (fighter.hp >= MAX_HP) return { ok: false, error: "HP_FULL" };
     if (!spend(2)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+    const before = fighter.hp;
     fighter.hp = Math.min(MAX_HP, fighter.hp + 200);
+    event = { ...event, effect: "heal", amount: fighter.hp - before };
   } else if (skill === "unique") {
-    if (!spend(2)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
-    const active = rulesFor(room, seat).active;
-    if (active === "submit_lock") foe.submitLockUntil = now + 5000;
-    else if (active === "attack_lock") foe.attackLockUntil = now + 4000;
-    else if (active === "steal") {
-      if (foe.charge <= 0) { fighter.combo += 2; return { ok: false, error: "NO_TARGET_CHARGE" }; }
+    const rules = rulesFor(room, seat);
+    const active = rules.active;
+    const cost = active === "dodge" && fighter.dodgeChance > 0 ? 1 : (rules.cost || 2);
+    if (active === "disrupt") {
+      const key = questionKey(room, foeSeat);
+      if (foe.lastDisruptedQuestionKey === key) return { ok: false, error: "QUESTION_ALREADY_DISRUPTED" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+      foe.lastDisruptedQuestionKey = key;
+      foe.boardDisruptSeq += 1;
+      foe.boardDisruptQuestionId = questionAt(room, foeSeat)?.id || "";
+      event = { ...event, active, foeSeat, questionId: foe.boardDisruptQuestionId, extraDistractors: 3 };
+    } else if (active === "steal") {
+      if (foe.charge <= 0) return { ok: false, error: "NO_TARGET_CHARGE" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
       const stolen = Math.min(foe.charge, Math.max(40, Math.round(foe.charge * 0.2)));
       foe.charge -= stolen;
       fighter.charge += stolen;
-    } else if (active === "amp") {
-      if (fighter.ampHits > 0) { fighter.combo += 2; return { ok: false, error: "AMP_ALREADY_READY" }; }
-      fighter.ampHits = 5;
-    } else if (active === "wind_step") {
-      fighter.submitLockUntil = 0;
-      fighter.attackLockUntil = 0;
-      fighter.blockUntil = now + 3000;
+      event = { ...event, active, foeSeat, amount: stolen };
+    } else if (active === "reflect") {
+      if (fighter.reflectReady) return { ok: false, error: "REFLECT_ALREADY_READY" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+      fighter.reflectReady = true;
+      event = { ...event, active, value: 50 };
+    } else if (active === "boost") {
+      if (fighter.attackBoost > 1) return { ok: false, error: "BOOST_ALREADY_READY" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+      fighter.attackBoost = ATTACK_BOOST_MULT;
+      event = { ...event, active, value: ATTACK_BOOST_MULT };
+    } else if (active === "mistake_guard") {
+      if (fighter.mistakeGuardReady) return { ok: false, error: "MISTAKE_GUARD_ALREADY_READY" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+      fighter.mistakeGuardReady = true;
+      event = { ...event, active };
+    } else if (active === "dodge") {
+      if (fighter.blockReady) return { ok: false, error: "BLOCK_ALREADY_READY" };
+      if (fighter.dodgeChance >= 80) return { ok: false, error: "DODGE_AT_MAX" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+      fighter.dodgeChance = fighter.dodgeChance ? Math.min(80, fighter.dodgeChance + 10) : 60;
+      event = { ...event, active, value: fighter.dodgeChance };
+    } else if (active === "combo_drain") {
+      if (foe.combo <= 0) return { ok: false, error: "NO_TARGET_COMBO" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+      const roll = random();
+      const rolled = roll < 0.7 ? 3 : (roll < 0.9 ? 4 : 5);
+      const amount = Math.min(foe.combo, rolled);
+      foe.combo = Math.max(0, foe.combo - rolled);
+      event = { ...event, active, foeSeat, amount, rolled };
+    } else if (active === "regen") {
+      if (fighter.hp >= MAX_HP) return { ok: false, error: "HP_FULL" };
+      if (fighter.regenTicksLeft > 0) return { ok: false, error: "REGEN_ALREADY_ACTIVE" };
+      if (!spend(cost)) return { ok: false, error: "NOT_ENOUGH_COMBO" };
+      fighter.regenTicksLeft = REGEN_TICKS;
+      fighter.regenNextAt = now + REGEN_TICK_MS;
+      event = { ...event, active, ticks: REGEN_TICKS, amountPerTick: REGEN_HEAL };
+    } else {
+      return { ok: false, error: "UNKNOWN_CHARACTER_SKILL" };
     }
   } else {
     return { ok: false, error: "UNKNOWN_SKILL" };
   }
-  setEvent(room, { type: "skill", seat, skill }, now);
+  setEvent(room, event, now);
   bump(room, now);
-  return { ok: true };
+  return { ok: true, event };
 }
 
 export function publicRoomState(room, youSeat) {

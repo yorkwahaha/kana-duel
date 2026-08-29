@@ -160,18 +160,47 @@ test("split scripts load in dependency order", () => {
   assert.equal(new Set(releaseVersions).size, 1, "CSS and scripts must share one release cache version");
 });
 
-test("local two-player gestures preserve fast play without blocking accessibility zoom", () => {
+test("local two-player battle blocks pinch zoom without disabling global accessibility zoom", () => {
   const html = read("index.html");
   const game = read("game.js");
   const css = read("styles.css");
   assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1/);
   assert.doesNotMatch(game, /gesturestart|document\.addEventListener\("dblclick"/);
+  assert.match(game, /function isLocalTwoPlayerBattleActive\(\)[\s\S]*?!document\.body\.classList\.contains\("online-battle"\)/);
+  assert.match(game, /document\.addEventListener\("touchstart", preventLocalBattlePinch, \{ passive: false \}\)/);
+  assert.match(game, /document\.addEventListener\("touchmove", preventLocalBattlePinch, \{ passive: false \}\)/);
   assert.match(css, /html, body \{[\s\S]*?touch-action: manipulation/);
+  assert.match(css, /body:not\(\.online-battle\) #screen-battle:not\(\.hidden\) \{ touch-action: none; \}/);
   assert.match(css, /\.board \.tile,[\s\S]*?touch-action: none !important/);
   assert.match(html, /id="reward-stage"[^>]*role="dialog"[^>]*aria-modal="true"/);
-  assert.equal((html.match(/role="status" aria-live="polite"/g) || []).length, 4);
+  assert.equal((html.match(/role="status" aria-live="polite"/g) || []).length, 6);
   assert.equal((html.match(/class="card result-card" tabindex="-1"/g) || []).length, 2);
   assert.match(game, /result-face\.p1 \.result-card"\)\?\.focus/);
+});
+
+test("defense, uniform ultimates, active skills, and persistent status UI stay aligned", () => {
+  const html = read("index.html");
+  const content = read("game-content.js");
+  const game = read("game.js");
+  const onlineGame = read("game-online.js");
+  const css = read("styles.css");
+  assert.match(content, /const BLOCK_COMBO_COST = 3/);
+  assert.match(content, /const BLOCK_DAMAGE_MULT = 0\.2/);
+  assert.doesNotMatch(content, /BLOCK_DURATION_MS/);
+  assert.equal((html.match(/耗 3 COMBO · 擋下對手下一次攻擊／大招的 80% 傷害/g) || []).length, 2);
+  assert.match(game, /let blockReady = \{ 1: false, 2: false \}/);
+  assert.match(game, /格擋已待機，不可疊加/);
+  assert.match(onlineGame, /blockReady = \{ 1: !!mine\.blockReady, 2: !!foe\.blockReady \}/);
+  assert.match(content, /const SPECIAL_MULT = 1\.5/);
+  assert.doesNotMatch(content, /passive:|specialMult:|chargeMult:|hitBonus:|gaugePerCorrect:/);
+  const activeIds = ["ink_seal", "ember_steal", "frost_reflect", "thunder_amp", "wind_step", "shadow_dodge", "seal_break", "light_regen"];
+  activeIds.forEach((id) => assert.match(content, new RegExp(`active: \\{ id: "${id}"`), id));
+  assert.equal((html.match(/class="effect-status-list"/g) || []).length, 2);
+  assert.match(game, /function showEffectForBoth\(/);
+  assert.match(game, /items\.push\(\["護盾", "80%"\]\)/);
+  assert.match(game, /items\.push\(\["閃避", dodgeChance\[player\] \+ "%"\]\)/);
+  assert.match(onlineGame, /regenState = \{/);
+  assert.doesNotMatch(css, /body\.online-battle[^{]*effect-status-(?:list|chip)[^{]*\{[^}]*display:\s*none/);
 });
 
 test("document and worker responses carry baseline browser security policy", () => {

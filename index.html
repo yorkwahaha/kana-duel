@@ -140,10 +140,10 @@
             <div class="online-character-info" aria-live="polite">
               <span class="online-character-kicker">MY FIGHTER</span>
               <h3 id="online-character-heading">墨切・蒼</h3>
-              <p id="online-character-intro">快速累積大招，擅長封鎖對手提交。</p>
+              <p id="online-character-intro">清空對手字盤，並加入額外干擾字。</p>
               <dl class="online-character-traits">
-                <div><dt>被動</dt><dd><strong id="online-character-passive">墨意蓄積</strong><span id="online-character-passive-desc">答對時大招槽 +2</span></dd></div>
-                <div><dt>主動</dt><dd><strong id="online-character-active">墨鎖</strong><span id="online-character-active-desc">耗 2 COMBO · 鎖對手提交 5 秒</span></dd></div>
+                <div><dt>大招</dt><dd><strong id="online-character-ultimate">一筆断空</strong><span id="online-character-ultimate-desc">攻擊傷害 ×1.5 · 專屬過場與特效</span></dd></div>
+                <div><dt>主動</dt><dd><strong id="online-character-active">墨鎖</strong><span id="online-character-active-desc">耗 3 COMBO · 清空對手已選字，並加入 3 個干擾字</span></dd></div>
               </dl>
               <div class="online-character-controls">
                 <button class="btn btn-ghost online-character-step" id="btn-online-character-prev" type="button" aria-label="上一位角色">‹</button>
@@ -278,8 +278,8 @@
           <div class="duel-art">
             <div class="fighter p2" id="fighter2">
               <span class="f-tag">P2</span>
-              <span class="passive-chip" id="passive-chip-2"></span>
               <img src="assets/characters/rin.webp" alt="P2" id="fighter2-img" />
+              <div class="effect-status-list" id="effect-status-2" role="status" aria-live="polite" aria-atomic="true" aria-label="P2 持續效果"></div>
               <div class="turn-banner">大招就緒</div>
               <div class="dmg-float" id="dmg2"></div>
             </div>
@@ -314,7 +314,7 @@
               </div>
             </div>
             <div class="skill-bar" id="skill-bar-2">
-              <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="2" type="button" id="btn-skill-block-2" disabled title="耗 1 COMBO · 2 秒窗：期間內被按下的攻擊／大招整包傷半（含長動畫）">格擋</button>
+              <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="2" type="button" id="btn-skill-block-2" disabled title="耗 3 COMBO · 擋下對手下一次攻擊／大招的 80% 傷害，不限時間且不可疊加">格擋</button>
               <button class="btn btn-skill btn-sm" data-act="skill-heal" data-p="2" type="button" id="btn-skill-heal-2" disabled title="耗 2 COMBO · 回復 200 HP">回墨</button>
               <button class="btn btn-skill btn-sm" data-act="skill-unique" data-p="2" type="button" id="btn-skill-unique-2" disabled>專屬</button>
             </div>
@@ -334,8 +334,8 @@
           <div class="duel-art">
             <div class="fighter p1" id="fighter1">
               <span class="f-tag">P1</span>
-              <span class="passive-chip" id="passive-chip-1"></span>
               <img src="assets/characters/ao.webp" alt="P1" id="fighter1-img" />
+              <div class="effect-status-list" id="effect-status-1" role="status" aria-live="polite" aria-atomic="true" aria-label="P1 持續效果"></div>
               <div class="turn-banner">大招就緒</div>
               <div class="dmg-float" id="dmg1"></div>
             </div>
@@ -370,7 +370,7 @@
               </div>
             </div>
             <div class="skill-bar" id="skill-bar-1">
-              <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="1" type="button" id="btn-skill-block-1" disabled title="耗 1 COMBO · 2 秒窗：期間內被按下的攻擊／大招整包傷半（含長動畫）">格擋</button>
+              <button class="btn btn-skill btn-sm" data-act="skill-block" data-p="1" type="button" id="btn-skill-block-1" disabled title="耗 3 COMBO · 擋下對手下一次攻擊／大招的 80% 傷害，不限時間且不可疊加">格擋</button>
               <button class="btn btn-skill btn-sm" data-act="skill-heal" data-p="1" type="button" id="btn-skill-heal-1" disabled title="耗 2 COMBO · 回復 200 HP">回墨</button>
               <button class="btn btn-skill btn-sm" data-act="skill-unique" data-p="1" type="button" id="btn-skill-unique-1" disabled>專屬</button>
             </div>

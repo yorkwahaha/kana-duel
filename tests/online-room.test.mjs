@@ -10,6 +10,7 @@ import {
   createRoomState,
   joinRoom,
   leaveRoom,
+  nextTimedEffectAt,
   publicRoomState,
   roomExpired,
   sanitizeConfig,
@@ -17,6 +18,7 @@ import {
   sanitizePlayerName,
   setConnected,
   setReady,
+  settleTimedEffects,
 } from "../worker/src/room-core.mjs";
 
 test("player names remove control and bidi override characters", () => {
@@ -204,4 +206,142 @@ test("skills are rejected or applied from authoritative combo state", () => {
   assert.equal(applySkill(room, 0, "heal", 1110).ok, true);
   assert.equal(room.battle.fighters[0].hp, 2200);
   assert.equal(room.battle.fighters[0].combo, 0);
+});
+
+test("block costs three combo, persists without a timer, reduces one attack by 80%, and cannot stack", () => {
+  const room = createPlayingRoom();
+  const defender = room.battle.fighters[0];
+  const attacker = room.battle.fighters[1];
+  defender.combo = 3;
+  assert.equal(applySkill(room, 0, "block", 1100).ok, true);
+  assert.equal(defender.combo, 0);
+  assert.equal(defender.blockReady, true);
+
+  defender.combo = 3;
+  assert.equal(applySkill(room, 0, "block", 500000).error, "BLOCK_ALREADY_READY");
+  assert.equal(defender.combo, 3);
+  assert.equal(defender.blockReady, true);
+
+  attacker.charge = 1000;
+  attacker.combo = 1;
+  const beforeHp = defender.hp;
+  const attack = applyAttack(room, 1, 900000);
+  assert.equal(attack.ok, true);
+  assert.equal(attack.event.guarded, true);
+  assert.equal(attack.event.damage, 200);
+  assert.equal(defender.hp, beforeHp - 200);
+  assert.equal(defender.blockReady, false);
+});
+
+test("all eight ultimates use the same x1.5 authoritative multiplier", () => {
+  ["ao", "rin", "ya", "go", "ran", "gen", "sho", "yo"].forEach((characterId) => {
+    const room = createPlayingRoom();
+    room.players[0].characterId = characterId;
+    room.battle.fighters[0].charge = 1000;
+    room.battle.fighters[0].combo = 1;
+    room.battle.fighters[0].gauge = 8;
+    const attack = applyAttack(room, 0, 1200);
+    assert.equal(attack.event.special, true);
+    assert.equal(attack.event.damage, 1500, `${characterId} special damage`);
+  });
+});
+
+test("Ao, Rin, Ya, and Go active skills use authoritative one-shot or pending state", () => {
+  const aoRoom = createPlayingRoom();
+  aoRoom.players[0].characterId = "ao";
+  aoRoom.battle.fighters[0].combo = 6;
+  const ao = applySkill(aoRoom, 0, "unique", 1100);
+  assert.equal(ao.ok, true);
+  assert.equal(aoRoom.battle.fighters[1].boardDisruptSeq, 1);
+  assert.equal(ao.event.extraDistractors, 3);
+  assert.equal(applySkill(aoRoom, 0, "unique", 1110).error, "QUESTION_ALREADY_DISRUPTED");
+
+  const rinRoom = createPlayingRoom();
+  rinRoom.players[0].characterId = "rin";
+  rinRoom.battle.fighters[0].combo = 2;
+  rinRoom.battle.fighters[1].charge = 1000;
+  assert.equal(applySkill(rinRoom, 0, "unique", 1100).event.amount, 200);
+  assert.equal(rinRoom.battle.fighters[0].charge, 200);
+  assert.equal(rinRoom.battle.fighters[1].charge, 800);
+
+  const yaRoom = createPlayingRoom();
+  yaRoom.players[0].characterId = "ya";
+  yaRoom.battle.fighters[0].combo = 2;
+  assert.equal(applySkill(yaRoom, 0, "unique", 1100).ok, true);
+  yaRoom.battle.fighters[1].charge = 1000;
+  yaRoom.battle.fighters[1].combo = 1;
+  const reflected = applyAttack(yaRoom, 1, 1200);
+  assert.equal(reflected.event.damage, 1000);
+  assert.equal(reflected.event.reflectedDamage, 500);
+  assert.equal(yaRoom.battle.fighters[1].hp, 1900);
+  assert.equal(yaRoom.battle.fighters[0].reflectReady, false);
+
+  const goRoom = createPlayingRoom();
+  goRoom.players[0].characterId = "go";
+  goRoom.battle.fighters[0].combo = 2;
+  assert.equal(applySkill(goRoom, 0, "unique", 1100).ok, true);
+  goRoom.battle.fighters[0].charge = 1000;
+  goRoom.battle.fighters[0].gauge = 8;
+  const boosted = applyAttack(goRoom, 0, 1200);
+  assert.equal(boosted.event.damage, 1800);
+  assert.equal(goRoom.battle.fighters[0].attackBoost, 1);
+});
+
+test("Ran, Gen, and Sho active skills preserve mistakes, stack dodge, and drain combo", () => {
+  const ranRoom = createPlayingRoom();
+  ranRoom.players[0].characterId = "ran";
+  ranRoom.battle.fighters[0].combo = 3;
+  assert.equal(applySkill(ranRoom, 0, "unique", 1100).ok, true);
+  const questionId = publicRoomState(ranRoom, 0).currentQuestionId;
+  assert.equal(applySubmit(ranRoom, 0, { questionId, answer: ["錯"] }, 1200).correct, false);
+  assert.equal(ranRoom.battle.fighters[0].combo, 2);
+  assert.equal(ranRoom.battle.fighters[0].mistakeGuardReady, false);
+  assert.equal(ranRoom.lastEvent.protectedMiss, true);
+
+  const genRoom = createPlayingRoom();
+  genRoom.players[0].characterId = "gen";
+  genRoom.battle.fighters[0].combo = 4;
+  assert.equal(applySkill(genRoom, 0, "unique", 1100).event.value, 60);
+  assert.equal(applySkill(genRoom, 0, "unique", 1110).event.value, 70);
+  assert.equal(applySkill(genRoom, 0, "unique", 1120).event.value, 80);
+  assert.equal(applySkill(genRoom, 0, "unique", 1130).error, "DODGE_AT_MAX");
+  assert.equal(applySkill(genRoom, 0, "block", 1140).error, "DODGE_ALREADY_READY");
+  genRoom.battle.fighters[1].charge = 1000;
+  genRoom.battle.fighters[1].combo = 1;
+  const dodged = applyAttack(genRoom, 1, 1200, () => 0.5);
+  assert.equal(dodged.event.dodged, true);
+  assert.equal(dodged.event.damage, 0);
+  assert.equal(genRoom.battle.fighters[0].dodgeChance, 0);
+
+  const shoRoom = createPlayingRoom();
+  shoRoom.players[0].characterId = "sho";
+  shoRoom.battle.fighters[0].combo = 3;
+  shoRoom.battle.fighters[1].combo = 7;
+  const drained = applySkill(shoRoom, 0, "unique", 1100, () => 0.95);
+  assert.equal(drained.event.amount, 5);
+  assert.equal(shoRoom.battle.fighters[1].combo, 2);
+});
+
+test("Yo regeneration heals ten server-timed ticks and pauses while disconnected", () => {
+  const room = createPlayingRoom();
+  room.players[0].characterId = "yo";
+  const fighter = room.battle.fighters[0];
+  fighter.hp = 2000;
+  fighter.combo = 2;
+  assert.equal(applySkill(room, 0, "unique", 1000).ok, true);
+  assert.equal(fighter.regenTicksLeft, 10);
+  assert.equal(nextTimedEffectAt(room), 4000);
+  assert.deepEqual(settleTimedEffects(room, 3999), []);
+  assert.equal(settleTimedEffects(room, 4000)[0].amount, 36);
+  assert.equal(fighter.hp, 2036);
+  assert.equal(fighter.regenTicksLeft, 9);
+
+  setConnected(room, 1, false, 4500);
+  assert.deepEqual(settleTimedEffects(room, 10000), []);
+  assert.equal(fighter.hp, 2036);
+  setConnected(room, 1, true, 10500);
+  assert.equal(nextTimedEffectAt(room), 13000);
+  assert.deepEqual(settleTimedEffects(room, 12999), []);
+  assert.equal(settleTimedEffects(room, 13000)[0].amount, 36);
+  assert.equal(fighter.hp, 2072);
 });
