@@ -1,8 +1,8 @@
-/* global $, ALL_QUESTIONS, ATTACK_BOOST_MULT, ATTACK_LOCK_MS, BLOCK_COMBO_COST */
+/* global $, ALL_QUESTIONS, ATTACK_BOOST_MULT, BLOCK_COMBO_COST */
 /* global BLOCK_DAMAGE_MULT, CHARACTERS, COMBO_DAMAGE_PER_HIT */
 /* global DRAG_THRESHOLD, GAUGE_HITS_TO_FULL, HEAL_AMOUNT, HEAL_COMBO_COST */
 /* global DODGE_MAX_CHANCE, DODGE_START_CHANCE, DODGE_STEP_CHANCE, MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, MISTAKE_GUARD_DAMAGE_MULT, PRACTICE_ROUND_SIZE */
-/* global REFLECT_DAMAGE_RATIO, REGEN_HP_PER_TICK, REGEN_TICK_MS, REGEN_TICKS, SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO, SUBMIT_LOCK_MS */
+/* global REFLECT_DAMAGE_RATIO, REGEN_HP_PER_TICK, REGEN_TICK_MS, REGEN_TICKS, SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO */
 /* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, categoryLabelOf, clearBattleFx */
 /* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf, getSessionToken */
 /* global battleModeIntroLabel, battleModeLabel, isChineseRaceBattle, isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
@@ -55,6 +55,7 @@ function showScreen(name) {
   document.querySelector(".app")?.classList.toggle("battle-mode", name === "battle");
   document.querySelector(".app")?.classList.toggle("char-mode", name === "chars");
   document.querySelector(".app")?.classList.toggle("cover-mode", name === "start");
+  syncLockedViewport();
   if (name === "chars") startCharacterSelectBgm().catch(() => {});
   else if (name !== "online") stopCharacterSelectBgm();
 }
@@ -92,16 +93,61 @@ function cancelAllDrags() {
   document.querySelectorAll(".slot.over").forEach((s) => s.classList.remove("over"));
 }
 
-function isLocalTwoPlayerBattleActive() {
-  return battleOpen
-    && !document.body.classList.contains("online-battle")
-    && !$("screen-battle")?.classList.contains("hidden");
+const VIEWPORT_FREE = "width=device-width, initial-scale=1, viewport-fit=cover";
+const VIEWPORT_LOCKED = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover";
+let lastZoomTapAt = 0;
+
+function isZoomLockedScreenActive() {
+  return ["chars", "battle"].some((name) => {
+    const el = $("screen-" + name);
+    return el && !el.classList.contains("hidden");
+  }) || $("vs-stage")?.classList.contains("show") || $("special-stage")?.classList.contains("show");
 }
-function preventLocalBattlePinch(event) {
-  if (event.touches?.length > 1 && isLocalTwoPlayerBattleActive()) event.preventDefault();
+function syncLockedViewport() {
+  const locked = isZoomLockedScreenActive();
+  document.body.classList.toggle("fixed-stage", locked);
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (meta) meta.setAttribute("content", locked ? VIEWPORT_LOCKED : VIEWPORT_FREE);
 }
-document.addEventListener("touchstart", preventLocalBattlePinch, { passive: false });
-document.addEventListener("touchmove", preventLocalBattlePinch, { passive: false });
+function isPageZoomTapTarget(node) {
+  const el = node?.nodeType === 1 ? node : node?.parentElement;
+  if (!el) return true;
+  return !el.closest("button, a, input, select, textarea, label, .tile, .slot, .kana, [role='button']");
+}
+function preventLockedScreenZoom(event) {
+  if (!isZoomLockedScreenActive()) {
+    lastZoomTapAt = 0;
+    return;
+  }
+  syncLockedViewport();
+  if (event.type === "gesturestart" || event.type === "gesturechange"
+      || (event.touches && event.touches.length > 1)
+      || (typeof event.scale === "number" && event.scale !== 1)
+      || event.type === "dblclick") {
+    event.preventDefault();
+    return;
+  }
+  if (event.type !== "touchstart" && event.type !== "touchend") return;
+  if (!isPageZoomTapTarget(event.target)) {
+    lastZoomTapAt = 0;
+    return;
+  }
+  const now = performance.now();
+  if (now - lastZoomTapAt <= 350) event.preventDefault();
+  if (event.type === "touchend") lastZoomTapAt = now;
+}
+function recoverAccidentalZoom() {
+  if (!isZoomLockedScreenActive()) return;
+  if ((window.visualViewport?.scale || 1) <= 1.01) return;
+  const meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) return;
+  meta.setAttribute("content", VIEWPORT_FREE);
+  meta.setAttribute("content", VIEWPORT_LOCKED);
+}
+["touchstart", "touchmove", "touchend", "gesturestart", "gesturechange", "dblclick"].forEach((type) => {
+  document.addEventListener(type, preventLockedScreenZoom, { passive: false });
+});
+window.visualViewport?.addEventListener("resize", recoverAccidentalZoom);
 function activateBoardSource(info, focusPlacedSlot) {
   const board = boards[info.boardId];
   if (!board || board.locked) return;
@@ -425,16 +471,13 @@ let charge = { 1: 0, 2: 0 }; // accumulated attack value
 let combo = { 1: 0, 2: 0 }; // consecutive correct → N COMBO
 let gaugeHits = { 1: 0, 2: 0 }; // correct answers toward special (need GAUGE_HITS_TO_FULL)
 let blockReady = { 1: false, 2: false }; // persists until the opponent's next attack
-let submitLockUntil = { 1: 0, 2: 0 }; // locked from submitting (foe skill)
 let submitCooldownUntil = { 1: 0, 2: 0 }; // prevent repeated local miss submissions during feedback
-let attackLockUntil = { 1: 0, 2: 0 }; // locked from attacking (ya frost_seal)
 let attackBoost = { 1: 1, 2: 1 }; // go: next attack ×1.2
 let reflectReady = { 1: false, 2: false }; // ya: next actual damage reflects 50%
 let mistakeGuardReady = { 1: false, 2: false }; // ran: next wrong answer keeps combo and halves self damage
 let dodgeChance = { 1: 0, 2: 0 }; // gen: next incoming attack, 60% → 80%
 let inkDisruptedQuestion = { 1: "", 2: "" }; // ao: the same target question can only be disrupted once
 let regenState = { 1: null, 2: null }; // yo: { ticksLeft, timer }
-let skillTimers = { 1: { lock: 0, attack: 0 }, 2: { lock: 0, attack: 0 } };
 let battleStats = null;
 let battleOpen = false;
 let battleStartedAt = 0, timerRaf = 0;
@@ -443,21 +486,190 @@ let battleEpoch = 0;
 let everMissed = []; // practice: whether the question was missed at least once
 let rewardReturnFocus = null;
 
-// —— Character select UI（旋風式左右滑動；兩端同時選，不可同角）——
+// —— Character select UI（左輪式輪盤；兩端同時選，可同角色）——
 let charFocus = { 1: 0, 2: 0 };
-const charSwipe = new Map(); // pointerId → { player, startX, lastX }
+const charSpin = { 1: 0, 2: 0 };
+const charSpinTarget = { 1: 0, 2: 0 };
+const charSpinVel = { 1: 0, 2: 0 };
+const charDrag = { 1: null, 2: null };
 const lastCharSwipeAt = { 1: 0, 2: 0 };
-function charOffsetClass(offset) {
-  if (offset === 0) return "pos-0 focus";
-  if (offset === -1) return "pos-l1";
-  if (offset === 1) return "pos-r1";
-  if (offset <= -2) return "pos-l2";
-  return "pos-r2";
-}
+let charSpinRaf = 0;
+let lastCharSpinTs = 0;
 function wrappedCharOffset(index, focus, n) {
   let d = ((index - focus) % n + n) % n;
   if (d > n / 2) d -= n;
   return d;
+}
+function wrappedIndex(value, n) {
+  return ((Math.round(value) % n) + n) % n;
+}
+function wrapSigned(value, n) {
+  let d = value % n;
+  if (d > n / 2) d -= n;
+  if (d < -n / 2) d += n;
+  return d;
+}
+function layoutCharWheel(player) {
+  const n = CHARACTERS.length;
+  const stage = document.querySelector('[data-char-stage="' + player + '"]');
+  if (!n || !stage) return;
+  const width = Math.max(1, stage.clientWidth);
+  const height = Math.max(1, stage.clientHeight);
+  const spin = charSpin[player];
+  const front = wrappedIndex(spin, n);
+  const mirror = player === 2 ? -1 : 1;
+  const radiusX = width * 0.40;
+  const radiusZ = width * 0.48;
+  const locked = player === 1 ? readyP1 : readyP2;
+  stage.querySelectorAll(".char-card").forEach((btn) => {
+    const i = Number(btn.dataset.charIndex);
+    const visual = wrapSigned(i - spin, n) * mirror;
+    const ang = visual * (Math.PI * 2 / n);
+    const depth = (Math.cos(ang) + 1) / 2;
+    const x = Math.sin(ang) * radiusX;
+    const z = (Math.cos(ang) - 1) * radiusZ;
+    const y = (1 - depth) * height * 0.07;
+    const rotY = -visual * (360 / n) * 0.64;
+    const scale = 0.46 + 0.54 * Math.pow(Math.max(0, depth), 1.08);
+    let opacity = 0.12 + 0.88 * Math.pow(Math.max(0, depth), 1.32);
+    if (btn.classList.contains("taken")) opacity *= 0.45;
+    btn.style.transform = "translateX(-50%) translate3d(" + x.toFixed(1) + "px," + y.toFixed(1) + "px," + z.toFixed(1) + "px) rotateY(" + rotY.toFixed(2) + "deg) scale(" + scale.toFixed(3) + ")";
+    btn.style.zIndex = String(20 + Math.round(depth * 40));
+    btn.style.opacity = opacity.toFixed(3);
+    btn.classList.toggle("is-front", i === front);
+    btn.classList.toggle("focus", i === front);
+    const far = Math.abs(visual) > 1.45;
+    btn.style.pointerEvents = locked || far ? "none" : "auto";
+  });
+}
+function tickCharSpin(ts) {
+  if (!lastCharSpinTs) lastCharSpinTs = ts;
+  const dt = Math.min(0.04, (ts - lastCharSpinTs) / 1000);
+  lastCharSpinTs = ts;
+  let alive = false;
+  [1, 2].forEach((player) => {
+    if (charDrag[player]) return;
+    if (prefersReducedMotion()) {
+      charSpin[player] = charSpinTarget[player];
+      charSpinVel[player] = 0;
+      layoutCharWheel(player);
+      return;
+    }
+    const diff = charSpinTarget[player] - charSpin[player];
+    if (Math.abs(diff) < 0.0015 && Math.abs(charSpinVel[player]) < 0.002) {
+      charSpin[player] = charSpinTarget[player];
+      charSpinVel[player] = 0;
+      layoutCharWheel(player);
+      return;
+    }
+    alive = true;
+    const prev = Math.round(charSpin[player]);
+    charSpinVel[player] += diff * 56 * dt;
+    charSpinVel[player] *= Math.exp(-11.5 * dt);
+    charSpin[player] += charSpinVel[player] * dt;
+    if (Math.round(charSpin[player]) !== prev) playSfx("sfx_click", 0.16);
+    layoutCharWheel(player);
+  });
+  charSpinRaf = alive ? requestAnimationFrame(tickCharSpin) : 0;
+}
+function startCharSpin() {
+  if (charSpinRaf) return;
+  lastCharSpinTs = 0;
+  charSpinRaf = requestAnimationFrame(tickCharSpin);
+}
+function applyCharFocus(player, index, withSound) {
+  const focus = wrappedIndex(index, CHARACTERS.length);
+  charFocus[player] = focus;
+  onPickChar(player, CHARACTERS[focus], withSound);
+}
+function spinCharBy(player, dir) {
+  if (!dir) return;
+  if ((player === 1 && readyP1) || (player === 2 && readyP2)) return;
+  startCharacterSelectBgm().catch(() => {});
+  charSpinTarget[player] += dir;
+  applyCharFocus(player, charSpinTarget[player], false);
+  if (prefersReducedMotion()) {
+    charSpin[player] = charSpinTarget[player];
+    charSpinVel[player] = 0;
+    layoutCharWheel(player);
+    return;
+  }
+  startCharSpin();
+}
+function mountCharStage(player) {
+  const stage = document.querySelector('[data-char-stage="' + player + '"]');
+  if (!stage) return;
+  const n = CHARACTERS.length;
+  if (stage.dataset.mounted === String(n) && stage.childElementCount === n) return;
+  stage.innerHTML = "";
+  CHARACTERS.forEach((c, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "char-card";
+    btn.dataset.charId = c.id;
+    btn.dataset.charIndex = String(i);
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = c.title;
+    const image = document.createElement("img");
+    image.src = c.image;
+    image.alt = c.name;
+    image.draggable = false;
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    const name = document.createElement("strong");
+    name.textContent = c.name.split("・").pop() || c.name;
+    const skill = document.createElement("span");
+    skill.className = "ult";
+    skill.textContent = c.skill;
+    const traits = document.createElement("span");
+    traits.className = "passive";
+    const activeLine = document.createElement("span");
+    activeLine.className = "active-label";
+    const cost = c.active?.cost;
+    activeLine.textContent = "主動技「" + (c.active?.label || "—") + "」" + (cost != null ? "（" + cost + " COMBO）" : "");
+    const activeDesc = document.createElement("span");
+    activeDesc.className = "active-desc";
+    activeDesc.textContent = (c.active?.desc || "").replace(/^耗\s*\d+\s*COMBO\s*[·・]\s*/, "");
+    traits.append(activeLine, activeDesc);
+    meta.append(name, skill, traits);
+    btn.append(badge, image, meta);
+    bindTap(btn, () => {
+      if ((player === 1 && readyP1) || (player === 2 && readyP2)) return;
+      if (performance.now() - (lastCharSwipeAt[player] || 0) < 320) return;
+      const focus = wrappedIndex(charSpinTarget[player], n);
+      if (i === focus) onPickChar(player, c);
+      else spinCharBy(player, wrappedCharOffset(i, focus, n));
+    });
+    stage.appendChild(btn);
+  });
+  stage.dataset.mounted = String(n);
+}
+function syncCharCardState(player) {
+  const stage = document.querySelector('[data-char-stage="' + player + '"]');
+  if (!stage) return;
+  const n = CHARACTERS.length;
+  const mine = player === 1 ? pickP1 : pickP2;
+  const locked = player === 1 ? readyP1 : readyP2;
+  const focus = wrappedIndex(charFocus[player], n);
+  stage.querySelectorAll(".char-card").forEach((btn) => {
+    const i = Number(btn.dataset.charIndex);
+    const c = CHARACTERS[i];
+    const lockedOut = locked && mine?.id !== c.id;
+    btn.classList.toggle("taken", !!lockedOut);
+    btn.tabIndex = !locked && i === focus ? 0 : -1;
+    btn.setAttribute("aria-current", i === focus ? "true" : "false");
+    btn.setAttribute("aria-pressed", mine?.id === c.id ? "true" : "false");
+    if (lockedOut) btn.setAttribute("aria-disabled", "true");
+    else btn.removeAttribute("aria-disabled");
+  });
+  document.querySelectorAll('[data-char-carousel="' + player + '"] .char-nav').forEach((nav) => {
+    nav.disabled = !!locked;
+  });
+}
+function syncCharSelectUi() {
+  [1, 2].forEach(syncCharCardState);
+  updateCharReadyButtons();
 }
 function updateCharReadyButtons() {
   [1, 2].forEach((player) => {
@@ -479,102 +691,38 @@ function updateCharReadyButtons() {
 function renderCharGrid() {
   const n = CHARACTERS.length;
   [1, 2].forEach((player) => {
-    const stage = document.querySelector('[data-char-stage="' + player + '"]');
-    if (!stage) return;
     const mine = player === 1 ? pickP1 : pickP2;
-    const foe = player === 1 ? pickP2 : pickP1;
-    const locked = player === 1 ? readyP1 : readyP2;
     if (mine) {
       const idx = CHARACTERS.findIndex((c) => c.id === mine.id);
       if (idx >= 0) charFocus[player] = idx;
     }
-    const focus = ((charFocus[player] % n) + n) % n;
+    const focus = wrappedIndex(charFocus[player], n);
     charFocus[player] = focus;
-    stage.innerHTML = "";
-    CHARACTERS.forEach((c, i) => {
-      const offset = wrappedCharOffset(i, focus, n);
-      const visualOffset = player === 2 ? -offset : offset;
-      const taken = foe?.id === c.id || (locked && mine?.id !== c.id);
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "char-card " + charOffsetClass(visualOffset);
-      btn.dataset.charId = c.id;
-      btn.dataset.charIndex = String(i);
-      if (taken) btn.classList.add("taken");
-      btn.tabIndex = !locked && i === focus && !taken ? 0 : -1;
-      btn.setAttribute("aria-current", i === focus ? "true" : "false");
-      btn.setAttribute("aria-pressed", mine?.id === c.id ? "true" : "false");
-      if (taken) btn.setAttribute("aria-disabled", "true");
-      const badge = document.createElement("span");
-      badge.className = "badge";
-      badge.textContent = c.title;
-      const image = document.createElement("img");
-      image.src = c.image;
-      image.alt = c.name;
-      image.draggable = false;
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      const name = document.createElement("strong");
-      name.textContent = c.name;
-      const skill = document.createElement("span");
-      skill.textContent = c.skill;
-      const traits = document.createElement("span");
-      traits.className = "passive";
-      traits.textContent = `大招 ×1.5 · 主動「${c.active?.label || "—"}」：${c.active?.desc || ""}`;
-      meta.append(name, skill, traits);
-      btn.append(badge, image, meta);
-      if (!locked && !taken) {
-        bindTap(btn, () => {
-          if (performance.now() - (lastCharSwipeAt[player] || 0) < 320) return;
-          if (i === focus) onPickChar(player, c);
-          else stepCharFocus(player, offset > 0 ? 1 : -1);
-        });
-      } else {
-        btn.style.pointerEvents = "none";
-      }
-      stage.appendChild(btn);
-    });
-    const label = document.querySelector('[data-char-picked="' + player + '"]');
-    if (label) {
-      label.textContent = mine ? (mine.name + " · " + (mine.active?.label || mine.skill)) : "—";
+    if (!charDrag[player]) {
+      charSpin[player] = focus;
+      charSpinTarget[player] = focus;
+      charSpinVel[player] = 0;
     }
-    document.querySelectorAll('[data-char-carousel="' + player + '"] .char-nav').forEach((nav) => {
-      nav.disabled = !!locked;
-    });
+    mountCharStage(player);
+    syncCharCardState(player);
+    layoutCharWheel(player);
   });
   updateCharReadyButtons();
-}
-function stepCharFocus(player, dir) {
-  if ((player === 1 && readyP1) || (player === 2 && readyP2)) return;
-  startCharacterSelectBgm().catch(() => {});
-  const n = CHARACTERS.length;
-  charFocus[player] = ((charFocus[player] + dir) % n + n) % n;
-  const c = CHARACTERS[charFocus[player]];
-  const foe = player === 1 ? pickP2 : pickP1;
-  playSfx("sfx_click", 0.22);
-  if (foe?.id === c.id) {
-    // 焦點停在已被選走的角：只轉盤，不選定
-    if (player === 1) { pickP1 = null; readyP1 = false; }
-    else { pickP2 = null; readyP2 = false; }
-    renderCharGrid();
-    return;
-  }
-  onPickChar(player, c, false);
+  requestAnimationFrame(() => {
+    layoutCharWheel(1);
+    layoutCharWheel(2);
+  });
 }
 function onPickChar(player, c, withSound = true) {
   if ((player === 1 && readyP1) || (player === 2 && readyP2)) return;
   if (withSound) startCharacterSelectBgm().catch(() => {});
-  const foe = player === 1 ? pickP2 : pickP1;
-  if (foe?.id === c.id) {
-    playSfx("sfx_miss", 0.3);
-    return;
-  }
   const idx = CHARACTERS.findIndex((x) => x.id === c.id);
   if (idx >= 0) charFocus[player] = idx;
   if (player === 1) { pickP1 = c; readyP1 = false; }
   else { pickP2 = c; readyP2 = false; }
   if (withSound) playSfx("sfx_click", 0.3);
-  renderCharGrid();
+  syncCharSelectUi();
+  layoutCharWheel(player);
 }
 function onCharConfirm(player) {
   const mine = player === 1 ? pickP1 : pickP2;
@@ -589,40 +737,101 @@ function onCharConfirm(player) {
 function bindCharCarouselSwipe() {
   document.querySelectorAll("[data-char-stage]").forEach((stage) => {
     const player = Number(stage.getAttribute("data-char-stage"));
+    const mirror = player === 2 ? -1 : 1;
     stage.addEventListener("pointerdown", (e) => {
       if ((player === 1 && readyP1) || (player === 2 && readyP2)) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      charSwipe.set(e.pointerId, { player, startX: e.clientX, lastX: e.clientX, moved: false });
+      charDrag[player] = {
+        id: e.pointerId,
+        origin: charSpin[player],
+        startX: e.clientX,
+        lastX: e.clientX,
+        lastT: performance.now(),
+        vel: 0,
+        moved: false,
+      };
+      charSpinVel[player] = 0;
       try { stage.setPointerCapture(e.pointerId); } catch {}
     }, { capture: true, passive: true });
     stage.addEventListener("pointermove", (e) => {
-      const s = charSwipe.get(e.pointerId);
-      if (!s) return;
-      s.lastX = e.clientX;
-      if (Math.abs(e.clientX - s.startX) > 12) s.moved = true;
+      const drag = charDrag[player];
+      if (!drag || drag.id !== e.pointerId) return;
+      const now = performance.now();
+      const dx = e.clientX - drag.startX;
+      if (Math.abs(dx) > 10) drag.moved = true;
+      const dt = Math.max(8, now - drag.lastT);
+      const width = Math.max(1, stage.clientWidth);
+      const next = drag.origin - (dx / width) * 1.85 * mirror;
+      drag.vel = (next - charSpin[player]) / dt;
+      drag.lastX = e.clientX;
+      drag.lastT = now;
+      const prev = Math.round(charSpin[player]);
+      charSpin[player] = next;
+      charSpinTarget[player] = next;
+      if (drag.moved && Math.round(next) !== prev) playSfx("sfx_click", 0.14);
+      layoutCharWheel(player);
     }, { capture: true, passive: true });
     const end = (e) => {
-      const s = charSwipe.get(e.pointerId);
-      if (!s) return;
-      charSwipe.delete(e.pointerId);
-      const dx = s.lastX - s.startX;
-      if (Math.abs(dx) < 40) return;
-      lastCharSwipeAt[s.player] = performance.now();
-      // 左滑看下一位（與旋風選角手感一致；P2 已鏡像排列）
-      stepCharFocus(s.player, dx < 0 ? 1 : -1);
+      const drag = charDrag[player];
+      if (!drag || drag.id !== e.pointerId) return;
+      charDrag[player] = null;
+      if (!drag.moved) return;
+      lastCharSwipeAt[player] = performance.now();
+      const coast = drag.vel * 220;
+      const landed = Math.round(charSpin[player] + coast);
+      charSpinTarget[player] = landed;
+      applyCharFocus(player, landed, false);
+      if (prefersReducedMotion()) {
+        charSpin[player] = landed;
+        charSpinVel[player] = 0;
+        layoutCharWheel(player);
+        return;
+      }
+      charSpinVel[player] = drag.vel * 420;
+      startCharSpin();
     };
     stage.addEventListener("pointerup", end, { capture: true });
     stage.addEventListener("pointercancel", end, { capture: true });
   });
+  const charNavHold = new Map();
+  const stopCharNavHold = (pointerId) => {
+    const hold = charNavHold.get(pointerId);
+    if (!hold) return;
+    clearTimeout(hold.timer);
+    clearInterval(hold.repeat);
+    charNavHold.delete(pointerId);
+  };
   document.querySelectorAll("[data-char-step]").forEach((btn) => {
-    bindTap(btn, () => {
+    btn.addEventListener("pointerdown", (e) => {
       if (btn.disabled) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
       const player = Number(btn.dataset.p);
       const step = Number(btn.dataset.charStep);
-      // P2 半場旋轉後左右鍵對調，配合鏡像排列
       const dir = player === 2 ? -step : step;
-      stepCharFocus(player, dir);
+      try { btn.setPointerCapture(e.pointerId); } catch {}
+      spinCharBy(player, dir);
+      const timer = setTimeout(() => {
+        const hold = charNavHold.get(e.pointerId);
+        if (!hold) return;
+        hold.repeat = setInterval(() => {
+          if (btn.disabled) {
+            stopCharNavHold(e.pointerId);
+            return;
+          }
+          spinCharBy(player, dir);
+        }, 110);
+      }, 360);
+      charNavHold.set(e.pointerId, { timer, repeat: 0 });
     });
+    btn.addEventListener("pointerup", (e) => stopCharNavHold(e.pointerId));
+    btn.addEventListener("pointercancel", (e) => stopCharNavHold(e.pointerId));
+    btn.addEventListener("lostpointercapture", (e) => stopCharNavHold(e.pointerId));
+    btn.addEventListener("contextmenu", (e) => e.preventDefault());
+  });
+  window.addEventListener("resize", () => {
+    if ($("screen-chars")?.classList.contains("hidden")) return;
+    layoutCharWheel(1);
+    layoutCharWheel(2);
   });
 }
 
@@ -940,22 +1149,18 @@ function updatePlayerMeters(player) {
   gaugeWrap?.setAttribute("aria-valuenow", String(Math.min(GAUGE_HITS_TO_FULL, hits)));
   const btn = $("btn-attack-" + player);
   if (btn) {
-    const atkLocked = isAttackLocked(player);
-    btn.disabled = c <= 0 || atkLocked;
-    btn.classList.toggle("special", ready && !atkLocked);
-    if (atkLocked) btn.textContent = "凍結中";
-    else if (c <= 0) btn.textContent = "攻擊 0";
+    btn.disabled = c <= 0;
+    btn.classList.toggle("special", ready);
+    if (c <= 0) btn.textContent = "攻擊 0";
     else btn.textContent = (ready ? "大招 " : "攻擊 ") + projectedAttackDamage(player).dmg;
   }
   const f = $("fighter" + player);
-  if (f) f.classList.toggle("active-turn", ready && !isAttackLocked(player));
+  if (f) f.classList.toggle("active-turn", ready);
   updateEffectStatus(player);
   updateSkillUi(player);
 }
 function nowMs() { return performance.now(); }
 function isBlocking(player) { return !!blockReady[player]; }
-function isSubmitLocked(player) { return nowMs() < (submitLockUntil[player] || 0); }
-function isAttackLocked(player) { return nowMs() < (attackLockUntil[player] || 0); }
 function spendCombo(player, cost) {
   if ((combo[player] || 0) < cost) return false;
   combo[player] -= cost;
@@ -965,34 +1170,6 @@ function currentQuestionKey(player) {
   const q = playerQ(player);
   const index = isListenBattle() ? sharedQi : playerQi[player];
   return (isListenBattle() ? "shared:" : "p" + player + ":") + index + ":" + (q?.id || q?.text || q?.zh || "question");
-}
-function clearSkillTimers(player) {
-  const t = skillTimers[player];
-  if (!t) return;
-  if (t.lock) { clearTimeout(t.lock); t.lock = 0; }
-  if (t.attack) { clearTimeout(t.attack); t.attack = 0; }
-}
-function scheduleSubmitLockExpire(player) {
-  const t = skillTimers[player];
-  if (t.lock) clearTimeout(t.lock);
-  const left = Math.max(0, (submitLockUntil[player] || 0) - nowMs());
-  t.lock = setTimeout(function () {
-    t.lock = 0;
-    updateSkillUi(player);
-    const b = boards[player];
-    if (b && !b.locked) b.setFeedback("");
-  }, left + 16);
-}
-function scheduleAttackLockExpire(player) {
-  const t = skillTimers[player];
-  if (t.attack) clearTimeout(t.attack);
-  const left = Math.max(0, (attackLockUntil[player] || 0) - nowMs());
-  t.attack = setTimeout(function () {
-    t.attack = 0;
-    updatePlayerMeters(player);
-    const b = boards[player];
-    if (b && !b.locked) b.setFeedback("");
-  }, left + 16);
 }
 function updateSkillUi(player) {
   const chip = $("combo-chip-" + player);
@@ -1049,9 +1226,8 @@ function updateSkillUi(player) {
   const btnSubmit = $("btn-submit-" + player);
   if (btnSubmit) {
     const pending = player === 1 && window.KanaBattleOnline?.isSubmitPending?.();
-    const locked = isSubmitLocked(player);
-    btnSubmit.disabled = pending || locked;
-    btnSubmit.textContent = pending ? "判定中…" : (locked ? "封鎖中" : "提交");
+    btnSubmit.disabled = pending;
+    btnSubmit.textContent = pending ? "判定中…" : "提交";
   }
 }
 function battleActivateBlock(player) {
@@ -1247,15 +1423,6 @@ function calcChargeGain(player, q) {
   const comboMult = 1 + Math.max(0, streak - 1) * 0.08;
   return Math.max(40, Math.round(base * comboMult));
 }
-function gaugeGainOf(player) {
-  return 1;
-}
-function specialMultOf(player) {
-  return SPECIAL_MULT;
-}
-function hitBonusOf(player) {
-  return 0;
-}
 function syncFighterPassive(player) {
   const ch = charOf(player);
   const f = $("fighter" + player);
@@ -1284,6 +1451,7 @@ function playVsThenBattle() {
   void stage.offsetWidth;
   stage.classList.add("show");
   stage.setAttribute("aria-hidden", "false");
+  syncLockedViewport();
   playSfx("fanfare", 0.35);
   setTimeout(() => {
     stage.classList.remove("show");
@@ -1320,9 +1488,7 @@ function startBattle() {
   combo = { 1: 0, 2: 0 };
   gaugeHits = { 1: 0, 2: 0 };
   blockReady = { 1: false, 2: false };
-  submitLockUntil = { 1: 0, 2: 0 };
   submitCooldownUntil = { 1: 0, 2: 0 };
-  attackLockUntil = { 1: 0, 2: 0 };
   attackBoost = { 1: 1, 2: 1 };
   reflectReady = { 1: false, 2: false };
   mistakeGuardReady = { 1: false, 2: false };
@@ -1331,8 +1497,6 @@ function startBattle() {
   stopRegen(1);
   stopRegen(2);
   regenState = { 1: null, 2: null };
-  clearSkillTimers(1);
-  clearSkillTimers(2);
   resetBattleStats();
   battleOpen = true;
   attackQueue = Promise.resolve();
@@ -1447,26 +1611,31 @@ function formatAnswerSec(ms) {
   if (ms == null || !isFinite(ms)) return "—";
   return (ms / 1000).toFixed(1) + "s";
 }
+function battleFighterName(player) {
+  const pick = player === 1 ? pickP1 : pickP2;
+  return escapeResultText(pick?.name || ("P" + player));
+}
+function battleResultHeadline(winner) {
+  const outcome = (player) => {
+    if (winner !== 1 && winner !== 2) return "";
+    return winner === player
+      ? '<span class="tag-win">（勝）</span>'
+      : '<span class="tag-lose">（敗）</span>';
+  };
+  return '<span class="result-side p1"><span class="tag-p1">' + battleFighterName(1) + "</span>" + outcome(1) + "</span>"
+    + '<span class="vs-mark">VS</span>'
+    + '<span class="result-side p2"><span class="tag-p2">' + battleFighterName(2) + "</span>" + outcome(2) + "</span>";
+}
 function buildBattleStatsRows() {
   if (!battleStats) return "";
-  const p1Name = escapeResultText(pickP1?.name || "P1");
-  const p2Name = escapeResultText(pickP2?.name || "P2");
-  const p1 = '<span class="tag-p1">P1</span>';
-  const p2 = '<span class="tag-p2">P2</span>';
-  const winMark = function (player) {
-    if (!player) return "";
-    const cls = player === 1 ? "tag-p1" : "tag-p2";
-    return ' <span class="tag-win">（<span class="' + cls + '">P' + player + "</span>）</span>";
-  };
-  const pairText = function (v1, v2, winner, tieLabel) {
-    return p1 + " " + v1 + " · " + p2 + " " + v2 +
-      (winner ? winMark(winner) : (tieLabel || ""));
-  };
+  const cell = (value, player, lead) =>
+    "<td class=\"stat-p" + player + (lead ? " is-lead" : "") + "\">" + value + "</td>";
+  const row = (label, v1, v2, winner) =>
+    "<tr><th scope=\"row\">" + label + "</th>" + cell(v1, 1, winner === 1) + cell(v2, 2, winner === 2) + "</tr>";
 
   const mc1 = battleStats.maxCombo[1] || 0;
   const mc2 = battleStats.maxCombo[2] || 0;
   const maxComboWinner = mc1 === mc2 ? null : (mc1 > mc2 ? 1 : 2);
-  const maxComboText = pairText(String(mc1), String(mc2), maxComboWinner, mc1 > 0 ? " <span class=\"tag-win\">（平手）</span>" : "");
 
   const b1 = battleStats.bestAnswerMs[1];
   const b2 = battleStats.bestAnswerMs[2];
@@ -1474,12 +1643,6 @@ function buildBattleStatsRows() {
   if (b1 != null && b2 != null) fastestWinner = b1 === b2 ? null : (b1 < b2 ? 1 : 2);
   else if (b1 != null) fastestWinner = 1;
   else if (b2 != null) fastestWinner = 2;
-  const fastestText = pairText(
-    formatAnswerSec(b1),
-    formatAnswerSec(b2),
-    fastestWinner,
-    b1 != null && b2 != null ? " <span class=\"tag-win\">（平手）</span>" : ""
-  );
 
   const c1 = battleStats.corrects[1] || 0;
   const c2 = battleStats.corrects[2] || 0;
@@ -1489,25 +1652,20 @@ function buildBattleStatsRows() {
   if (avg1 != null && avg2 != null) avgWinner = avg1 === avg2 ? null : (avg1 < avg2 ? 1 : 2);
   else if (avg1 != null) avgWinner = 1;
   else if (avg2 != null) avgWinner = 2;
-  const avgText = pairText(
-    formatAnswerSec(avg1),
-    formatAnswerSec(avg2),
-    avgWinner,
-    avg1 != null && avg2 != null ? " <span class=\"tag-win\">（平手）</span>" : ""
-  );
 
-  let specialText = "本場未開大招";
-  if (battleStats.firstSpecial === 1) specialText = p1 + " " + p1Name;
-  else if (battleStats.firstSpecial === 2) specialText = p2 + " " + p2Name;
+  const specialWinner = battleStats.firstSpecial;
+  const special1 = specialWinner === 1 ? "✓" : "—";
+  const special2 = specialWinner === 2 ? "✓" : "—";
 
-  return [
-    ["最大連段", maxComboText],
-    ["最快答題", fastestText],
-    ["平均答題", avgText],
-    ["先開大招", specialText],
-  ].map(function (row) {
-    return "<li><span>" + row[0] + "</span><b>" + row[1] + "</b></li>";
-  }).join("");
+  return '<colgroup><col class="result-col-label"><col class="result-col-p1"><col class="result-col-p2"></colgroup>'
+    + '<thead><tr><th scope="col"><span class="sr-only">項目</span></th>'
+    + '<th scope="col"><span class="tag-p1">P1</span></th>'
+    + '<th scope="col"><span class="tag-p2">P2</span></th></tr></thead><tbody>'
+    + row("最大連段", String(mc1), String(mc2), maxComboWinner)
+    + row("最快答題", formatAnswerSec(b1), formatAnswerSec(b2), fastestWinner)
+    + row("平均答題", formatAnswerSec(avg1), formatAnswerSec(avg2), avgWinner)
+    + row("先開大招", special1, special2, specialWinner)
+    + "</tbody>";
 }
 
 function escapeResultText(text) {
@@ -1526,9 +1684,13 @@ function colorizePlayerTags(text) {
     .replace(/P2/g, '<span class="tag-p2">P2</span>');
 }
 
+function resultMarkup(text) {
+  const value = text || "—";
+  return String(value).includes("<") ? value : colorizePlayerTags(value);
+}
 function setResultScreen(title, summary, withBattleStats, customRows = "") {
-  document.querySelectorAll(".result-title").forEach((el) => { el.innerHTML = colorizePlayerTags(title); });
-  document.querySelectorAll(".result-summary").forEach((el) => { el.innerHTML = colorizePlayerTags(summary || "—"); });
+  document.querySelectorAll(".result-title").forEach((el) => { el.innerHTML = resultMarkup(title); });
+  document.querySelectorAll(".result-summary").forEach((el) => { el.innerHTML = resultMarkup(summary || "—"); });
   const rows = customRows || (withBattleStats ? buildBattleStatsRows() : "");
   document.querySelectorAll("[data-result-stats]").forEach((el) => {
     if (rows) {
@@ -1585,9 +1747,9 @@ async function playBattleDefeatOutro(loser, winner) {
   stage?.classList.remove("ko-hold");
 }
 
-async function finishBattleDefeat(loser, winner, title, summary) {
+async function finishBattleDefeat(loser, winner, summary) {
   await playBattleDefeatOutro(loser, winner);
-  setResultScreen(title, summary, true);
+  setResultScreen(battleResultHeadline(winner), summary, true);
   playSfx("fanfare", 0.55);
 }
 
@@ -1610,7 +1772,7 @@ async function finishBattleDraw(summary) {
   shakeBattle(true);
   await wait(prefersReducedMotion() ? 450 : 1200);
   clearBattleFx();
-  setResultScreen("平手！", summary, true);
+  setResultScreen(battleResultHeadline(null), summary, true);
   playSfx("fanfare", 0.4);
 }
 
@@ -1683,7 +1845,7 @@ async function playSpecialUltimate(player) {
   hideSpecialStage();
   keepBattleBgmAlive();
   // 影片後 HTMLAudio 可能被擋；確保 hit 用 Web Audio
-  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
   return true;
 }
 
@@ -1749,7 +1911,7 @@ async function resolveListenRoundWin(player) {
   combo[foe] = 0;
   updatePlayerMeters(foe);
 
-  if (charge[player] > 0 && !isAttackLocked(player)) {
+  if (charge[player] > 0) {
     const { dmg, hits, special: isSpecial } = projectedAttackDamage(player);
     const segments = Math.min(hits, MAX_ATTACK_SEGMENTS);
     attackBoost[player] = 1;
@@ -1760,12 +1922,6 @@ async function resolveListenRoundWin(player) {
     }
     updatePlayerMeters(player);
     await applyAttack(player, dmg, isSpecial, segments, hits);
-  } else if (isAttackLocked(player)) {
-    boards[player]?.setFeedback("攻擊被凍結 · 本輪落空", "bad");
-    charge[player] = 0;
-    combo[player] = 0;
-    updatePlayerMeters(player);
-    await wait(700);
   }
 
   if (!battleOpen || roundEpoch !== battleEpoch) return;
@@ -1843,7 +1999,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     if (!battleOpen || actionEpoch !== battleEpoch) return false;
     await playSpecialAftermath(atkTheme.id);
     if (!battleOpen || actionEpoch !== battleEpoch) return false;
-    if (audioCtx && audioCtx.state === "suspended") await audioCtx.resume().catch(() => {});
+    if (audioCtx && audioCtx.state !== "running") await audioCtx.resume().catch(() => {});
     await preloadBattleSfx().catch(() => {});
   } else {
     playCastBurst(atk, atkTheme);
@@ -1958,27 +2114,18 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
   }
 
   if (hp[foe] <= 0 && hp[player] <= 0) {
-    await finishBattleDraw(
-      pickP1.name + " vs " + pickP2.name + " · 霜返造成雙方同時倒下"
-    );
+    await finishBattleDraw("平手 · 霜返造成雙方同時倒下");
     return true;
   }
   if (hp[player] <= 0) {
-    await finishBattleDefeat(
-      player,
-      foe,
-      "P" + foe + " 霜返逆轉！",
-      pickP1.name + " vs " + pickP2.name + " · 反彈決勝"
-    );
+    await finishBattleDefeat(player, foe, "反彈決勝");
     return true;
   }
   if (hp[foe] <= 0) {
     await finishBattleDefeat(
       foe,
       player,
-      "P" + player + " 勝利！",
-      pickP1.name + " vs " + pickP2.name + " · 墨域對決 · " + shownCombo + " COMBO · 決勝 " + dmg +
-      (isSpecial ? "（大招）" : "")
+      shownCombo + " COMBO · 決勝 " + dmg + (isSpecial ? "（大招）" : "")
     );
     return true;
   }
@@ -2021,22 +2168,13 @@ function applySelfMissDamage(player, dmg, wrongCount) {
     const winner = player === 1 ? 2 : 1;
     // 走攻擊佇列，避免與進行中的攻擊演出搶畫面
     enqueueAttack(async function () {
-      await finishBattleDefeat(
-        player,
-        winner,
-        "P" + winner + " 勝利！",
-        pickP1.name + " vs " + pickP2.name + " · 墨域對決 · 答錯自傷決勝（-" + dmg + "）"
-      );
+      await finishBattleDefeat(player, winner, "答錯自傷決勝（-" + dmg + "）");
     });
   }
 }
 
 function battleSubmit(player) {
   if (!battleOpen) return;
-  if (isSubmitLocked(player)) {
-    boards[player]?.setFeedback("提交被封鎖中", "bad");
-    return;
-  }
   const b = boards[player];
   if (b.locked) return;
   if (nowMs() < submitCooldownUntil[player]) return;
@@ -2070,7 +2208,7 @@ function battleSubmit(player) {
   if (isListenBattle()) {
     listenRoundClaimed = true;
     combo[player] += 1;
-    gaugeHits[player] += gaugeGainOf(player);
+    gaugeHits[player] += 1;
     const gain = calcChargeGain(player, q);
     charge[player] += gain;
     noteCorrectAnswer(player);
@@ -2087,7 +2225,7 @@ function battleSubmit(player) {
   }
 
   combo[player] += 1;
-  gaugeHits[player] += gaugeGainOf(player);
+  gaugeHits[player] += 1;
   const gain = calcChargeGain(player, q);
   charge[player] += gain;
   noteCorrectAnswer(player);
@@ -2110,10 +2248,6 @@ function battleFireAttack(player) {
   if (!battleOpen) return;
   if (isListenBattle()) {
     boards[player]?.setFeedback("聽力搶答由系統自動攻擊", "bad");
-    return;
-  }
-  if (isAttackLocked(player)) {
-    boards[player]?.setFeedback("攻擊被凍結中", "bad");
     return;
   }
   if (charge[player] <= 0) return;
@@ -2229,7 +2363,6 @@ bindTap($("btn-home-b"), () => {
   }
   stopTts(); stopBattleBgm(); hideSpecialStage(); cancelAllDrags(); clearBattleFx();
   battleOpen = false; battleEpoch += 1; cancelAnimationFrame(timerRaf);
-  clearSkillTimers(1); clearSkillTimers(2);
   document.querySelector(".duel-stage")?.classList.remove("listen-mode");
   $("btn-battle-listen")?.classList.add("hidden");
   showScreen("start");
@@ -2257,8 +2390,6 @@ document.querySelectorAll(".btn-again-home").forEach((btn) => {
     battleOpen = false;
     battleEpoch += 1;
     cancelAnimationFrame(timerRaf);
-    clearSkillTimers(1);
-    clearSkillTimers(2);
     document.querySelector(".duel-stage")?.classList.remove("listen-mode");
     $("btn-battle-listen")?.classList.add("hidden");
     readyP1 = false;

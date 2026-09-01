@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const heroes = ["ao", "gen", "go", "ran", "rin", "sho", "ya", "yo"];
 
-test("all eight ultimates keep a cast video and a dedicated aftermath scene", () => {
+test("all eight ultimates keep a cast video and land as a dedicated particle aftermath", () => {
   const vfx = read("game-vfx.js");
   const css = read("special-vfx.css");
   const html = read("index.html");
@@ -16,12 +16,22 @@ test("all eight ultimates keep a cast video and a dedicated aftermath scene", ()
   for (const hero of heroes) {
     assert.ok(fs.existsSync(path.join(root, "assets", "anim", `${hero}-cast.mp4`)), `${hero}: missing cast video`);
     assert.match(vfx, new RegExp(`\\b${hero}: \\d{4}`), `${hero}: missing aftermath duration`);
+    assert.match(vfx, new RegExp(`\\b${hero}: \\d{2},`), `${hero}: missing particle budget`);
     assert.match(css, new RegExp(`\\.ultimate-impact--${hero}\\b`), `${hero}: missing visual identity`);
+    assert.match(css, new RegExp(`\\.ultimate-particle--${hero}\\b`), `${hero}: missing material-specific particles`);
   }
 
-  assert.match(html, /special-vfx\.css\?v=20260829-skill-rebalance/);
+  assert.match(html, /special-vfx\.css\?v=20260902-audit/);
   assert.match(vfx, /el\.replaceChildren\(buildSpecialAftermath\(resolvedTheme\)\)/);
+  assert.match(vfx, /scene\.appendChild\(buildUltimateAttack\(themeId\)\)/);
+  assert.match(vfx, /addUltimateParticles\(scene, themeId\)/);
   assert.match(vfx, /prefersReducedMotion\(\)[\s\S]*?await wait\(180\)/);
+  assert.doesNotMatch(vfx, /ULTIMATE_IMPACT_ASSETS|preloadSpecialAftermath|impact-v2\.webp|document\.createElement\("img"\)/);
+  assert.doesNotMatch(css, /ultimate-impact__art|painted-ultimates/);
+  assert.match(vfx, /ultimate-fire-pillar/);
+  assert.match(vfx, /ultimate-wind-cuts/);
+  assert.match(vfx, /ultimate-lightning/);
+  assert.match(vfx, /ultimate-ofuda-blasts/);
 });
 
 test("special attacks do not fall back to the basic bolt after their full-screen effect", () => {

@@ -702,23 +702,105 @@ const SPECIAL_AFTERMATH_DURATION = Object.freeze({
   yo: 1600,
 });
 
-function addUltimateParts(parent, className, count, configure) {
-  for (let index = 0; index < count; index += 1) {
-    const part = document.createElement("i");
-    part.className = className;
-    part.setAttribute("aria-hidden", "true");
-    part.style.setProperty("--i", index);
-    if (configure) configure(part, index, count);
-    parent.appendChild(part);
-  }
+const ULTIMATE_PARTICLE_COUNTS = Object.freeze({
+  ao: 20,
+  gen: 28,
+  go: 26,
+  ran: 24,
+  rin: 36,
+  sho: 32,
+  ya: 30,
+  yo: 28,
+});
+
+function ultimateSvg(className, markup) {
+  const shell = document.createElement("div");
+  shell.className = className;
+  shell.innerHTML = `<svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${markup}</svg>`;
+  return shell;
 }
 
-function addUltimateSvgPart(parent, tagName, className, attributes) {
-  const part = document.createElementNS("http://www.w3.org/2000/svg", tagName);
-  if (className) part.setAttribute("class", className);
-  Object.entries(attributes || {}).forEach(([name, value]) => part.setAttribute(name, value));
-  parent.appendChild(part);
-  return part;
+function addUltimateParticles(scene, themeId) {
+  const count = ULTIMATE_PARTICLE_COUNTS[themeId] || 20;
+  const field = document.createElement("div");
+  field.className = "ultimate-impact__particles";
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement("i");
+    particle.className = `ultimate-particle ultimate-particle--${themeId}`;
+    const angle = ((i * 137.5 + themeId.charCodeAt(0) * 11) % 360) * Math.PI / 180;
+    const distance = 18 + ((i * 29) % 44);
+    particle.style.setProperty("--x", `${43 + ((i * 31) % 18)}%`);
+    particle.style.setProperty("--y", `${40 + ((i * 17) % 27)}%`);
+    particle.style.setProperty("--dx", `${(Math.cos(angle) * distance).toFixed(1)}vmin`);
+    particle.style.setProperty("--dy", `${(Math.sin(angle) * distance - (themeId === "rin" ? 18 : 0)).toFixed(1)}vmin`);
+    particle.style.setProperty("--delay", `${70 + (i % 8) * 43}ms`);
+    particle.style.setProperty("--scale", `${0.55 + (i % 5) * 0.19}`);
+    particle.style.setProperty("--rot", `${(i * 47) % 180 - 90}deg`);
+    field.appendChild(particle);
+  }
+  scene.appendChild(field);
+}
+
+function buildUltimateAttack(themeId) {
+  if (themeId === "rin") return ultimateSvg("ultimate-impact__attack ultimate-fire-pillar", `
+    <g class="fire-bed"><path d="M145 865C225 765 306 811 372 714C429 629 478 667 516 533C553 659 631 608 675 722C715 824 806 759 873 875C692 947 309 956 145 865Z"/></g>
+    <g class="fire-tongue fire-tongue--a"><path d="M362 905C283 735 401 680 374 516C447 571 446 438 497 285C548 451 519 561 579 616C630 662 611 803 548 907Z"/></g>
+    <g class="fire-tongue fire-tongue--b"><path d="M482 914C424 792 511 710 526 590C566 660 611 574 654 448C678 611 754 709 666 914Z"/></g>
+    <g class="fire-wisp fire-wisp--a"><path d="M278 874C226 755 309 705 292 602C356 662 368 724 345 790C331 832 342 857 360 891Z"/></g>
+    <g class="fire-wisp fire-wisp--b"><path d="M666 899C634 816 714 765 713 662C768 733 760 810 716 901Z"/></g>
+    <g class="fire-core"><path d="M421 910C378 798 460 746 483 635C514 715 553 650 585 577C610 706 670 795 612 910Z"/></g>`);
+
+  if (themeId === "ran") return ultimateSvg("ultimate-impact__attack ultimate-wind-cuts", `
+    <path class="wind-cut wind-cut--a" d="M-80 724C225 294 564 184 1056 274C634 294 306 481 53 835"/>
+    <path class="wind-edge wind-edge--a" d="M-64 722C246 322 580 222 1038 285"/>
+    <path class="wind-cut wind-cut--b" d="M-25 926C249 563 604 434 1088 522C662 542 314 686 62 1008"/>
+    <path class="wind-edge wind-edge--b" d="M-7 918C270 594 613 474 1060 536"/>
+    <path class="wind-cut wind-cut--c" d="M1080 834C765 451 474 367 47 454C425 480 735 604 1010 918"/>`);
+
+  if (themeId === "go") return ultimateSvg("ultimate-impact__attack ultimate-lightning", `
+    <path class="lightning lightning--main" d="M648 -80L586 154L627 211L515 392L557 438L461 625L503 676L387 1062"/>
+    <path class="lightning lightning--left" d="M526 380L421 463L448 517L302 606L365 638L229 794"/>
+    <path class="lightning lightning--right" d="M475 619L648 572L619 689L795 731L682 782"/>
+    <path class="electric-crawl electric-crawl--a" d="M169 677C257 614 334 672 409 593C472 525 538 572 622 514C704 457 782 488 890 418"/>
+    <path class="electric-crawl electric-crawl--b" d="M247 395C337 445 395 377 469 429C548 485 616 417 752 471"/>`);
+
+  if (themeId === "gen") return ultimateSvg("ultimate-impact__attack ultimate-ink-cut", `
+    <path class="ink-wash" d="M-92 602C83 521 154 540 270 469C394 392 457 436 579 389C725 333 850 350 1094 252C892 431 770 472 636 509C490 549 372 531 225 612C111 675 5 689-92 602Z"/>
+    <path class="ink-cut-core" d="M-70 618C223 554 435 488 1060 284"/>
+    <path class="ink-drybrush" d="M-24 653C238 574 503 541 955 351"/>
+    <path class="ink-tail" d="M91 686C302 611 428 613 655 527"/>`);
+
+  if (themeId === "ao") return ultimateSvg("ultimate-impact__attack ultimate-vertical-cleave", `
+    <path class="cleave-shadow" d="M554 -90C511 199 548 312 474 511C428 637 460 766 374 1084L570 754C618 672 568 561 634 411C682 298 649 140 688 -85Z"/>
+    <path class="cleave-edge" d="M624 -76C580 220 604 318 526 523C474 661 516 762 431 1063"/>
+    <path class="cleave-core" d="M636 -65C598 225 618 337 543 530C502 638 532 756 451 1049"/>
+    <path class="cleave-splinter cleave-splinter--a" d="M497 533C382 489 298 436 173 352"/>
+    <path class="cleave-splinter cleave-splinter--b" d="M548 540C694 494 778 443 922 337"/>`);
+
+  if (themeId === "ya") return ultimateSvg("ultimate-impact__attack ultimate-ice-lances", `
+    <path class="ice-lance ice-lance--a" d="M-126 188L454 516L408 565L-126 290L302 532L-126 252Z"/>
+    <path class="ice-lance ice-lance--b" d="M1128 65L559 492L604 548L1128 176L682 517L1128 132Z"/>
+    <path class="ice-lance ice-lance--c" d="M1094 730L593 572L568 632L1094 836L662 601L1094 786Z"/>
+    <path class="ice-lance ice-lance--d" d="M-92 842L442 590L475 651L-92 946L385 625L-92 900Z"/>
+    <path class="ice-crack" d="M507 448L467 526L501 549L455 626L527 588L550 654L588 575L548 540L589 472L523 508Z"/>`);
+
+  if (themeId === "yo") return ultimateSvg("ultimate-impact__attack ultimate-leaf-storm", `
+    <g class="leaf leaf--a" transform="translate(54 218) rotate(-24)"><path d="M0 0C91-34 154 8 176 83C91 104 28 72 0 0ZM18 10L145 69"/></g>
+    <g class="leaf leaf--b" transform="translate(752 126) rotate(38)"><path d="M0 0C91-34 154 8 176 83C91 104 28 72 0 0ZM18 10L145 69"/></g>
+    <g class="leaf leaf--c" transform="translate(78 690) rotate(18)"><path d="M0 0C91-34 154 8 176 83C91 104 28 72 0 0ZM18 10L145 69"/></g>
+    <g class="leaf leaf--d" transform="translate(759 699) rotate(-49)"><path d="M0 0C91-34 154 8 176 83C91 104 28 72 0 0ZM18 10L145 69"/></g>
+    <g class="leaf leaf--e" transform="translate(394 58) rotate(91)"><path d="M0 0C91-34 154 8 176 83C91 104 28 72 0 0ZM18 10L145 69"/></g>
+    <path class="leaf-focus" d="M135 814C362 650 565 413 889 197"/>
+    <path class="leaf-focus leaf-focus--dark" d="M101 763C395 625 596 431 914 247"/>`);
+
+  return ultimateSvg("ultimate-impact__attack ultimate-ofuda-blasts", `
+    <g class="ofuda ofuda--a"><path d="M222 112L323 91L348 278L244 299Z"/><path d="M273 132L291 254M247 176L318 161M255 220L326 204"/></g>
+    <g class="ofuda ofuda--b"><path d="M668 127L776 151L733 337L629 310Z"/><path d="M708 169L679 292M662 205L745 224M652 250L735 268"/></g>
+    <g class="ofuda ofuda--c"><path d="M132 504L240 480L276 664L168 691Z"/><path d="M183 521L211 649M158 569L247 548M168 615L257 594"/></g>
+    <g class="ofuda ofuda--d"><path d="M735 499L843 478L874 661L765 683Z"/><path d="M789 518L812 641M759 564L849 547M769 610L859 591"/></g>
+    <g transform="translate(330 390)"><g class="blast blast--a"><path d="M0-155C31-78 68-107 78-48C127-72 128-17 171 0C104 27 134 64 78 70C92 126 39 104 0 158C-20 89-60 116-73 65C-126 89-117 31-166 0C-103-19-131-62-70-72C-92-123-29-107 0-155Z"/></g></g>
+    <g transform="translate(653 564)"><g class="blast blast--b"><path d="M0-155C31-78 68-107 78-48C127-72 128-17 171 0C104 27 134 64 78 70C92 126 39 104 0 158C-20 89-60 116-73 65C-126 89-117 31-166 0C-103-19-131-62-70-72C-92-123-29-107 0-155Z"/></g></g>
+    <g transform="translate(514 684)"><g class="blast blast--c"><path d="M0-155C31-78 68-107 78-48C127-72 128-17 171 0C104 27 134 64 78 70C92 126 39 104 0 158C-20 89-60 116-73 65C-126 89-117 31-166 0C-103-19-131-62-70-72C-92-123-29-107 0-155Z"/></g></g>`);
 }
 
 function buildSpecialAftermath(themeId) {
@@ -726,106 +808,20 @@ function buildSpecialAftermath(themeId) {
   scene.className = `ultimate-impact ultimate-impact--${themeId}`;
   scene.setAttribute("aria-hidden", "true");
 
-  const flash = document.createElement("div");
-  flash.className = "ultimate-impact__flash";
-  scene.appendChild(flash);
+  const backdrop = document.createElement("div");
+  backdrop.className = "ultimate-impact__backdrop";
+  scene.appendChild(backdrop);
 
-  if (themeId === "ao") {
-    addUltimateParts(scene, "ultimate-ao-cleave", 3, (part, index) => {
-      part.style.setProperty("--offset", `${(index - 1) * 4.5}vw`);
-      part.style.setProperty("--delay", `${index * 54}ms`);
-    });
-    addUltimateParts(scene, "ultimate-ao-shard", 12, (part, index) => {
-      part.style.setProperty("--angle", `${index * 30}deg`);
-      part.style.setProperty("--distance", `${34 + (index % 3) * 7}vmax`);
-    });
-  } else if (themeId === "gen") {
-    const ink = document.createElement("div");
-    ink.className = "ultimate-gen-ink";
-    scene.appendChild(ink);
-    addUltimateParts(scene, "ultimate-gen-cleave", 4, (part, index) => {
-      part.style.setProperty("--offset", `${(index - 1.5) * 3.5}vh`);
-      part.style.setProperty("--delay", `${index * 45}ms`);
-    });
-    addUltimateParts(scene, "ultimate-gen-drop", 15, (part, index) => {
-      part.style.setProperty("--x", `${6 + ((index * 29) % 88)}vw`);
-      part.style.setProperty("--y", `${12 + ((index * 41) % 76)}vh`);
-      part.style.setProperty("--size", `${5 + (index % 4) * 4}px`);
-      part.style.setProperty("--height", `${9 + (index % 4) * 7}px`);
-      part.style.setProperty("--dx", `${((index * 37) % 34) - 17}vw`);
-      part.style.setProperty("--delay", `${110 + (index % 5) * 36}ms`);
-    });
-  } else if (themeId === "sho") {
-    addUltimateParts(scene, "ultimate-sho-talisman", 12, (part, index, count) => {
-      part.textContent = "爆";
-      part.style.setProperty("--angle", `${index * (360 / count)}deg`);
-      part.style.setProperty("--radius", `${31 + (index % 3) * 5}vmin`);
-      part.style.setProperty("--delay", `${index * 32}ms`);
-    });
-    addUltimateParts(scene, "ultimate-sho-blast", 6, (part, index) => {
-      part.style.setProperty("--x", `${18 + ((index * 27) % 66)}%`);
-      part.style.setProperty("--y", `${22 + ((index * 31) % 58)}%`);
-      part.style.setProperty("--delay", `${420 + index * 78}ms`);
-    });
-  } else if (themeId === "ya") {
-    addUltimateParts(scene, "ultimate-ya-spear", 14, (part, index, count) => {
-      const angle = index * (360 / count);
-      part.style.setProperty("--angle", `${angle}deg`);
-      part.style.setProperty("--distance", `${54 + (index % 4) * 6}vmax`);
-      part.style.setProperty("--delay", `${index * 24}ms`);
-      part.style.setProperty("--scale", `${0.72 + (index % 3) * 0.18}`);
-    });
-    const core = document.createElement("div");
-    core.className = "ultimate-ya-core";
-    scene.appendChild(core);
-  } else if (themeId === "yo") {
-    addUltimateParts(scene, "ultimate-yo-leaf", 24, (part, index) => {
-      part.classList.add(index % 2 ? "is-light" : "is-dark");
-      part.style.setProperty("--angle", `${index * 137.5}deg`);
-      part.style.setProperty("--radius", `${28 + (index % 6) * 7}vmin`);
-      part.style.setProperty("--delay", `${(index % 8) * 34}ms`);
-      part.style.setProperty("--spin", `${index % 2 ? 540 : -540}deg`);
-    });
-    const focus = document.createElement("div");
-    focus.className = "ultimate-yo-focus";
-    scene.appendChild(focus);
-  } else if (themeId === "rin") {
-    const dragon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    dragon.className = "ultimate-rin-dragon";
-    dragon.setAttribute("viewBox", "0 0 1000 600");
-    dragon.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    const bodyPath = "M38 414 C170 86 366 560 548 264 C686 40 780 332 882 250";
-    addUltimateSvgPart(dragon, "path", "ultimate-rin-body ultimate-rin-body--outer", { d: bodyPath });
-    addUltimateSvgPart(dragon, "path", "ultimate-rin-body ultimate-rin-body--inner", { d: bodyPath });
-    addUltimateSvgPart(dragon, "path", "ultimate-rin-body ultimate-rin-body--core", { d: bodyPath });
-    addUltimateSvgPart(dragon, "path", "ultimate-rin-spine", { d: "M150 222 l-42 -105 l91 67 M330 326 l-12 -116 l78 83 M535 250 l18 -112 l62 92 M708 208 l40 -91 l38 108" });
-    addUltimateSvgPart(dragon, "path", "ultimate-rin-head", { d: "M830 166 L932 126 L910 188 L988 218 L922 250 L982 306 L884 292 L820 340 L834 278 L774 244 Z" });
-    addUltimateSvgPart(dragon, "path", "ultimate-rin-jaw", { d: "M858 257 L968 250 L914 324 L842 302 Z" });
-    addUltimateSvgPart(dragon, "path", "ultimate-rin-horn", { d: "M846 188 L814 78 L892 165 M888 160 L914 68 L938 184" });
-    addUltimateSvgPart(dragon, "circle", "ultimate-rin-eye", { cx: "914", cy: "218", r: "13" });
-    scene.appendChild(dragon);
-  } else if (themeId === "ran") {
-    addUltimateParts(scene, "ultimate-ran-arc", 7, (part, index) => {
-      part.style.setProperty("--angle", `${-42 + index * 13}deg`);
-      part.style.setProperty("--delay", `${index * 48}ms`);
-      part.style.setProperty("--scale", `${0.72 + index * 0.09}`);
-    });
-    const heel = document.createElement("div");
-    heel.className = "ultimate-ran-heel";
-    scene.appendChild(heel);
-  } else {
-    const fist = document.createElement("div");
-    fist.className = "ultimate-go-fist";
-    addUltimateParts(fist, "ultimate-go-knuckle", 4);
-    scene.appendChild(fist);
-    addUltimateParts(scene, "ultimate-go-bolt", 10, (part, index) => {
-      part.style.setProperty("--angle", `${index * 36}deg`);
-      part.style.setProperty("--delay", `${(index % 5) * 34}ms`);
-    });
-    addUltimateParts(scene, "ultimate-go-ring", 3, (part, index) => {
-      part.style.setProperty("--delay", `${360 + index * 105}ms`);
-    });
-  }
+  const target = document.createElement("div");
+  target.className = "ultimate-impact__target";
+  scene.appendChild(target);
+
+  scene.appendChild(buildUltimateAttack(themeId));
+  addUltimateParticles(scene, themeId);
+
+  const hitStop = document.createElement("div");
+  hitStop.className = "ultimate-impact__hit-stop";
+  scene.appendChild(hitStop);
 
   return scene;
 }
@@ -848,15 +844,6 @@ async function playSpecialAftermath(themeId) {
     el.replaceChildren();
     el.setAttribute("aria-hidden", "true");
     return;
-  }
-  const theme = FX_THEMES[themeId] || FX_THEMES.ao;
-  const layer = fxLayer();
-  if (layer) {
-    const flash = document.createElement("div");
-    flash.className = "fx-flash heavy";
-    styleFx(flash, theme);
-    layer.appendChild(flash);
-    setTimeout(() => flash.remove(), 420);
   }
   shakeBattle(true);
   await wait(duration);

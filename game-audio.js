@@ -16,10 +16,12 @@ sharedTtsAudio.preload = "auto";
 sharedTtsAudio.setAttribute("playsinline", "");
 sharedTtsAudio.setAttribute("webkit-playsinline", "");
 
-function unlockTtsPlayback() {
-  if (ttsPlaybackUnlocked || (currentTtsAudio === sharedTtsAudio && !sharedTtsAudio.paused)) {
+function unlockTtsPlayback(force = false) {
+  if (currentTtsAudio === sharedTtsAudio && !sharedTtsAudio.paused) {
+    ttsPlaybackUnlocked = true;
     return Promise.resolve(true);
   }
+  if (!force && ttsPlaybackUnlocked) return Promise.resolve(true);
   if (ttsUnlockPromise) return ttsUnlockPromise;
   const priorVolume = sharedTtsAudio.volume;
   sharedTtsAudio.volume = 0.001;
@@ -244,6 +246,7 @@ const sfxCache = new Map();
 const sfxBufCache = new Map();
 const voiceBufCache = new Map();
 let audioCtx = null;
+let audioInterrupted = false;
 let sfxDuckFactor = 1;
 let voiceHtml = null;
 let voiceWebSrc = null;
@@ -319,13 +322,13 @@ async function preloadBattleSfx() {
   }));
 }
 
-// —— 選角 BGM：稍後只需補上此檔案即可啟用 ——
+// —— 選角 BGM ——
 const CHARACTER_SELECT_BGM_PATH = "assets/bgm/character-select.ogg";
 const CHARACTER_SELECT_BGM_VOL = 0.11;
 let characterSelectBgm = null;
 let characterSelectBgmUnavailable = false;
 
-async function startCharacterSelectBgm() {
+async function startCharacterSelectBgm(opts = {}) {
   if (characterSelectBgmUnavailable) return false;
   if (!characterSelectBgm) {
     characterSelectBgm = new Audio(CHARACTER_SELECT_BGM_PATH);
@@ -333,9 +336,14 @@ async function startCharacterSelectBgm() {
     characterSelectBgm.preload = "auto";
     characterSelectBgm.volume = CHARACTER_SELECT_BGM_VOL;
     characterSelectBgm.setAttribute("playsinline", "");
+    characterSelectBgm.setAttribute("webkit-playsinline", "");
     characterSelectBgm.addEventListener("error", () => { characterSelectBgmUnavailable = true; }, { once: true });
   }
-  if (!characterSelectBgm.paused) return true;
+  if (opts.force) {
+    try { characterSelectBgm.pause(); } catch {}
+  } else if (!characterSelectBgm.paused) {
+    return true;
+  }
   try {
     await characterSelectBgm.play();
     return true;
@@ -377,9 +385,20 @@ function chooseBattleBgmPath() {
 async function ensureAudioCtx() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
-  if (!audioCtx || audioCtx.state === "closed") audioCtx = new AC();
+  if (!audioCtx || audioCtx.state === "closed") {
+    audioCtx = new AC();
+    audioCtx.addEventListener("statechange", onAudioCtxStateChange);
+  }
   if (audioCtx.state !== "running") await audioCtx.resume().catch(() => {});
   return audioCtx;
+}
+function onAudioCtxStateChange() {
+  if (!audioCtx) return;
+  if (audioCtx.state === "interrupted") {
+    markAudioInterrupted();
+    return;
+  }
+  if (audioCtx.state === "running" && audioInterrupted) requestBattleAudioRestore(true);
 }
 function clearBgmWatchdog() {
   if (bgmWatchdog) { clearInterval(bgmWatchdog); bgmWatchdog = null; }
@@ -417,6 +436,10 @@ function applyBgmVolume() {
 }
 function keepBattleBgmAlive() {
   if (!battleOpen) return;
+  if (audioInterrupted) {
+    requestBattleAudioRestore(true);
+    return;
+  }
   if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
   if (bgmHtmlFallback && bgmHtmlFallback.paused) bgmHtmlFallback.play().catch(() => {});
   applyBgmVolume();
@@ -468,36 +491,67 @@ async function primeBattleAudio() {
 }
 
 let lastBattleAudioRestoreAt = 0;
+let audioRestorePromise = null;
+
+function isCharacterSelectScreen() {
+  const chars = document.getElementById("screen-chars");
+  const online = document.getElementById("screen-online");
+  if (chars && !chars.classList.contains("hidden")) return true;
+  if (online && !online.classList.contains("hidden") && !online.classList.contains("invite-mode")) return true;
+  return false;
+}
+function markAudioInterrupted() {
+  audioInterrupted = true;
+  ttsPlaybackUnlocked = false;
+  ttsUnlockPromise = null;
+  try { if (characterSelectBgm && !characterSelectBgm.paused) characterSelectBgm.pause(); } catch {}
+  try {
+    if (sharedTtsAudio && !sharedTtsAudio.paused && currentTtsAudio === sharedTtsAudio) sharedTtsAudio.pause();
+  } catch {}
+  try { if (bgmHtmlFallback && !bgmHtmlFallback.paused) bgmHtmlFallback.pause(); } catch {}
+}
 async function restoreBattleAudio() {
-  if (!battleOpen) return false;
-  const priorCtx = audioCtx;
+  const wasInterrupted = audioInterrupted;
+  if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
   const ctx = await ensureAudioCtx();
-  if (ctx && ctx.state === "running") {
-    if (ctx !== priorCtx || (!bgmSource && !bgmHtmlFallback)) {
-      await startBattleBgm();
-    } else {
-      keepBattleBgmAlive();
-    }
-    return true;
+  if (wasInterrupted || !ttsPlaybackUnlocked) await unlockTtsPlayback(true).catch(() => {});
+  if (battleOpen) {
+    const bgmDead = wasInterrupted || (!bgmSource && !bgmHtmlFallback) || (bgmHtmlFallback && bgmHtmlFallback.paused);
+    if (bgmDead) await startBattleBgm();
+    else keepBattleBgmAlive();
+  } else if (isCharacterSelectScreen()) {
+    await startCharacterSelectBgm({ force: wasInterrupted });
   }
-  keepBattleBgmAlive();
-  return !!(bgmHtmlFallback && !bgmHtmlFallback.paused);
+  const running = !!(ctx && ctx.state === "running");
+  if (running || (bgmHtmlFallback && !bgmHtmlFallback.paused) || (characterSelectBgm && !characterSelectBgm.paused)) {
+    audioInterrupted = false;
+  }
+  return running;
 }
 function requestBattleAudioRestore(force = false) {
-  if (!battleOpen) return;
+  if (audioRestorePromise) return audioRestorePromise;
   const now = performance.now();
   if (!force && now - lastBattleAudioRestoreAt < 350) return;
   lastBattleAudioRestoreAt = now;
-  restoreBattleAudio().catch(() => {});
+  audioRestorePromise = restoreBattleAudio().catch(() => false).finally(() => { audioRestorePromise = null; });
+  return audioRestorePromise;
 }
+function onPageHidden() { markAudioInterrupted(); }
+function onPageShown() { requestBattleAudioRestore(true); }
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) requestBattleAudioRestore(true);
+  if (document.hidden) onPageHidden();
+  else onPageShown();
 });
-window.addEventListener("pageshow", () => requestBattleAudioRestore(true));
-window.addEventListener("focus", () => requestBattleAudioRestore());
-["pointerdown", "touchend", "keydown"].forEach((type) => {
+window.addEventListener("pagehide", onPageHidden);
+window.addEventListener("pageshow", onPageShown);
+window.addEventListener("freeze", onPageHidden);
+window.addEventListener("resume", onPageShown);
+window.addEventListener("focus", onPageShown);
+["pointerdown", "touchstart", "keydown"].forEach((type) => {
   document.addEventListener(type, () => {
-    unlockTtsPlayback().catch(() => {});
+    if (audioCtx && audioCtx.state === "interrupted") markAudioInterrupted();
+    if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+    unlockTtsPlayback(audioInterrupted).catch(() => {});
     requestBattleAudioRestore(true);
   }, { capture: true, passive: true });
 });

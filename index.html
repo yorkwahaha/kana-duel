@@ -10,8 +10,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260829-skill-rebalance" />
-  <link rel="stylesheet" href="special-vfx.css?v=20260829-skill-rebalance" />
+  <link rel="stylesheet" href="styles.css?v=20260902-audit" />
+  <link rel="stylesheet" href="special-vfx.css?v=20260902-audit" />
 </head>
 <body>
   <div class="combo-float" id="combo-float"></div>
@@ -170,7 +170,7 @@
       </div>
     </section>
 
-    <!-- CHAR SELECT · 兩端各自正向，不可同角 -->
+    <!-- CHAR SELECT · 兩端各自正向，可同角色 -->
     <section class="screen hidden" id="screen-chars">
       <div class="char-face p2">
         <div class="char-face-bar">
@@ -183,9 +183,8 @@
           <div class="char-stage" data-char-stage="2" aria-label="P2 角色選擇"></div>
           <button class="char-nav" type="button" data-char-step="1" data-p="2" aria-label="下一位">›</button>
         </div>
-        <div class="char-face-foot">已選 <b data-char-picked="2">—</b><span>左右滑動選角 · 不可同角</span></div>
       </div>
-      <div class="char-mid" id="char-mid-opts">
+      <div class="char-mid">
         <label class="opt"><strong>模式</strong>
           <select id="opt-battle-mode" aria-label="對戰模式">
             <option value="race">羅馬字競速</option>
@@ -193,9 +192,15 @@
             <option value="listen">聽力搶答</option>
           </select>
         </label>
-        <label class="opt-toggle"><input type="checkbox" id="opt-distractors" checked /> 干擾項</label>
-        <label class="opt opt-category"><strong>類別</strong>
+        <label class="opt"><strong>類別</strong>
           <select id="opt-category" aria-label="題庫類別"></select>
+        </label>
+        <label class="opt"><strong>假名</strong>
+          <select id="opt-script" aria-label="假名種類">
+            <option value="all">全部</option>
+            <option value="hira">平假名</option>
+            <option value="kata">片假名</option>
+          </select>
         </label>
         <label class="opt"><strong>字數</strong>
           <select id="opt-maxlen" aria-label="題目字數上限">
@@ -205,12 +210,10 @@
             <option value="8">≤8</option>
           </select>
         </label>
-        <label class="opt"><strong>假名</strong>
-          <select id="opt-script" aria-label="假名種類">
-            <option value="all">全部</option>
-            <option value="hira">平假名</option>
-            <option value="kata">片假名</option>
-          </select>
+        <label class="opt opt-check"><strong>干擾項</strong>
+          <span class="opt-box">
+            <input type="checkbox" id="opt-distractors" checked />
+          </span>
         </label>
       </div>
       <div class="char-face p1">
@@ -224,7 +227,6 @@
           <div class="char-stage" data-char-stage="1" aria-label="P1 角色選擇"></div>
           <button class="char-nav" type="button" data-char-step="1" data-p="1" aria-label="下一位">›</button>
         </div>
-        <div class="char-face-foot">已選 <b data-char-picked="1">—</b><span>左右滑動選角 · 不可同角</span></div>
       </div>
     </section>
 
@@ -385,7 +387,7 @@
         <div class="card result-card" tabindex="-1">
           <h1 class="result-title">結束</h1>
           <p class="result-summary">—</p>
-          <ul class="result-stats hidden" data-result-stats></ul>
+          <table class="result-stats hidden" data-result-stats></table>
           <div class="row">
             <button class="btn btn-ghost btn-again-home" type="button">回到角色選擇</button>
             <button class="btn btn-primary btn-again" type="button">再玩一次</button>
@@ -396,7 +398,7 @@
         <div class="card result-card" tabindex="-1">
           <h1 class="result-title">結束</h1>
           <p class="result-summary">—</p>
-          <ul class="result-stats hidden" data-result-stats></ul>
+          <table class="result-stats hidden" data-result-stats></table>
           <div class="row">
             <button class="btn btn-ghost btn-again-home" type="button">回到角色選擇</button>
             <button class="btn btn-primary btn-again" type="button">再玩一次</button>
@@ -425,13 +427,13 @@
     </div>
   </div>
 
-  <script src="questions-data.js?v=20260829-skill-rebalance"></script>
-  <script src="questions-expansion-data.js?v=20260829-skill-rebalance"></script>
-  <script src="game-content.js?v=20260829-skill-rebalance"></script>
-  <script src="game-audio.js?v=20260829-skill-rebalance"></script>
-  <script src="game-vfx.js?v=20260829-skill-rebalance"></script>
-  <script src="online.js?v=20260829-skill-rebalance"></script>
-  <script src="game.js?v=20260829-skill-rebalance"></script>
-  <script src="game-online.js?v=20260829-skill-rebalance"></script>
+  <script src="questions-data.js?v=20260902-audit"></script>
+  <script src="questions-expansion-data.js?v=20260902-audit"></script>
+  <script src="game-content.js?v=20260902-audit"></script>
+  <script src="game-audio.js?v=20260902-audit"></script>
+  <script src="game-vfx.js?v=20260902-audit"></script>
+  <script src="online.js?v=20260902-audit"></script>
+  <script src="game.js?v=20260902-audit"></script>
+  <script src="game-online.js?v=20260902-audit"></script>
 </body>
 </html>

@@ -160,17 +160,21 @@ test("split scripts load in dependency order", () => {
   assert.equal(new Set(releaseVersions).size, 1, "CSS and scripts must share one release cache version");
 });
 
-test("local two-player battle blocks pinch zoom without disabling global accessibility zoom", () => {
+test("character select and battle lock pinch and double-tap zoom without disabling other screens", () => {
   const html = read("index.html");
   const game = read("game.js");
   const css = read("styles.css");
   assert.doesNotMatch(html, /user-scalable=no|maximum-scale=1/);
-  assert.doesNotMatch(game, /gesturestart|document\.addEventListener\("dblclick"/);
-  assert.match(game, /function isLocalTwoPlayerBattleActive\(\)[\s\S]*?!document\.body\.classList\.contains\("online-battle"\)/);
-  assert.match(game, /document\.addEventListener\("touchstart", preventLocalBattlePinch, \{ passive: false \}\)/);
-  assert.match(game, /document\.addEventListener\("touchmove", preventLocalBattlePinch, \{ passive: false \}\)/);
+  assert.match(game, /function isZoomLockedScreenActive\(\)/);
+  assert.match(game, /VIEWPORT_LOCKED = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/);
+  assert.match(game, /\["touchstart", "touchmove", "touchend", "gesturestart", "gesturechange", "dblclick"\]\.forEach/);
+  assert.match(game, /now - lastZoomTapAt <= 350\) event\.preventDefault\(\)/);
+  assert.match(game, /isPageZoomTapTarget/);
   assert.match(css, /html, body \{[\s\S]*?touch-action: manipulation/);
-  assert.match(css, /body:not\(\.online-battle\) #screen-battle:not\(\.hidden\) \{ touch-action: none; \}/);
+  assert.match(css, /body\.fixed-stage,[\s\S]*?touch-action: none !important/);
+  assert.match(css, /#screen-chars:not\(\.hidden\),[\s\S]*?#screen-battle:not\(\.hidden\),[\s\S]*?touch-action: none !important/);
+  assert.match(css, /\.question-clue \{[\s\S]*?touch-action: none/);
+  assert.match(css, /\.char-stage \{[\s\S]*?touch-action: none/);
   assert.match(css, /\.board \.tile,[\s\S]*?touch-action: none !important/);
   assert.match(html, /id="reward-stage"[^>]*role="dialog"[^>]*aria-modal="true"/);
   assert.equal((html.match(/role="status" aria-live="polite"/g) || []).length, 6);
@@ -193,6 +197,8 @@ test("defense, uniform ultimates, active skills, and persistent status UI stay a
   assert.match(onlineGame, /blockReady = \{ 1: !!mine\.blockReady, 2: !!foe\.blockReady \}/);
   assert.match(content, /const SPECIAL_MULT = 1\.5/);
   assert.doesNotMatch(content, /passive:|specialMult:|chargeMult:|hitBonus:|gaugePerCorrect:/);
+  assert.doesNotMatch(content, /SUBMIT_LOCK_MS|ATTACK_LOCK_MS/);
+  assert.doesNotMatch(game, /function (?:isSubmitLocked|isAttackLocked|gaugeGainOf|specialMultOf|hitBonusOf|clearSkillTimers|stepCharFocus)\(/);
   const activeIds = ["ink_seal", "ember_steal", "frost_reflect", "thunder_amp", "wind_step", "shadow_dodge", "seal_break", "light_regen"];
   activeIds.forEach((id) => assert.match(content, new RegExp(`active: \\{ id: "${id}"`), id));
   assert.equal((html.match(/class="effect-status-list"/g) || []).length, 2);
@@ -265,6 +271,9 @@ test("online invite, lobby, and VS intro use the phone-first interaction contrac
   assert.match(css, /#screen-online:not\(\.hidden\)[\s\S]*?touch-action: pan-y/);
   assert.match(html, /id="btn-online-leave"[\s\S]*?id="btn-online-copy"[^>]*>複製邀請連結<[\s\S]*?id="btn-online-ready"/);
   assert.match(client, /async copyInvite\(\)[\s\S]*?url\.searchParams\.set\("room", roomCode\)[\s\S]*?writeText\(url\.toString\(\)\)/);
+  assert.match(client, /BOOST_ALREADY_READY: "連鳴已待機。"/);
+  assert.match(client, /QUESTION_ALREADY_DISRUPTED:/);
+  assert.doesNotMatch(client, /AMP_ALREADY_READY|SUBMIT_LOCKED|ATTACK_LOCKED/);
   assert.match(game, /textContent = inviteMode \? "新建房間" : "建立房間"/);
   assert.match(game, /playerLabel = `\$\{player\.name\}\$\{seat === room\.hostSeat \? "（房主）" : ""\}`/);
   assert.match(css, /\.online-players \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
@@ -297,10 +306,33 @@ test("character selection reserves a BGM path and uses the kana click sound", ()
   const game = read("game.js");
   const online = read("game-online.js");
   assert.match(audio, /CHARACTER_SELECT_BGM_PATH = "assets\/bgm\/character-select\.ogg"/);
-  assert.match(audio, /async function startCharacterSelectBgm\(\)/);
+  assert.match(audio, /async function startCharacterSelectBgm\(opts = \{\}\)/);
   assert.match(audio, /characterSelectBgmUnavailable/);
   assert.match(game, /function onPickChar\(player, c, withSound = true\)[\s\S]*?playSfx\("sfx_click"/);
   assert.match(online, /function stepCharacter\(delta\)[\s\S]*?playSfx\("sfx_click"/);
+});
+
+test("character select turns as a continuous revolver wheel", () => {
+  const game = read("game.js");
+  const css = read("styles.css");
+  const html = read("index.html");
+  assert.match(game, /function layoutCharWheel\(player\)/);
+  assert.match(game, /function spinCharBy\(player, dir\)/);
+  assert.match(game, /requestAnimationFrame\(tickCharSpin\)/);
+  assert.match(game, /stage\.dataset\.mounted === String\(n\)/);
+  assert.doesNotMatch(game.slice(game.indexOf("function renderCharGrid"), game.indexOf("function onPickChar")), /stage\.innerHTML/);
+  assert.match(css, /perspective: 980px/);
+  assert.match(css, /\.char-card\.is-front/);
+  assert.doesNotMatch(css, /\.char-card\.pos-l1/);
+  assert.doesNotMatch(html, /不可同角/);
+  assert.doesNotMatch(html, /char-face-foot|data-char-picked/);
+  assert.doesNotMatch(css, /char-face-foot/);
+  assert.doesNotMatch(game, /foe\?\.id === c\.id/);
+  assert.match(game, /setTimeout\(\(\) => \{[\s\S]*?setInterval\(\(\) => \{[\s\S]*?spinCharBy\(player, dir\)/);
+  assert.doesNotMatch(game, /大招 ×1\.5/);
+  assert.match(game, /主動技「" \+ \(c\.active\?\.label \|\| "—"\) \+ "」"/);
+  assert.match(game, /name\.split\("・"\)\.pop\(\)/);
+  assert.match(css, /\.char-card \.meta \.active-desc/);
 });
 
 test("battle BGM preload fetches only the selected track", () => {
@@ -310,13 +342,32 @@ test("battle BGM preload fetches only the selected track", () => {
   assert.doesNotMatch(audio, /Promise\.all\(BATTLE_BGM_PATHS\.map/);
 });
 
+test("local result shows named matchup and P1 P2 column headers", () => {
+  const game = read("game.js");
+  const html = read("index.html");
+  const css = read("styles.css");
+  assert.match(game, /function battleResultHeadline\(winner\)/);
+  assert.match(game, /<span class="vs-mark">VS<\/span>/);
+  assert.match(game, /tag-win">（勝）/);
+  assert.match(game, /tag-lose">（敗）/);
+  assert.match(game, /shownCombo \+ " COMBO · 決勝 " \+ dmg/);
+  assert.doesNotMatch(game, /墨域對決/);
+  assert.doesNotMatch(game, /P" \+ player \+ " 勝利/);
+  assert.match(game, /scope="col"><span class="tag-p1">P1/);
+  assert.match(game, /scope="col"><span class="tag-p2">P2/);
+  assert.equal((html.match(/table class="result-stats hidden" data-result-stats/g) || []).length, 2);
+  assert.match(css, /body:not\(\.online-battle\) \.result-title/);
+  assert.match(css, /\.result-stats td\.is-lead::after/);
+});
+
 test("result text is escaped before player tags are colorized", () => {
   const game = read("game.js");
   assert.match(game, /function escapeResultText\(text\)/);
-  assert.match(game, /const p1Name = escapeResultText\(pickP1\?\.name \|\| "P1"\)/);
-  assert.doesNotMatch(game.slice(game.indexOf("function renderCharGrid"), game.indexOf("function stepCharFocus")), /btn\.innerHTML/);
+  assert.match(game, /escapeResultText\(pick\?\.name \|\| \("P" \+ player\)\)/);
+  assert.doesNotMatch(game.slice(game.indexOf("function renderCharGrid"), game.indexOf("function onPickChar")), /btn\.innerHTML/);
   assert.match(game, /function colorizePlayerTags\(text\) \{\s*return escapeResultText\(text\)/);
 });
+
 
 test("online listen audio prefers static MP3 and remains server scheduled", () => {
   const audio = read("game-audio.js");
@@ -326,7 +377,7 @@ test("online listen audio prefers static MP3 and remains server scheduled", () =
   assert.match(audio, /async function prepareQuestionAudio/);
   assert.match(audio, /async function scheduleQuestionAudio/);
   assert.match(audio, /assets\/audio\/questions\/manifest\.json/);
-  assert.match(audio, /function unlockTtsPlayback\(\)/);
+  assert.match(audio, /function unlockTtsPlayback\(force = false\)/);
   assert.match(audio, /const ttsUnlock = unlockTtsPlayback\(\)/);
   assert.match(online, /scheduleQuestionAudio\(question, \{ delayMs \}\)/);
   assert.match(online, /replayQuestion\(\)[\s\S]*?speakQuestionAudio\(q\)/);
@@ -397,7 +448,8 @@ test("online result uses one upright, aligned comparison view", () => {
   assert.match(game, /loserEl\.classList\.add\("defeated"\)/);
   assert.match(game, /await playVoice\(loserCh && loserCh\.voiceDefeat, 1\)/);
   assert.match(css, /body\.online-battle #screen-result \.result-face\.p2 \{ display: none; \}/);
-  assert.match(css, /grid-template-columns: minmax\(5\.5rem, 1fr\) minmax\(4\.5rem, 0\.78fr\) minmax\(4\.5rem, 0\.78fr\)/);
+  assert.match(online, /scope="col" class="stat-mine">你/);
+  assert.match(css, /body\.online-battle #screen-result \.result-stats thead \.stat-mine/);
   assert.match(css, /html \{ font-size: 18px; \}/);
   assert.match(css, /linear-gradient\(155deg, #d9cfbf 0%, #f2eadc 48%, #cbbba4 100%\)/);
 });
@@ -419,11 +471,24 @@ test("correct answer feedback floats without moving controls and long romaji sca
 test("mobile audio restores after returning to the browser and on the next gesture", () => {
   const audio = read("game-audio.js");
   assert.match(audio, /async function restoreBattleAudio\(\)/);
+  assert.match(audio, /function markAudioInterrupted\(\)/);
   assert.match(audio, /document\.addEventListener\("visibilitychange"/);
   assert.match(audio, /window\.addEventListener\("pageshow"/);
-  assert.match(audio, /\["pointerdown", "touchend", "keydown"\]/);
+  assert.match(audio, /window\.addEventListener\("pagehide"/);
+  assert.match(audio, /\["pointerdown", "touchstart", "keydown"\]/);
   assert.match(audio, /audioCtx\.state !== "running"/);
   assert.match(audio, /sharedTtsAudio\.setAttribute\("playsinline", ""\)/);
+  assert.match(audio, /ttsPlaybackUnlocked = false/);
+  assert.match(audio, /startCharacterSelectBgm\(\{ force: wasInterrupted \}\)/);
+  assert.match(audio, /audioCtx\.state === "interrupted"/);
+  assert.doesNotMatch(
+    audio.slice(audio.indexOf("[\"pointerdown\""), audio.indexOf("// —— 墨域言靈闘場")),
+    /markAudioInterrupted\(\);\s*audioCtx\.resume/
+  );
+  assert.doesNotMatch(
+    audio.slice(audio.indexOf("function requestBattleAudioRestore"), audio.indexOf("function onPageHidden")),
+    /if \(!battleOpen\) return/
+  );
 });
 
 test("online submit acknowledges touch immediately while the server remains authoritative", () => {

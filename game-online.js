@@ -1,14 +1,14 @@
 /* global $, ALL_QUESTIONS, CHARACTERS, MAX_HP, battleModeIntroLabel, battleModeLabel, boards, categoryLabelOf, selectBattleQuestions */
 /* global battleOpts:writable, battleDeck:writable, battleOpen:writable, battleEpoch:writable */
 /* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable, showAnswerGain */
-/* global attackBoost:writable, blockReady:writable, dodgeChance:writable, mistakeGuardReady:writable, reflectReady:writable, regenState:writable, submitLockUntil:writable, attackLockUntil:writable */
+/* global attackBoost:writable, blockReady:writable, dodgeChance:writable, mistakeGuardReady:writable, reflectReady:writable, regenState:writable */
 /* global pickP1:writable, pickP2:writable, gameMode:writable, playerQi:writable, sharedQi:writable */
 /* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, timerRaf */
-/* global bindTap, cancelAllDrags, clearBattleFx, clearSkillTimers, hideSpecialStage, noteQuestionOpen */
+/* global bindTap, cancelAllDrags, clearBattleFx, hideSpecialStage, noteQuestionOpen */
 /* global getSessionToken, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio, speakQuestionAudio */
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
 /* global showCombo, showDmgFloat, showEffectForBoth, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
-/* global startCharacterSelectBgm, stopCharacterSelectBgm */
+/* global startCharacterSelectBgm, stopCharacterSelectBgm, syncLockedViewport */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, updateSkillUi, ensureCastLayers, preloadFighterPoses */
 /* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
 /* global spawnBlockParry, splitComboDamage, wait, playBattleDefeatOutro */
@@ -253,8 +253,6 @@
       1: mine.regenTicksLeft > 0 ? { ticksLeft: mine.regenTicksLeft, timer: 0 } : null,
       2: foe.regenTicksLeft > 0 ? { ticksLeft: foe.regenTicksLeft, timer: 0 } : null,
     };
-    submitLockUntil = { 1: 0, 2: 0 };
-    attackLockUntil = { 1: 0, 2: 0 };
     playerQi = { 1: mine.qi, 2: 0 };
     sharedQi = room.battle.sharedQi;
     listenRoundClaimed = room.battle.listenClaimed;
@@ -292,7 +290,6 @@
     setSubmitPending(false);
     cancelAllDrags();
     clearBattleFx();
-    clearSkillTimers(1); clearSkillTimers(2);
     $("fighter1-img").src = pickP1.image;
     $("fighter2-img").src = pickP2.image;
     $("hp1-name").textContent = localPlayer()?.name || "我方";
@@ -320,6 +317,7 @@
     const stage = $("vs-stage");
     stage?.classList.remove("show", "online-vs");
     stage?.setAttribute("aria-hidden", "true");
+    syncLockedViewport();
   }
 
   function playOnlineVsIntro() {
@@ -364,6 +362,7 @@
     void stage?.offsetWidth;
     stage?.classList.add("show");
     stage?.setAttribute("aria-hidden", "false");
+    syncLockedViewport();
     playSfx("fanfare", 0.35);
     battleIntroTimer = setTimeout(() => {
       clearOnlineBattleIntro();
@@ -562,12 +561,14 @@
         : fighter.bestAnswerMs;
       return Number.isFinite(ms) ? `${(ms / 1000).toFixed(1)} 秒` : "—";
     };
-    const statRow = (label, mineValue, foeValue) => `<li><span class="stat-label">${label}</span><span class="stat-value stat-mine"><small>你</small><b>${escapeHtml(String(mineValue))}</b></span><span class="stat-value stat-foe"><small>對手</small><b>${escapeHtml(String(foeValue))}</b></span></li>`;
+    const statRow = (label, mineValue, foeValue) => `<tr><th scope="row" class="stat-label">${label}</th><td class="stat-mine">${escapeHtml(String(mineValue))}</td><td class="stat-foe">${escapeHtml(String(foeValue))}</td></tr>`;
     const resultRows = [
+      '<colgroup><col class="result-col-label"><col class="result-col-p1"><col class="result-col-p2"></colgroup><thead><tr><th scope="col"><span class="sr-only">項目</span></th><th scope="col" class="stat-mine">你</th><th scope="col" class="stat-foe">對手</th></tr></thead><tbody>',
       statRow("最大連段", mine.maxCombo, foe.maxCombo),
       statRow("最快答題", answerSeconds(mine), answerSeconds(foe)),
       statRow("平均答題", answerSeconds(mine, true), answerSeconds(foe, true)),
       statRow("錯誤次數", mine.mistakes || 0, foe.mistakes || 0),
+      "</tbody>",
     ].join("");
     if (!draw) {
       try {
