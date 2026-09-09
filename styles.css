@@ -1016,6 +1016,7 @@ input:focus-visible,
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
   overflow: hidden;
+  position: relative;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: #1a1613;
@@ -3420,6 +3421,30 @@ body.online-battle #screen-result .btn-ghost {
   body.online-battle .duel-half.p1 .board .actions {
     width: 100%;
   }
+  body.online-battle .duel-half.p1 .board .slots {
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 3px;
+  }
+  body.online-battle .duel-half.p1 .board .slot {
+    flex: 0 1 calc((100% - 18px) / 7);
+    width: calc((100% - 18px) / 7);
+    max-width: calc((100% - 18px) / 7);
+    min-width: 0;
+  }
+  body.online-battle .duel-half.p1 .board .slot .kana {
+    font-size: clamp(1.02rem, 4.6vw, 1.22rem);
+  }
+  body.online-battle .duel-half.p1 .board .slot .roma {
+    font-size: clamp(1.05rem, 4.8vw, 1.42rem);
+  }
+  body.online-battle .duel-half.p1 .board .slot.roma-wide .roma {
+    font-size: clamp(0.88rem, 3.8vw, 1.18rem);
+  }
+  body.online-battle .duel-half.p1 .board .slot.filled .roma {
+    font-size: clamp(0.62rem, 2.8vw, 0.78rem);
+    top: 3px;
+  }
   body.online-battle .duel-half.p1 .board .pool {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 5px;
@@ -3485,9 +3510,10 @@ body.online-battle #screen-result .btn-ghost {
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
   }
-  body.online-battle .duel-half.p1 .board .word-reveal {
-    top: auto;
-    bottom: 72px;
+  body.online-battle .duel-stage > .word-reveal {
+    top: 16dvh;
+    bottom: auto;
+    z-index: 20;
     width: calc(100% - 24px);
     max-width: 360px;
     padding: 9px 12px;
@@ -3497,10 +3523,10 @@ body.online-battle #screen-result .btn-ghost {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42);
     animation: wordRevealDock 2.1s var(--ease) forwards;
   }
-  body.online-battle .duel-half.p1 .board .word-reveal strong {
+  body.online-battle .duel-stage > .word-reveal strong {
     font-size: clamp(1.35rem, 7vw, 1.75rem);
   }
-  body.online-battle .duel-half.p1 .board .word-reveal span {
+  body.online-battle .duel-stage > .word-reveal span {
     margin-top: 2px;
     font-size: 0.9rem;
   }

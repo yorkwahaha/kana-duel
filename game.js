@@ -31,7 +31,7 @@ function wordRevealCopy(q) {
 function showWordReveal(player, q) {
   if (!q) return;
   const host = document.body.classList.contains("online-battle")
-    ? $("board1")
+    ? (document.querySelector(".duel-stage") || $("board1"))
     : ($("duel-half-" + player) || $("board" + player));
   if (!host) return;
   host.querySelectorAll(".word-reveal").forEach((n) => n.remove());

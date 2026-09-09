@@ -396,10 +396,10 @@ test("correct answers reveal kanji, reading, and Chinese in every mode", () => {
   assert.match(game, /\$\("reward-title"\)\.textContent = reveal\.title/);
   assert.match(online, /showWordReveal\(player, questionById\(event\.questionId\)\)/);
   assert.match(online, /showWordReveal\(1, question\);\s*showWordReveal\(2, question\)/);
-  assert.match(game, /document\.body\.classList\.contains\("online-battle"\)[\s\S]*?\$\("board1"\)/);
+  assert.match(game, /document\.body\.classList\.contains\("online-battle"\)[\s\S]*?document\.querySelector\("\.duel-stage"\)/);
   assert.match(worker, /performAttack\(room, seat, now, true, question\.id\)/);
   assert.match(css, /\.word-reveal \{ animation: none !important; opacity: 1 !important/);
-  assert.match(css, /\.board \.word-reveal \{[\s\S]*?bottom: 72px/);
+  assert.match(css, /\.duel-stage > \.word-reveal \{[\s\S]*?top: 16dvh/);
 });
 
 test("phone battle pools cap at twelve readable options in two rows", () => {
@@ -428,6 +428,8 @@ test("desktop media and phone online duel keep full artwork and compact actions"
   assert.match(css, /\.duel-half\.p1 \.board \{[\s\S]*?justify-content: flex-end/);
   assert.match(css, /\.board \.actions \{[\s\S]*?grid-template-columns: minmax\(100px, 0\.88fr\) minmax\(106px, 1\.15fr\) minmax\(76px, 0\.82fr\)/);
   assert.match(css, /\.board \.actions \.btn \{[\s\S]*?min-height: 46px/);
+  assert.match(css, /Phone online duel[\s\S]*?flex-wrap: nowrap/);
+  assert.match(css, /Phone online duel[\s\S]*?calc\(\(100% - 18px\) \/ 7\)/);
 });
 
 test("online result uses one upright, aligned comparison view", () => {
