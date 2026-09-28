@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { originAllowed, rateLimitAllowed } from "./http-policy.mjs";
+import { allowSocketMessage, originAllowed, rateLimitAllowed, readJson } from "./http-policy.mjs";
 import {
   ROOM_TTL_MS,
   applyAttack,
@@ -38,12 +38,6 @@ function json(data, status = 200, headers = {}) {
       ...headers,
     },
   });
-}
-
-async function readJson(request) {
-  const text = await request.text();
-  if (text.length > 256 * 1024) throw new Error("PAYLOAD_TOO_LARGE");
-  return JSON.parse(text || "{}");
 }
 
 function websocketToken(request) {
@@ -113,7 +107,9 @@ export class RoomObject extends DurableObject {
     const url = new URL(request.url);
     if (url.pathname === "/create" && request.method === "POST") {
       if (this.room && !roomExpired(this.room)) return json({ error: "ROOM_EXISTS" }, 409);
-      const body = await readJson(request);
+      let body;
+      try { body = await readJson(request); }
+      catch (error) { return json({ error: error.message || "INVALID_JSON" }, 400); }
       try {
         this.room = createRoomState({
           roomCode: body.roomCode,
@@ -130,7 +126,9 @@ export class RoomObject extends DurableObject {
     }
     if (!this.room || roomExpired(this.room)) return json({ error: "ROOM_NOT_FOUND" }, 404);
     if (url.pathname === "/join" && request.method === "POST") {
-      const body = await readJson(request);
+      let body;
+      try { body = await readJson(request); }
+      catch (error) { return json({ error: error.message || "INVALID_JSON" }, 400); }
       const result = joinRoom(this.room, { name: body.playerName, token: body.token });
       if (!result.ok) return json({ error: result.error }, result.error === "ROOM_FULL" ? 409 : 400);
       await this.save();
@@ -138,7 +136,9 @@ export class RoomObject extends DurableObject {
       return json({ token: body.token, room: publicRoomState(this.room, result.seat) });
     }
     if (url.pathname === "/leave" && request.method === "POST") {
-      const body = await readJson(request);
+      let body;
+      try { body = await readJson(request); }
+      catch (error) { return json({ error: error.message || "INVALID_JSON" }, 400); }
       const seat = seatForToken(this.room, body.token);
       if (seat < 0) return json({ error: "INVALID_SESSION" }, 401);
       const result = leaveRoom(this.room, seat);
@@ -175,6 +175,11 @@ export class RoomObject extends DurableObject {
     const { seat } = ws.deserializeAttachment() || {};
     const player = this.room.players[seat];
     if (!player) return;
+    if (!this.socketBuckets) this.socketBuckets = new Map();
+    if (!allowSocketMessage(this.socketBuckets, seat, Date.now())) {
+      this.send(ws, { type: "error", code: "SOCKET_RATE_LIMITED" });
+      return;
+    }
     let command;
     try { command = JSON.parse(raw); } catch (_) {
       this.send(ws, { type: "error", code: "INVALID_MESSAGE" });

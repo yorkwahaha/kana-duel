@@ -115,6 +115,13 @@ test("all referenced local media exist except explicitly deferred audio", () => 
   assert.deepEqual(missing, deferred);
 });
 
+test("practice slot playback reads the placed kana", () => {
+  const game = read("game.js");
+  const fn = game.slice(game.indexOf("function activateBoardSource"), game.indexOf("function bindDragSource"));
+  assert.match(fn, /board\.slots\[info\.slotIndex\]\?\.kana/);
+  assert.doesNotMatch(fn, /targetSeq/);
+});
+
 test("manual submission is the only spelling completion path", () => {
   const game = read("game.js");
   const html = read("index.html");
@@ -470,6 +477,15 @@ test("correct answer feedback floats without moving controls and long romaji sca
   assert.match(css, /\.slot\.roma-wide \.roma \{[\s\S]*?font-size: clamp/);
 });
 
+test("interrupted speech settles instead of leaving the practice round busy", () => {
+  const audio = read("game-audio.js");
+  const stop = audio.slice(audio.indexOf("function stopTts"), audio.indexOf("let sessionTokenPromise"));
+  assert.match(stop, /settleTts\(false\)/);
+  const mark = audio.slice(audio.indexOf("function markAudioInterrupted"), audio.indexOf("async function restoreBattleAudio"));
+  assert.match(mark, /stopTts\(\)/);
+  assert.match(audio, /audioCtx\.state === "suspended" && audioCtxHasRun/);
+});
+
 test("mobile audio restores after returning to the browser and on the next gesture", () => {
   const audio = read("game-audio.js");
   assert.match(audio, /async function restoreBattleAudio\(\)/);
@@ -508,7 +524,7 @@ test("online submit acknowledges touch immediately while the server remains auth
 test("rematch and submit guards keep client battle state consistent", () => {
   const game = read("game.js");
   const online = read("game-online.js");
-  assert.match(online, /if \(active && priorPhase !== "lobby"\) \{\s*active = false;\s*battleOpen = false/);
+  assert.match(online, /if \(active && priorPhase !== "lobby"\) \{\s*setSubmitPending\(false\);\s*active = false;\s*battleOpen = false/);
   assert.match(online, /stopBattleBgm\(\);\s*pauseOverlay\(false\);\s*document\.body\.classList\.remove\("online-battle"\)/);
   assert.doesNotMatch(online, /listenRoundClaimed = room\.battle\.listenClaimed;\s*setSubmitPending\(false\)/);
   assert.match(online, /if \(localQuestionId !== localId\) setSubmitPending\(false\)/);

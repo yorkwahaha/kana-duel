@@ -19,9 +19,13 @@ const MIME = {
   ".webp": "image/webp",
 };
 
+const CSP_LOCAL_MARKER = "wss://kana-voice-match-online.yorkwahaha.workers.dev; object-src";
+
 function localHtml(buffer) {
-  return buffer.toString("utf8").replace(
-    "wss://kana-voice-match-online.yorkwahaha.workers.dev; object-src",
+  const html = buffer.toString("utf8");
+  if (!html.includes(CSP_LOCAL_MARKER)) throw new Error("CSP_LOCAL_INJECT_FAILED");
+  return html.replace(
+    CSP_LOCAL_MARKER,
     `wss://kana-voice-match-online.yorkwahaha.workers.dev${LOCAL_CONNECT}; object-src`
   );
 }
@@ -41,9 +45,11 @@ http.createServer(async (request, response) => {
       "x-content-type-options": "nosniff",
     });
     response.end(body);
-  } catch {
-    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-    response.end("Not found");
+  } catch (error) {
+    const injectFailed = error?.message === "CSP_LOCAL_INJECT_FAILED";
+    if (injectFailed) process.stderr.write("CSP marker missing; local Worker address was not injected\n");
+    response.writeHead(injectFailed ? 500 : 404, { "content-type": "text/plain; charset=utf-8" });
+    response.end(injectFailed ? "CSP marker missing; local Worker address was not injected" : "Not found");
   }
 }).listen(PORT, HOST, () => {
   process.stdout.write(`Kana Voice Match: http://${HOST}:${PORT}\n`);

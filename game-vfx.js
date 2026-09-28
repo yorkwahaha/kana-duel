@@ -28,6 +28,8 @@ function fxThemeOf(player) {
   return FX_THEMES[id] || FX_THEMES.ao;
 }
 function fxLayer() { return $("fx-layer"); }
+let fxEpoch = 0;
+let shakeTimer = 0;
 function fxPoint(fighterEl, yRatio) {
   const r = fighterEl.getBoundingClientRect();
   return { x: r.left + r.width * 0.5, y: r.top + r.height * (yRatio == null ? 0.42 : yRatio) };
@@ -40,10 +42,14 @@ function shakeBattle(heavy) {
   if (prefersReducedMotion()) return;
   const stage = document.querySelector(".duel-stage");
   if (!stage) return;
+  clearTimeout(shakeTimer);
   stage.classList.remove("fx-shake", "fx-shake-lg");
   void stage.offsetWidth;
   stage.classList.add(heavy ? "fx-shake-lg" : "fx-shake");
-  setTimeout(() => stage.classList.remove("fx-shake", "fx-shake-lg"), heavy ? 520 : 380);
+  shakeTimer = setTimeout(() => {
+    shakeTimer = 0;
+    stage.classList.remove("fx-shake", "fx-shake-lg");
+  }, heavy ? 520 : 380);
 }
 function spawnImpactBloom(fighterEl, theme, heavy) {
   const layer = fxLayer();
@@ -473,6 +479,7 @@ function addZigZagBolt(layer, a, b, theme, cls) {
 }
 function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
   return new Promise((resolve) => {
+    const epoch = fxEpoch;
     const layer = fxLayer();
     const fromEl = $("fighter" + fromPlayer);
     const toEl = $("fighter" + toPlayer);
@@ -518,6 +525,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
       for (let i = 1; i <= sparks; i++) {
         const t = i / (sparks + 1);
         setTimeout(() => {
+          if (epoch !== fxEpoch) return;
           const flame = document.createElement("div");
           flame.className = "fx-flame";
           styleFx(flame, theme);
@@ -546,6 +554,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
       for (let i = 1; i <= blades; i++) {
         const t = i / (blades + 1);
         setTimeout(() => {
+          if (epoch !== fxEpoch) return;
           const gale = document.createElement("div");
           gale.className = "fx-wind-arc";
           styleFx(gale, theme);
@@ -567,6 +576,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
       for (let i = 1; i <= daggers; i++) {
         const t = i / (daggers + 1);
         setTimeout(() => {
+          if (epoch !== fxEpoch) return;
           const dagger = document.createElement("div");
           dagger.className = "fx-dagger";
           styleFx(dagger, theme);
@@ -588,6 +598,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
       for (let i = 1; i <= papers; i++) {
         const t = i / (papers + 1);
         setTimeout(() => {
+          if (epoch !== fxEpoch) return;
           const ofuda = document.createElement("div");
           ofuda.className = "fx-ofuda";
           styleFx(ofuda, theme);
@@ -613,6 +624,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
       for (let i = 1; i <= fans; i++) {
         const t = i / (fans + 1);
         setTimeout(() => {
+          if (epoch !== fxEpoch) return;
           const crescent = document.createElement("div");
           crescent.className = "fx-crescent";
           styleFx(crescent, theme);
@@ -632,6 +644,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
       for (let i = 1; i <= shards; i++) {
         const t = i / (shards + 1);
         setTimeout(() => {
+          if (epoch !== fxEpoch) return;
           const crystal = document.createElement("div");
           crystal.className = "fx-crystal";
           styleFx(crystal, theme);
@@ -663,6 +676,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
     for (let i = 1; i <= trailN; i++) {
       const t = i / (trailN + 1);
       setTimeout(() => {
+        if (epoch !== fxEpoch) return;
         const trail = document.createElement("div");
         trail.className = "fx-orb-trail";
         styleFx(trail, theme);
@@ -680,6 +694,9 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
   });
 }
 function clearBattleFx() {
+  fxEpoch += 1;
+  clearTimeout(shakeTimer);
+  shakeTimer = 0;
   const layer = fxLayer();
   if (layer) layer.innerHTML = "";
   const after = $("special-aftermath");

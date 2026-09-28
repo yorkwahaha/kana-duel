@@ -28,7 +28,8 @@ export default [
         location: "readonly",
         KANA_QUESTIONS: "readonly",
         navigator: "readonly",
-        fetch: "readonly"
+        fetch: "readonly",
+        AbortSignal: "readonly"
       }
     },
     rules: {
@@ -44,7 +45,12 @@ export default [
     languageOptions: {
       globals: {
         Request: "readonly",
-        setTimeout: "readonly"
+        clearInterval: "readonly",
+        clearTimeout: "readonly",
+        console: "readonly",
+        setInterval: "readonly",
+        setTimeout: "readonly",
+        URL: "readonly"
       }
     }
   },
@@ -60,7 +66,8 @@ export default [
         Uint8Array: "readonly",
         URL: "readonly",
         WebSocket: "readonly",
-        WebSocketPair: "readonly"
+        WebSocketPair: "readonly",
+        TextDecoder: "readonly"
       }
     },
     rules: {

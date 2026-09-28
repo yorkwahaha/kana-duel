@@ -10,8 +10,11 @@ const ttsBlobCache = new Map();
 const ttsRequestCache = new Map();
 const sharedTtsAudio = new Audio();
 const SILENT_TTS_UNLOCK_SRC = "data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACA";
+const TTS_VOLUME = 1;
 let ttsPlaybackUnlocked = false;
 let ttsUnlockPromise = null;
+let ttsUnlockGen = 0;
+let currentTtsSettle = null;
 sharedTtsAudio.preload = "auto";
 sharedTtsAudio.setAttribute("playsinline", "");
 sharedTtsAudio.setAttribute("webkit-playsinline", "");
@@ -23,26 +26,35 @@ function unlockTtsPlayback(force = false) {
   }
   if (!force && ttsPlaybackUnlocked) return Promise.resolve(true);
   if (ttsUnlockPromise) return ttsUnlockPromise;
-  const priorVolume = sharedTtsAudio.volume;
+  const gen = ++ttsUnlockGen;
   sharedTtsAudio.volume = 0.001;
   sharedTtsAudio.src = SILENT_TTS_UNLOCK_SRC;
   const attempt = sharedTtsAudio.play();
+  const restoreVolume = () => { sharedTtsAudio.volume = TTS_VOLUME; };
   ttsUnlockPromise = Promise.resolve(attempt).then(() => {
+    restoreVolume();
+    if (gen !== ttsUnlockGen) return false;
     sharedTtsAudio.pause();
     sharedTtsAudio.currentTime = 0;
-    sharedTtsAudio.volume = priorVolume;
     ttsPlaybackUnlocked = true;
     return true;
-  }).catch(() => {
-    sharedTtsAudio.volume = priorVolume;
-    return false;
-  }).finally(() => { ttsUnlockPromise = null; });
+  }).catch(() => false).finally(() => {
+    restoreVolume();
+    if (gen !== ttsUnlockGen) return;
+    ttsUnlockPromise = null;
+  });
   return ttsUnlockPromise;
 }
 function revokeCloudUrl(url = currentCloudTtsObjectUrl) {
   if (!url) return;
   if (url === currentCloudTtsObjectUrl) currentCloudTtsObjectUrl = null;
   try { URL.revokeObjectURL(url); } catch {}
+}
+function settleTts(ok) {
+  const settle = currentTtsSettle;
+  currentTtsSettle = null;
+  if (settle) settle(ok);
+  else document.getElementById("portrait")?.classList.remove("speaking");
 }
 function stopTts() {
   ttsSessionId++; revokeCloudUrl();
@@ -55,13 +67,29 @@ function stopTts() {
     try { currentTtsAudio.pause(); currentTtsAudio.currentTime = 0; currentTtsAudio.onended = null; currentTtsAudio.onerror = null; } catch {}
     currentTtsAudio = null;
   }
+  settleTts(false);
 }
+let sessionTokenPromise = null;
+let sessionTokenFailedAt = 0;
 async function getSessionToken() {
   if (sessionTokenData && sessionTokenData.exp > Date.now() + 5000) return sessionTokenData.token;
-  const res = await fetch(TTS_SESSION_URL);
-  if (!res.ok) throw new Error("session");
-  sessionTokenData = await res.json();
-  return sessionTokenData.token;
+  if (Date.now() - sessionTokenFailedAt < 5000) throw new Error("session");
+  if (!sessionTokenPromise) {
+    sessionTokenPromise = (async () => {
+      try {
+        const res = await fetch(TTS_SESSION_URL, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) throw new Error("session");
+        sessionTokenData = await res.json();
+        sessionTokenFailedAt = 0;
+        return sessionTokenData.token;
+      } catch (error) {
+        sessionTokenFailedAt = Date.now();
+        sessionTokenData = null;
+        throw error;
+      }
+    })().finally(() => { sessionTokenPromise = null; });
+  }
+  return sessionTokenPromise;
 }
 function cleanTtsText(text) {
   return String(text || "").replace(/<[^>]*>/g, "").trim();
@@ -82,6 +110,7 @@ async function prepareGoogleTts(text, { rate = "1.0" } = {}) {
       let res = null;
       try {
         for (let i = 0; i < 2; i++) {
+          if (i > 0) await new Promise((resolve) => setTimeout(resolve, 300));
           const token = await getSessionToken();
           res = await fetch(TTS_PROXY_URL, {
             method: "POST",
@@ -92,6 +121,7 @@ async function prepareGoogleTts(text, { rate = "1.0" } = {}) {
           break;
         }
       } catch { res = null; }
+      if (res?.status === 401) throw new Error("TTS 401 after token refresh");
       if (!res?.ok) throw new Error("TTS " + (res?.status || "network"));
       return rememberTtsBlob(key, await res.blob());
     })().finally(() => ttsRequestCache.delete(key)));
@@ -119,13 +149,19 @@ function playPreparedGoogleTts(prepared, my) {
   const url = URL.createObjectURL(prepared.blob);
   revokeCloudUrl(); currentCloudTtsObjectUrl = url;
   const a = sharedTtsAudio; currentTtsAudio = a;
+  a.volume = TTS_VOLUME;
   return new Promise((resolve) => {
+    let settled = false;
     const done = (ok) => {
+      if (settled) return;
+      settled = true;
+      if (currentTtsSettle === done) currentTtsSettle = null;
       if (currentTtsAudio === a) currentTtsAudio = null;
       revokeCloudUrl(url);
       document.getElementById("portrait")?.classList.remove("speaking");
       resolve(ok);
     };
+    currentTtsSettle = done;
     a.onended = () => done(true);
     a.onerror = () => done(false);
     a.src = url;
@@ -159,6 +195,8 @@ async function speakGoogleTts(text, { rate = "1.0" } = {}) {
 // —— 題目語音：優先使用可預載的靜態 MP3，缺檔才退回雲端 TTS ——
 let questionAudioManifestPromise = null;
 const questionAudioBufferCache = new Map();
+const questionAudioPending = new Map();
+const QUESTION_AUDIO_CACHE_MAX = 48;
 let questionAudioSessionId = 0;
 let currentQuestionAudioSource = null;
 let currentQuestionAudioResolve = null;
@@ -171,6 +209,14 @@ function stopQuestionAudio() {
   if (currentQuestionAudioResolve) currentQuestionAudioResolve(false);
   currentQuestionAudioResolve = null;
 }
+function rememberQuestionBuffer(id, buffer) {
+  if (questionAudioBufferCache.has(id)) questionAudioBufferCache.delete(id);
+  questionAudioBufferCache.set(id, buffer);
+  while (questionAudioBufferCache.size > QUESTION_AUDIO_CACHE_MAX) {
+    questionAudioBufferCache.delete(questionAudioBufferCache.keys().next().value);
+  }
+  return buffer;
+}
 async function loadQuestionAudioManifest() {
   if (!questionAudioManifestPromise) {
     questionAudioManifestPromise = fetch("assets/audio/questions/manifest.json")
@@ -181,25 +227,32 @@ async function loadQuestionAudioManifest() {
       })
       .catch(() => null);
   }
-  return questionAudioManifestPromise;
+  const manifest = await questionAudioManifestPromise;
+  if (!manifest) questionAudioManifestPromise = null;
+  return manifest;
 }
 async function prepareQuestionAudio(question) {
   if (!question?.id) return null;
-  if (questionAudioBufferCache.has(question.id)) return questionAudioBufferCache.get(question.id);
-  const manifest = await loadQuestionAudioManifest();
-  const record = manifest?.get(question.id);
-  if (!record?.file) return null;
-  try {
+  if (questionAudioBufferCache.has(question.id)) {
+    const cached = questionAudioBufferCache.get(question.id);
+    questionAudioBufferCache.delete(question.id);
+    questionAudioBufferCache.set(question.id, cached);
+    return cached;
+  }
+  if (questionAudioPending.has(question.id)) return questionAudioPending.get(question.id);
+  const pending = (async () => {
+    const manifest = await loadQuestionAudioManifest();
+    const record = manifest?.get(question.id);
+    if (!record?.file) return null;
     const ctx = await ensureAudioCtx();
     if (!ctx) return null;
     const response = await fetch(record.file);
     if (!response.ok) return null;
     const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
-    questionAudioBufferCache.set(question.id, buffer);
-    return buffer;
-  } catch {
-    return null;
-  }
+    return rememberQuestionBuffer(question.id, buffer);
+  })().catch(() => null).finally(() => questionAudioPending.delete(question.id));
+  questionAudioPending.set(question.id, pending);
+  return pending;
 }
 async function scheduleQuestionAudio(question, { delayMs = 0 } = {}) {
   if (!question) return false;
@@ -212,7 +265,10 @@ async function scheduleQuestionAudio(question, { delayMs = 0 } = {}) {
     return scheduleGoogleTts(question.speakText, { delayMs: Math.max(0, target - performance.now()) });
   }
   const ctx = await ensureAudioCtx();
-  if (!ctx || my !== questionAudioSessionId) return false;
+  if (my !== questionAudioSessionId) return false;
+  if (!ctx || ctx.state !== "running") {
+    return scheduleGoogleTts(question.speakText, { delayMs: Math.max(0, target - performance.now()) });
+  }
   const source = ctx.createBufferSource();
   const gain = ctx.createGain();
   gain.gain.value = 1;
@@ -244,8 +300,11 @@ function setTtsStatus(ok, msg) {
 }
 const sfxCache = new Map();
 const sfxBufCache = new Map();
+const sfxLoadPending = new Map();
+const sfxMissing = new Set();
 const voiceBufCache = new Map();
 let audioCtx = null;
+let audioCtxHasRun = false;
 let audioInterrupted = false;
 let sfxDuckFactor = 1;
 let voiceHtml = null;
@@ -287,39 +346,53 @@ function playHitSfx(hitIndex) {
   const n = Math.max(1, Math.min(5, hitIndex));
   const vol = 0.32 + n * 0.12;
   const preferred = "hit" + n;
-  if (audioCtx && (sfxBufCache.has(preferred) || sfxBufCache.has("sfx_hit"))) {
-    playSfx(sfxBufCache.has(preferred) ? preferred : "sfx_hit", vol);
+  const name = sfxMissing.has(preferred) ? "sfx_hit" : preferred;
+  if (audioCtx && (sfxBufCache.has(name) || sfxBufCache.has("sfx_hit"))) {
+    playSfx(sfxBufCache.has(name) ? name : "sfx_hit", vol);
     return;
   }
   try {
-    let a = sfxCache.get(preferred);
+    let a = sfxCache.get(name);
     if (!a) {
-      a = new Audio("assets/sfx/" + preferred + ".mp3");
-      a.addEventListener("error", () => {
-        sfxCache.set(preferred, sfxCache.get("sfx_hit") || new Audio("assets/sfx/sfx_hit.mp3"));
-      }, { once: true });
-      sfxCache.set(preferred, a);
+      a = new Audio("assets/sfx/" + name + ".mp3");
+      sfxCache.set(name, a);
     }
     const c = a.cloneNode();
     c.volume = Math.min(1, vol * sfxDuckFactor);
-    c.play().catch(() => playSfx("sfx_hit", vol));
+    let fellBack = false;
+    const fallback = () => {
+      if (fellBack) return;
+      fellBack = true;
+      playSfx("sfx_hit", vol);
+    };
+    c.addEventListener("error", fallback, { once: true });
+    c.play().catch(fallback);
   } catch {
     playSfx("sfx_hit", vol);
   }
+}
+function loadSfxBuffer(ctx, name) {
+  if (sfxBufCache.has(name)) return Promise.resolve(sfxBufCache.get(name));
+  if (sfxMissing.has(name)) return Promise.resolve(null);
+  if (sfxLoadPending.has(name)) return sfxLoadPending.get(name);
+  const pending = (async () => {
+    const res = await fetch("assets/sfx/" + name + ".mp3");
+    if (!res.ok) {
+      if (res.status === 404) sfxMissing.add(name);
+      return null;
+    }
+    const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+    sfxBufCache.set(name, buf);
+    return buf;
+  })().catch(() => null).finally(() => sfxLoadPending.delete(name));
+  sfxLoadPending.set(name, pending);
+  return pending;
 }
 async function preloadBattleSfx() {
   const ctx = await ensureAudioCtx();
   if (!ctx) return;
   const names = ["hit1", "hit2", "hit3", "hit4", "hit5", "sfx_hit", "sfx_click", "sfx_miss", "ready", "skillpop", "fanfare", "win"];
-  await Promise.all(names.map(async (name) => {
-    if (sfxBufCache.has(name)) return;
-    try {
-      const res = await fetch("assets/sfx/" + name + ".mp3");
-      if (!res.ok) return;
-      const buf = await ctx.decodeAudioData(await res.arrayBuffer());
-      sfxBufCache.set(name, buf);
-    } catch {}
-  }));
+  await Promise.all(names.map((name) => loadSfxBuffer(ctx, name)));
 }
 
 // —— 選角 BGM ——
@@ -368,6 +441,7 @@ const BATTLE_BGM_PATHS = [
 ];
 const BATTLE_BGM_VOL = 0.12;
 const battleBgmBufferCache = new Map();
+const battleBgmPending = new Map();
 let bgmGain = null;
 let bgmSource = null;
 let bgmHtmlFallback = null;
@@ -387,6 +461,7 @@ async function ensureAudioCtx() {
   if (!AC) return null;
   if (!audioCtx || audioCtx.state === "closed") {
     audioCtx = new AC();
+    audioCtxHasRun = false;
     audioCtx.addEventListener("statechange", onAudioCtxStateChange);
   }
   if (audioCtx.state !== "running") await audioCtx.resume().catch(() => {});
@@ -394,11 +469,13 @@ async function ensureAudioCtx() {
 }
 function onAudioCtxStateChange() {
   if (!audioCtx) return;
-  if (audioCtx.state === "interrupted") {
+  const running = audioCtx.state === "running";
+  if (running) audioCtxHasRun = true;
+  if (audioCtx.state === "interrupted" || (audioCtx.state === "suspended" && audioCtxHasRun)) {
     markAudioInterrupted();
     return;
   }
-  if (audioCtx.state === "running" && audioInterrupted) requestBattleAudioRestore(true);
+  if (running && audioInterrupted) requestBattleAudioRestore(true);
 }
 function clearBgmWatchdog() {
   if (bgmWatchdog) { clearInterval(bgmWatchdog); bgmWatchdog = null; }
@@ -417,13 +494,18 @@ function stopBattleBgm() {
 }
 async function loadBattleBgmBuffer(src) {
   if (battleBgmBufferCache.has(src)) return battleBgmBufferCache.get(src);
-  const ctx = await ensureAudioCtx();
-  if (!ctx) return null;
-  const response = await fetch(src);
-  if (!response.ok) return null;
-  const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
-  battleBgmBufferCache.set(src, buffer);
-  return buffer;
+  if (battleBgmPending.has(src)) return battleBgmPending.get(src);
+  const pending = (async () => {
+    const ctx = await ensureAudioCtx();
+    if (!ctx) return null;
+    const response = await fetch(src);
+    if (!response.ok) return null;
+    const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+    battleBgmBufferCache.set(src, buffer);
+    return buffer;
+  })().finally(() => battleBgmPending.delete(src));
+  battleBgmPending.set(src, pending);
+  return pending;
 }
 async function preloadBattleBgm() {
   await loadBattleBgmBuffer(chooseBattleBgmPath()).catch(() => null);
@@ -503,11 +585,10 @@ function isCharacterSelectScreen() {
 function markAudioInterrupted() {
   audioInterrupted = true;
   ttsPlaybackUnlocked = false;
+  ttsUnlockGen += 1;
   ttsUnlockPromise = null;
+  stopTts();
   try { if (characterSelectBgm && !characterSelectBgm.paused) characterSelectBgm.pause(); } catch {}
-  try {
-    if (sharedTtsAudio && !sharedTtsAudio.paused && currentTtsAudio === sharedTtsAudio) sharedTtsAudio.pause();
-  } catch {}
   try { if (bgmHtmlFallback && !bgmHtmlFallback.paused) bgmHtmlFallback.pause(); } catch {}
 }
 async function restoreBattleAudio() {

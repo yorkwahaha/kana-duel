@@ -7,7 +7,7 @@
 /* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf, getSessionToken */
 /* global battleModeIntroLabel, battleModeLabel, isChineseRaceBattle, isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
 /* global playCastBurst, playHitSfx, playSfx, playSpecialAftermath */
-/* global preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi, speakQuestionAudio */
+/* global preloadBattleBgm, preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi, speakQuestionAudio */
 /* global romajiSequence, setSfxDuck, setTtsStatus, shakeBattle, showCombo, shuffle */
 /* global spawnBlockParry, spawnHitBurst, speakGoogleTts, startBattleBgm, stopBattleBgm */
 /* global startCharacterSelectBgm, stopCharacterSelectBgm */
@@ -44,6 +44,7 @@ function showWordReveal(player, q) {
   host.appendChild(el);
   setTimeout(() => el.remove(), 2200);
 }
+const charStageSize = { 1: null, 2: null };
 function showScreen(name) {
   if (name !== "battle" && name !== "practice") {
     cancelAllDrags();
@@ -56,7 +57,11 @@ function showScreen(name) {
   document.querySelector(".app")?.classList.toggle("char-mode", name === "chars");
   document.querySelector(".app")?.classList.toggle("cover-mode", name === "start");
   syncLockedViewport();
-  if (name === "chars") startCharacterSelectBgm().catch(() => {});
+  if (name === "chars") {
+    charStageSize[1] = null;
+    charStageSize[2] = null;
+    startCharacterSelectBgm().catch(() => {});
+  }
   else if (name !== "online") stopCharacterSelectBgm();
 }
 
@@ -86,8 +91,11 @@ function cancelDragsForBoard(boardId) {
     if (String(session.boardId) === key) cancelDrag(pid);
   }
 }
+const charDrag = { 1: null, 2: null };
 function cancelAllDrags() {
   for (const pid of [...drags.keys()]) cancelDrag(pid);
+  charDrag[1] = null;
+  charDrag[2] = null;
   document.querySelectorAll(".drag-ghost").forEach((n) => n.remove());
   document.querySelectorAll(".dragging").forEach((n) => n.classList.remove("dragging"));
   document.querySelectorAll(".slot.over").forEach((s) => s.classList.remove("over"));
@@ -162,7 +170,7 @@ function activateBoardSource(info, focusPlacedSlot) {
   }
   if (info.from !== "slot") return;
   if (board.id === "practice" && board.slots[info.slotIndex] && !busy) {
-    const mora = board.targetSeq?.[info.slotIndex] || board.slots[info.slotIndex].kana;
+    const mora = board.slots[info.slotIndex]?.kana;
     if (mora) speakGoogleTts(mora);
   } else {
     board.clearSlot(info.slotIndex);
@@ -248,28 +256,37 @@ window.addEventListener("pointermove", (e) => {
   }
   drag.ghost.style.left = e.clientX + "px";
   drag.ghost.style.top = e.clientY + "px";
-  clearSlotOver(drag.boardId);
   const board = boards[drag.boardId];
-  const slotsRoot = board ? $(board.slotsId) : null;
+  const slotsRoot = drag.slotsRoot || (board ? $(board.slotsId) : null);
+  drag.slotsRoot = slotsRoot;
   const over = document.elementFromPoint(e.clientX, e.clientY)?.closest?.(".slot");
-  if (over && slotsRoot?.contains(over)) over.classList.add("over");
+  const next = over && slotsRoot?.contains(over) ? over : null;
+  if (next !== drag.over) {
+    drag.over?.classList.remove("over");
+    drag.over = next;
+    next?.classList.add("over");
+  }
 }, { passive: false });
 window.addEventListener("pointerup", endDrag);
-window.addEventListener("pointercancel", endDrag);
+window.addEventListener("pointercancel", (e) => cancelDrag(e.pointerId));
 window.addEventListener("lostpointercapture", (e) => {
-  if (drags.has(e.pointerId)) endDrag(e);
+  if (drags.has(e.pointerId)) cancelDrag(e.pointerId);
 });
 
 function createBoard(id, slotsId, poolId, feedbackId) {
   return {
     id, slotsId, poolId, feedbackId,
-    slots: [], pool: [], promptRoma: null, locked: false, targetSeq: null,
+    slots: [], pool: [], promptRoma: null, locked: false,
     place(poolItemId, slotIndex) {
       if (this.locked) return -1;
       const item = this.pool.find((p) => p.id === poolItemId);
       if (!item || item.used) return -1;
       const idx = slotIndex != null ? slotIndex : this.slots.findIndex((v) => !v);
-      if (idx < 0) return -1;
+      if (idx < 0) {
+        this.setFeedback("格子已滿", "bad");
+        playSfx("sfx_miss", 0.2);
+        return -1;
+      }
       if (this.slots[idx]) {
         const old = this.pool.find((p) => p.id === this.slots[idx].poolId);
         if (old) {
@@ -336,7 +353,6 @@ function createBoard(id, slotsId, poolId, feedbackId) {
     },
     load(seq, opts) {
       cancelDragsForBoard(this.id);
-      this.targetSeq = (seq || []).slice();
       this.slots = seq.map(() => null);
       this.promptRoma = opts?.showRomaji ? romajiSequence(seq) : null;
       const prompt = $("prompt" + this.id);
@@ -485,13 +501,13 @@ let attackQueue = Promise.resolve();
 let battleEpoch = 0;
 let everMissed = []; // practice: whether the question was missed at least once
 let rewardReturnFocus = null;
+let practiceEpoch = 0;
 
 // —— Character select UI（左輪式輪盤；兩端同時選，可同角色）——
 let charFocus = { 1: 0, 2: 0 };
 const charSpin = { 1: 0, 2: 0 };
 const charSpinTarget = { 1: 0, 2: 0 };
 const charSpinVel = { 1: 0, 2: 0 };
-const charDrag = { 1: null, 2: null };
 const lastCharSwipeAt = { 1: 0, 2: 0 };
 let charSpinRaf = 0;
 let lastCharSpinTs = 0;
@@ -513,8 +529,15 @@ function layoutCharWheel(player) {
   const n = CHARACTERS.length;
   const stage = document.querySelector('[data-char-stage="' + player + '"]');
   if (!n || !stage) return;
-  const width = Math.max(1, stage.clientWidth);
-  const height = Math.max(1, stage.clientHeight);
+  let cached = charStageSize[player];
+  if (!cached) {
+    const w = stage.clientWidth;
+    const h = stage.clientHeight;
+    if (w > 0 && h > 0) charStageSize[player] = cached = { w, h };
+    else cached = { w: 1, h: 1 };
+  }
+  const width = cached.w;
+  const height = cached.h;
   const spin = charSpin[player];
   const front = wrappedIndex(spin, n);
   const mirror = player === 2 ? -1 : 1;
@@ -792,6 +815,7 @@ function bindCharCarouselSwipe() {
     };
     stage.addEventListener("pointerup", end, { capture: true });
     stage.addEventListener("pointercancel", end, { capture: true });
+    stage.addEventListener("lostpointercapture", end, { capture: true });
   });
   const charNavHold = new Map();
   const stopCharNavHold = (pointerId) => {
@@ -828,11 +852,25 @@ function bindCharCarouselSwipe() {
     btn.addEventListener("lostpointercapture", (e) => stopCharNavHold(e.pointerId));
     btn.addEventListener("contextmenu", (e) => e.preventDefault());
   });
-  window.addEventListener("resize", () => {
+  const relayoutCharStages = () => {
+    charStageSize[1] = null;
+    charStageSize[2] = null;
     if ($("screen-chars")?.classList.contains("hidden")) return;
     layoutCharWheel(1);
     layoutCharWheel(2);
-  });
+  };
+  window.addEventListener("resize", relayoutCharStages);
+  document.fonts?.ready?.then(() => relayoutCharStages());
+  if (typeof window.ResizeObserver === "function") {
+    document.querySelectorAll("[data-char-stage]").forEach((stage) => {
+      new window.ResizeObserver(() => {
+        const player = Number(stage.getAttribute("data-char-stage"));
+        charStageSize[player] = null;
+        if ($("screen-chars")?.classList.contains("hidden")) return;
+        layoutCharWheel(player);
+      }).observe(stage);
+    });
+  }
 }
 
 // —— Practice ——
@@ -879,6 +917,7 @@ function practiceSpeakSegment() {
 
 function currentQ() { return QUESTIONS[qi]; }
 function startPractice() {
+  practiceEpoch += 1;
   gameMode = "practice";
   cancelAllDrags();
   // 從大題庫抽一輪，避免一次上百題
@@ -968,12 +1007,14 @@ function playCastVideo(q) {
   });
 }
 async function playReward(q) {
+  const epoch = practiceEpoch;
   busy = true; boards.practice.lockGold(); playSfx("skillpop", 0.5);
   rewardReturnFocus = document.activeElement;
   $("btn-next").disabled = true;
   $("btn-replay").disabled = true;
   showCombo(q.rewardMode === "cast_skill" ? "詠唱完成" : "完璧！");
   await wait(250);
+  if (epoch !== practiceEpoch) return;
   const rewardStage = $("reward-stage");
   rewardStage.classList.add("show");
   rewardStage.setAttribute("aria-hidden", "false");
@@ -996,9 +1037,11 @@ async function playReward(q) {
     playSfx("win", 0.4);
     await Promise.all([playCastVideo(q), speakQuestionAudio(q)]);
   }
+  if (epoch !== practiceEpoch) return;
   busy = false;
   $("btn-next").disabled = false;
   $("btn-replay").disabled = false;
+  if (epoch !== practiceEpoch) return;
   $("btn-next").focus();
 }
 function practiceNext() {
@@ -1079,7 +1122,9 @@ function effectStatusItems(player) {
   if (mistakeGuardReady[player]) items.push(["失誤保護", "待機"]);
   if ((dodgeChance[player] || 0) > 0) items.push(["閃避", dodgeChance[player] + "%"]);
   const regen = regenState[player];
-  if (regen && regen.ticksLeft > 0) items.push(["再生", "36/3秒 · " + regen.ticksLeft + "次"]);
+  if (regen && regen.ticksLeft > 0) {
+    items.push(["再生", REGEN_HP_PER_TICK + "/" + (REGEN_TICK_MS / 1000) + "秒 · " + regen.ticksLeft + "次"]);
+  }
   return items;
 }
 function updateEffectStatus(player) {
@@ -1195,7 +1240,7 @@ function updateSkillUi(player) {
     const foe = player === 1 ? 2 : 1;
     const cost = act?.id === "shadow_dodge" && (dodgeChance[player] || 0) > 0 ? 1 : (act?.cost || 2);
     btnU.textContent = act?.id === "shadow_dodge" && (dodgeChance[player] || 0) > 0
-      ? (act.label + " +10%")
+      ? (act.label + " +" + DODGE_STEP_CHANCE + "%")
       : (act?.label || "專屬");
     btnU.title = (act?.desc || "") + (act ? "（本次耗 " + cost + " COMBO）" : "");
     let can = battleOpen && !!act && (combo[player] || 0) >= cost;
@@ -1226,7 +1271,7 @@ function updateSkillUi(player) {
   const btnSubmit = $("btn-submit-" + player);
   if (btnSubmit) {
     const pending = player === 1 && window.KanaBattleOnline?.isSubmitPending?.();
-    btnSubmit.disabled = pending;
+    btnSubmit.disabled = pending || !!boards[player]?.locked;
     btnSubmit.textContent = pending ? "判定中…" : "提交";
   }
 }
@@ -1411,8 +1456,8 @@ function battleActivateUnique(player) {
     if (!spendOrWarn()) return;
     startLocalRegen(player);
     playSfx("fanfare", 0.32);
-    showEffectForBoth(player, "光癒開始 · 10 次", "P" + player + " 持續回血 30 秒");
-    boards[player]?.setFeedback("光癒 · 每 3 秒回復 36 HP，共 10 次", "ok");
+    showEffectForBoth(player, "光癒開始 · " + REGEN_TICKS + " 次", "P" + player + " 持續回血 " + (REGEN_TICKS * REGEN_TICK_MS / 1000) + " 秒");
+    boards[player]?.setFeedback("光癒 · 每 " + (REGEN_TICK_MS / 1000) + " 秒回復 " + REGEN_HP_PER_TICK + " HP，共 " + REGEN_TICKS + " 次", "ok");
     updatePlayerMeters(player);
   }
 }
@@ -1452,6 +1497,8 @@ function playVsThenBattle() {
   stage.classList.add("show");
   stage.setAttribute("aria-hidden", "false");
   syncLockedViewport();
+  preloadBattleBgm().catch(() => {});
+  preloadBattleSfx().catch(() => {});
   playSfx("fanfare", 0.35);
   setTimeout(() => {
     stage.classList.remove("show");
@@ -1528,18 +1575,22 @@ function startBattle() {
   startBattleBgm().catch(() => {});
 }
 
+const voiceMissing = new Set();
 async function playVoice(url, volume = 0.88) {
-  if (!url) return false;
+  if (!url || voiceMissing.has(url)) return false;
   stopVoice();
   try {
     const ctx = await ensureAudioCtx();
-    if (ctx) {
+    if (ctx && ctx.state === "running") {
       let buf = voiceBufCache.get(url);
       if (!buf) {
         const res = await fetch(url);
         if (res.ok) {
           buf = await ctx.decodeAudioData(await res.arrayBuffer());
           voiceBufCache.set(url, buf);
+        } else if (res.status === 404) {
+          voiceMissing.add(url);
+          return false;
         }
       }
       if (buf) {
@@ -2133,6 +2184,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
 }
 
 function applySelfMissDamage(player, dmg, wrongCount) {
+  if (!battleOpen || hp[player] <= 0) return;
   const missEpoch = battleEpoch;
   playSfx("sfx_miss", 0.4);
   playHitSfx(Math.min(Math.max(1, wrongCount), 5));
@@ -2174,7 +2226,7 @@ function applySelfMissDamage(player, dmg, wrongCount) {
 }
 
 function battleSubmit(player) {
-  if (!battleOpen) return;
+  if (!battleOpen || hp[player] <= 0) return;
   const b = boards[player];
   if (b.locked) return;
   if (nowMs() < submitCooldownUntil[player]) return;
@@ -2277,22 +2329,36 @@ function battleSkip(player) {
   if (b.locked) return;
   combo[player] = 0;
   updatePlayerMeters(player);
-  b.setFeedback("跳過 · 連擊中斷");
   playSfx("sfx_miss", 0.25);
   playerQi[player] += 1;
   loadPlayerQuestion(player);
+  b.setFeedback("跳過 · 連擊中斷", "bad");
 }
 
+let modeEntry = null;
 async function enterMode(mode) {
-  try { await getSessionToken(); setTtsStatus(true, "session OK"); }
-  catch { setTtsStatus(true, "題目 MP3 可用 · 雲端後備離線"); }
-  if (mode === "battle") {
-    pickP1 = CHARACTERS[0] || null;
-    pickP2 = CHARACTERS[1] || CHARACTERS[0] || null;
-    readyP1 = false; readyP2 = false;
-    charFocus = { 1: 0, 2: CHARACTERS.length > 1 ? 1 : 0 };
-    showScreen("chars"); renderCharGrid();
-  } else startPractice();
+  if (modeEntry) return;
+  const practiceBtn = $("btn-mode-practice");
+  const battleBtn = $("btn-mode-battle");
+  if (practiceBtn) practiceBtn.disabled = true;
+  if (battleBtn) battleBtn.disabled = true;
+  modeEntry = (async () => {
+    try { await getSessionToken(); setTtsStatus(true, "session OK"); }
+    catch { setTtsStatus(true, "題目 MP3 可用 · 雲端後備離線"); }
+    if (mode === "battle") {
+      pickP1 = CHARACTERS[0] || null;
+      pickP2 = CHARACTERS[1] || CHARACTERS[0] || null;
+      readyP1 = false; readyP2 = false;
+      charFocus = { 1: 0, 2: CHARACTERS.length > 1 ? 1 : 0 };
+      showScreen("chars"); renderCharGrid();
+    } else startPractice();
+  })();
+  try { await modeEntry; }
+  finally {
+    modeEntry = null;
+    if (practiceBtn) practiceBtn.disabled = false;
+    if (battleBtn) battleBtn.disabled = false;
+  }
 }
 
 // pointerup 點擊：雙人多指＋快速連點時比 click 穩；並避開雙擊放大攔截
@@ -2355,7 +2421,14 @@ document.querySelectorAll(".btn-char-ready").forEach((btn) => {
 });
 bindCharCarouselSwipe();
 
-bindTap($("btn-home-p"), () => { stopTts(); hideReward(); cancelAllDrags(); showScreen("start"); });
+bindTap($("btn-home-p"), () => {
+  practiceEpoch += 1;
+  busy = false;
+  stopTts();
+  hideReward();
+  cancelAllDrags();
+  showScreen("start");
+});
 bindTap($("btn-home-b"), () => {
   if (window.KanaBattleOnline?.isActive()) {
     window.KanaBattleOnline.leaveBattle();

@@ -10,7 +10,7 @@
 /* global showCombo, showDmgFloat, showEffectForBoth, showScreen, showWordReveal, spawnHitBurst, startBattleBgm, stopBattleBgm, stopTts */
 /* global startCharacterSelectBgm, stopCharacterSelectBgm, syncLockedViewport */
 /* global syncFighterPassive, tickBattleClock, updateHpUi, updatePlayerMeters, updateSkillUi, ensureCastLayers, preloadFighterPoses */
-/* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle */
+/* global MAX_ATTACK_SEGMENTS, playSpecialAftermath, playSpecialUltimate, prefersReducedMotion, shakeBattle, REGEN_TICK_MS */
 /* global spawnBlockParry, splitComboDamage, wait, playBattleDefeatOutro */
 (() => {
   const client = window.KanaBattleOnlineClient;
@@ -24,6 +24,8 @@
   let connectionStatus = "idle";
   let battleResultShown = false;
   let submitPending = false;
+  let submitWatchdog = 0;
+  let lastBattleActionAt = 0;
   let pendingCharacterId = "";
   let battleIntroPending = false;
   let battleIntroTimer = 0;
@@ -177,6 +179,8 @@
   }
 
   function setSubmitPending(pending) {
+    clearTimeout(submitWatchdog);
+    submitWatchdog = 0;
     submitPending = !!pending;
     const button = $("btn-submit-1");
     if (!button) return;
@@ -185,8 +189,20 @@
     if (submitPending) {
       button.disabled = true;
       button.textContent = "判定中…";
+      submitWatchdog = setTimeout(() => {
+        submitWatchdog = 0;
+        if (!submitPending) return;
+        setSubmitPending(false);
+        setError("伺服器沒有回應，請再送一次。");
+      }, 8000);
     }
     else updateSkillUi(1);
+  }
+  function takeBattleActionSlot() {
+    const now = performance.now();
+    if (now - lastBattleActionAt < 400) return false;
+    lastBattleActionAt = now;
+    return true;
   }
 
   function loadOnlineQuestion(force = false, extraDistractors = 0) {
@@ -259,7 +275,7 @@
     updateHpUi();
     updatePlayerMeters(1);
     updatePlayerMeters(2);
-    document.querySelectorAll('[data-p="2"]').forEach((button) => { button.disabled = true; });
+    document.querySelectorAll('[data-act][data-p="2"]').forEach((button) => { button.disabled = true; });
     updateOpponentStatus();
     const disruptSeq = Number(mine.boardDisruptSeq || 0);
     const newlyDisrupted = disruptSeq > lastBoardDisruptSeq && mine.boardDisruptQuestionId === room.currentQuestionId;
@@ -519,7 +535,7 @@
       } else if (event.active === "combo_drain") {
         mineText = "符削 −" + event.amount + " COMBO"; foeText = "COMBO −" + event.amount;
       } else if (event.active === "regen") {
-        mineText = "光癒開始 · 10 次"; foeText = "P" + player + " 持續回血 30 秒";
+        mineText = "光癒開始 · " + event.ticks + " 次"; foeText = "P" + player + " 持續回血 " + (event.ticks * REGEN_TICK_MS / 1000) + " 秒";
       }
       showCombo(event.skill === "block" ? "格擋" : event.skill === "heal" ? "回墨" : "專屬技能", "sm");
       showEffectForBoth(player, mineText, foeText, event.active === "disrupt" || event.active === "combo_drain" ? "bad" : "");
@@ -615,6 +631,7 @@
       });
     } else {
       if (active && priorPhase !== "lobby") {
+        setSubmitPending(false);
         active = false;
         battleOpen = false;
         battleEpoch += 1;
@@ -630,6 +647,7 @@
   }
 
   function leaveRoom() {
+    setSubmitPending(false);
     clearOnlineBattleIntro();
     client.leave();
     room = null;
@@ -737,19 +755,30 @@
       else if (action === "submit") {
         if (submitPending) return;
         if (boards[1].slots.some((value) => !value)) { boards[1].setFeedback("還有空格。", "bad"); return; }
+        if (!takeBattleActionSlot()) {
+          boards[1].setFeedback("操作太頻繁，請稍候再試。", "bad");
+          return;
+        }
         setSubmitPending(true);
         boards[1].setFeedback("判定中…");
         if (!client.submit(localQuestionId, boards[1].slots.map((value) => value?.kana || ""))) {
           setSubmitPending(false);
         }
-      } else if (action === "skip") client.skip();
-      else if (action === "attack") client.attack();
-      else if (action === "skill-block") client.skill("block");
-      else if (action === "skill-heal") client.skill("heal");
-      else if (action === "skill-unique") client.skill("unique");
+      } else if (action === "skip" || action === "attack" || action === "skill-block" || action === "skill-heal" || action === "skill-unique") {
+        if (!takeBattleActionSlot()) {
+          boards[1].setFeedback("操作太頻繁，請稍候再試。", "bad");
+          return;
+        }
+        if (action === "skip") client.skip();
+        else if (action === "attack") client.attack();
+        else if (action === "skill-block") client.skill("block");
+        else if (action === "skill-heal") client.skill("heal");
+        else client.skill("unique");
+      }
     },
     leaveBattle: leaveRoom,
     returnToLobby() {
+      setSubmitPending(false);
       if (!room) return leaveRoom();
       battleResultShown = false;
       client.ready(pendingCharacterId || $("online-character")?.value || localPlayer()?.characterId || "ao", false);

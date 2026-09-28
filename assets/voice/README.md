@@ -9,6 +9,8 @@
 
 角色 ID：`ao` `rin` `ya` `go` `ran` `gen` `sho` `yo`
 
+`gen`、`ran`、`sho`、`yo` 尚未收錄（資料夾只有佔位）。缺檔會記下來，不會在每次受擊再請求。
+
 大招喊招／音效改由影片內建：
 
 - `assets/anim/{id}-cast.mp4`

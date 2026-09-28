@@ -155,8 +155,9 @@ const REGEN_HP_PER_TICK = Math.round(MAX_HP * 0.015);
 
 const $ = (id) => document.getElementById(id);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const reducedMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") || null;
 function prefersReducedMotion() {
-  return !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  return !!reducedMotionQuery?.matches;
 }
 function shuffle(a) {
   const x = a.slice();
