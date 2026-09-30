@@ -4,7 +4,7 @@
 /* global DODGE_MAX_CHANCE, DODGE_START_CHANCE, DODGE_STEP_CHANCE, MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, MISTAKE_GUARD_DAMAGE_MULT, PRACTICE_ROUND_SIZE */
 /* global REFLECT_DAMAGE_RATIO, REGEN_HP_PER_TICK, REGEN_TICK_MS, REGEN_TICKS, SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO */
 /* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, categoryLabelOf, clearBattleFx */
-/* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf, getSessionToken */
+/* global diamonds, ensureAudioCtx, ensureBlockLayers, fxThemeOf */
 /* global battleModeIntroLabel, battleModeLabel, isChineseRaceBattle, isListenBattle, keepBattleBgmAlive, playAttackBolt, playBlockActivate */
 /* global playCastBurst, playHitSfx, playSfx, playSpecialAftermath */
 /* global preloadBattleBgm, preloadBattleSfx, prefersReducedMotion, questionPromptTitle, readBattleOptsFromUi, speakQuestionAudio */
@@ -12,7 +12,8 @@
 /* global spawnBlockParry, spawnHitBurst, speakGoogleTts, startBattleBgm, stopBattleBgm */
 /* global startCharacterSelectBgm, stopCharacterSelectBgm */
 /* global stopTts, stopVoice, voiceBufCache, wait */
-/* global QUESTIONS:writable, voiceHtml:writable, voiceWebSrc:writable */
+/* global voiceEpoch */
+/* global QUESTIONS:writable, voiceHtml:writable, voiceWebSrc:writable, voiceWebCleanup:writable, voiceGain:writable, voiceGainBaseVolume:writable, voiceHtmlCleanup:writable */
 // Main interaction, practice, and battle state runtime.
 function hasKanjiText(t) {
   return /[\u4e00-\u9fff\u3005\u3007\u303B]/.test(t || "");
@@ -45,7 +46,18 @@ function showWordReveal(player, q) {
   setTimeout(() => el.remove(), 2200);
 }
 const charStageSize = { 1: null, 2: null };
+let vsStartTimer = 0;
 function showScreen(name) {
+  if (name === "start") window.KanaLearning?.refresh();
+  if (name !== "chars") {
+    clearTimeout(vsStartTimer);
+    vsStartTimer = 0;
+    cancelAnimationFrame(charSpinRaf);
+    charSpinRaf = 0;
+    const vs = $("vs-stage");
+    vs?.classList.remove("show");
+    vs?.setAttribute("aria-hidden", "true");
+  }
   if (name !== "battle" && name !== "practice") {
     cancelAllDrags();
     clearBattleFx();
@@ -354,7 +366,7 @@ function createBoard(id, slotsId, poolId, feedbackId) {
     load(seq, opts) {
       cancelDragsForBoard(this.id);
       this.slots = seq.map(() => null);
-      this.promptRoma = opts?.showRomaji ? romajiSequence(seq) : null;
+      this.promptRoma = opts?.showRomaji && (window.KanaLearning?.settings().hints ?? true) ? romajiSequence(seq) : null;
       const prompt = $("prompt" + this.id);
       if (prompt) {
         prompt.textContent = opts?.promptText || "";
@@ -916,17 +928,34 @@ function practiceSpeakSegment() {
 }
 
 function currentQ() { return QUESTIONS[qi]; }
-function startPractice() {
+let practiceKind = "listen";
+let practiceDailyDate = "";
+let practiceOpenedAt = 0;
+function startPractice(options = {}) {
+  if (!ALL_QUESTIONS.length) {
+    setResultScreen("題庫尚未就緒", "請重新載入後再試。");
+    return;
+  }
   practiceEpoch += 1;
   gameMode = "practice";
   cancelAllDrags();
   // 從大題庫抽一輪，避免一次上百題
-  QUESTIONS = shuffle(ALL_QUESTIONS).slice(0, Math.min(PRACTICE_ROUND_SIZE, ALL_QUESTIONS.length));
+  practiceKind = options.kind || "listen";
+  const learning = window.KanaLearning;
+  practiceDailyDate = learning?.localDay() || "";
+  learning?.beginSession();
+  const ids = practiceKind === "daily" ? learning?.dailyIds(practiceDailyDate)
+    : practiceKind === "review" ? learning?.dueIds() : null;
+  QUESTIONS = ids ? ids.map((id) => ALL_QUESTIONS.find((q) => q.id === id)).filter(Boolean).slice(0, PRACTICE_ROUND_SIZE)
+    : shuffle(ALL_QUESTIONS).slice(0, Math.min(PRACTICE_ROUND_SIZE, ALL_QUESTIONS.length));
+  if (!QUESTIONS.length) { setResultScreen("今天的複習已完成", "目前沒有到期錯題，明天再來。"); return; }
   qi = 0; results = QUESTIONS.map(() => null); everMissed = QUESTIONS.map(() => false); busy = false;
   hideReward(); showScreen("practice"); loadPracticeQuestion(true);
 }
 async function loadPracticeQuestion(autoSpeak) {
   const q = currentQ();
+  if (!q) return;
+  practiceOpenedAt = performance.now();
   practiceSegIndex = 0;
   boards.practice.load(q.kanaSequence);
   $("progress-text").textContent = `${qi + 1} / ${QUESTIONS.length}`;
@@ -938,29 +967,33 @@ async function loadPracticeQuestion(autoSpeak) {
   });
   $("q-type").textContent = TYPE_LABEL[q.contentType] || q.contentType;
   const title = $("q-title");
-  title.textContent = questionPromptTitle(q);
+  title.textContent = practiceKind === "zh" ? q.zh : questionPromptTitle(q);
   title.classList.add("mystery");
-  $("portrait-name").textContent = "聽音練習";
+  $("portrait-name").textContent = ({ zh: "中翻日練習", daily: "每日十詞", review: "錯題複習" })[practiceKind] || "聽音練習";
   const n = q.kanaSequence.length;
   $("slots-hint").textContent = n >= SEGMENT_MIN_LEN
     ? `共 ${n} 格 · 點已填格聽單音 · 可分段重聽`
     : `共 ${n} 格 · 點已填格聽單音 · 拖回字池可拿掉`;
   $("q-diff").textContent = diamonds(q.kanaSequence.length);
+  $("q-diff").setAttribute("aria-label", `長度負荷 ${q.kanaSequence.length} 格；鑽石表示題目長度，不代表日語檢定級別`);
   $("reward-tag").textContent = q.rewardMode === "cast_skill" ? "答對 · 喊招" : "答對 · 慶祝";
   $("reward-tag").className = "tag" + (q.rewardMode === "cast_skill" ? " cast" : "");
   $("avatar-img").src = q.image;
   updatePracticeListenUi(q);
-  if (autoSpeak) await speakQuestionAudio(q);
+  if (autoSpeak && practiceKind !== "zh") await speakQuestionAudio(q);
 }
 async function practiceSubmit() {
   if (busy) return;
   const q = currentQ(), b = boards.practice;
+  if (!q || results[qi] === "ok") return;
   if (b.slots.some((v) => !v)) { b.setFeedback("還有空格。", "bad"); return; }
   playSfx("ready", 0.45);
   if (b.markSlots(q.kanaSequence)) {
+    window.KanaLearning?.recordAttempt(q.id, false);
     b.setFeedback("不正確，再試。", "bad"); playSfx("sfx_miss", 0.35); everMissed[qi] = true; return;
   }
   results[qi] = "ok";
+  window.KanaLearning?.recordAttempt(q.id, true, performance.now() - practiceOpenedAt);
   // 答對才揭曉
   $("q-title").textContent = q.displayName;
   $("q-title").classList.remove("mystery");
@@ -1026,7 +1059,7 @@ async function playReward(q) {
     $("cast-kana").textContent = q.kanaSequence.join("・");
     $("reward-sub").textContent = q.castVideo ? "角色動畫" : "立繪展示 3 秒";
     $("btn-replay").style.display = "";
-    await Promise.all([playCastVideo(q), speakGoogleTts(q.castSpeakText || q.speakText + "！", { rate: "0.95" })]);
+    await Promise.all([playCastVideo(q), speakGoogleTts(q.castSpeakText || q.speakText + "！")]);
   } else {
     $("reward-kicker").textContent = "CELEBRATE · 3s";
     const reveal = wordRevealCopy(q);
@@ -1050,6 +1083,7 @@ function practiceNext() {
   if (qi >= QUESTIONS.length - 1) {
     const ok = results.filter((r) => r === "ok").length;
     const perfect = results.filter((r, i) => r === "ok" && !everMissed[i]).length;
+    if (practiceKind === "daily" && ok === QUESTIONS.length && QUESTIONS.length === 10) window.KanaLearning?.completeDaily(practiceDailyDate);
     setResultScreen("練習結束", `答對 ${ok} / ${QUESTIONS.length} · 一次過關 ${perfect} 題`);
     playSfx("fanfare", 0.4); return;
   }
@@ -1245,7 +1279,7 @@ function updateSkillUi(player) {
     btnU.title = (act?.desc || "") + (act ? "（本次耗 " + cost + " COMBO）" : "");
     let can = battleOpen && !!act && (combo[player] || 0) >= cost;
     if (act?.id === "ink_seal") {
-      can = can && inkDisruptedQuestion[foe] !== currentQuestionKey(foe);
+      can = can && !boards[foe]?.locked && inkDisruptedQuestion[foe] !== currentQuestionKey(foe);
     } else if (act?.id === "ember_steal") {
       can = can && (charge[foe] || 0) > 0;
     } else if (act?.id === "frost_reflect") {
@@ -1332,6 +1366,10 @@ function battleActivateUnique(player) {
   }
 
   if (act.id === "ink_seal") {
+    if (boards[foe]?.locked) {
+      boards[player]?.setFeedback("對手正在換題，請稍候。", "bad");
+      return;
+    }
     const key = currentQuestionKey(foe);
     if (inkDisruptedQuestion[foe] === key) {
       boards[player]?.setFeedback("這一題已受墨鎖干擾", "bad");
@@ -1500,7 +1538,9 @@ function playVsThenBattle() {
   preloadBattleBgm().catch(() => {});
   preloadBattleSfx().catch(() => {});
   playSfx("fanfare", 0.35);
-  setTimeout(() => {
+  clearTimeout(vsStartTimer);
+  vsStartTimer = setTimeout(() => {
+    vsStartTimer = 0;
     stage.classList.remove("show");
     stage.setAttribute("aria-hidden", "true");
     startBattle();
@@ -1579,6 +1619,7 @@ const voiceMissing = new Set();
 async function playVoice(url, volume = 0.88) {
   if (!url || voiceMissing.has(url)) return false;
   stopVoice();
+  const epoch = voiceEpoch;
   try {
     const ctx = await ensureAudioCtx();
     if (ctx && ctx.state === "running") {
@@ -1594,35 +1635,62 @@ async function playVoice(url, volume = 0.88) {
         }
       }
       if (buf) {
+        if (epoch !== voiceEpoch) return false;
         const src = ctx.createBufferSource();
         const g = ctx.createGain();
-        g.gain.value = Math.min(1, volume);
+        voiceGainBaseVolume = Math.min(1, volume);
+        g.gain.value = voiceGainBaseVolume * (window.KanaLearning?.settings().voice ?? 1);
+        voiceGain = g;
         src.buffer = buf;
         src.connect(g);
         g.connect(ctx.destination);
         voiceWebSrc = src;
         await new Promise((resolve) => {
           let settled = false;
-          const done = () => { if (!settled) { settled = true; resolve(); } };
-          src.onended = () => { if (voiceWebSrc === src) voiceWebSrc = null; done(); };
+          let timer;
+          const done = () => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            src.onended = null;
+            try { src.stop(0); } catch {}
+            src.disconnect(); g.disconnect();
+            if (voiceWebSrc === src) voiceWebSrc = null;
+            if (voiceWebCleanup === done) voiceWebCleanup = null;
+            if (voiceGain === g) voiceGain = null;
+            resolve();
+          };
+          voiceWebCleanup = done;
+          src.onended = done;
           src.start(0);
-          setTimeout(done, Math.ceil(buf.duration * 1000) + 120);
+          timer = setTimeout(done, Math.ceil(buf.duration * 1000) + 120);
         });
         return true;
       }
     }
   } catch {}
+  if (epoch !== voiceEpoch) return false;
   try {
     const a = new Audio(url);
     voiceHtml = a;
-    a.volume = Math.min(1, volume);
+    a.volume = Math.min(1, volume) * (window.KanaLearning?.settings().voice ?? 1);
     return await new Promise((resolve) => {
       let settled = false;
-      const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+      let timer;
+      const done = (ok) => {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        a.onended = null; a.onerror = null;
+        try { a.pause(); } catch {}
+        if (voiceHtml === a) voiceHtml = null;
+        if (voiceHtmlCleanup === done) voiceHtmlCleanup = null;
+        resolve(ok);
+      };
+      voiceHtmlCleanup = done;
       a.onended = () => { if (voiceHtml === a) voiceHtml = null; done(true); };
       a.onerror = () => done(false);
       a.play().then(() => {}).catch(() => done(false));
-      setTimeout(() => done(false), 4500);
+      timer = setTimeout(() => done(false), 4500);
     });
   } catch {
     return false;
@@ -1736,11 +1804,12 @@ function colorizePlayerTags(text) {
 }
 
 function resultMarkup(text) {
-  const value = text || "—";
-  return String(value).includes("<") ? value : colorizePlayerTags(value);
+  return colorizePlayerTags(text || "—");
 }
-function setResultScreen(title, summary, withBattleStats, customRows = "") {
-  document.querySelectorAll(".result-title").forEach((el) => { el.innerHTML = resultMarkup(title); });
+function setResultScreen(title, summary, withBattleStats, customRows = "", battleWinner) {
+  document.querySelectorAll(".result-title").forEach((el) => {
+    el.innerHTML = battleWinner === undefined ? resultMarkup(title) : battleResultHeadline(battleWinner);
+  });
   document.querySelectorAll(".result-summary").forEach((el) => { el.innerHTML = resultMarkup(summary || "—"); });
   const rows = customRows || (withBattleStats ? buildBattleStatsRows() : "");
   document.querySelectorAll("[data-result-stats]").forEach((el) => {
@@ -1800,7 +1869,7 @@ async function playBattleDefeatOutro(loser, winner) {
 
 async function finishBattleDefeat(loser, winner, summary) {
   await playBattleDefeatOutro(loser, winner);
-  setResultScreen(battleResultHeadline(winner), summary, true);
+  setResultScreen("", summary, true, "", winner);
   playSfx("fanfare", 0.55);
 }
 
@@ -1823,7 +1892,7 @@ async function finishBattleDraw(summary) {
   shakeBattle(true);
   await wait(prefersReducedMotion() ? 450 : 1200);
   clearBattleFx();
-  setResultScreen(battleResultHeadline(null), summary, true);
+  setResultScreen("", summary, true, "", null);
   playSfx("fanfare", 0.4);
 }
 
@@ -1883,7 +1952,7 @@ async function playSpecialUltimate(player) {
     vid.onended = () => { clearTimeout(hard); finish(); };
     vid.onerror = () => { clearTimeout(hard); usePortrait(); };
     vid.muted = false;
-    vid.volume = 1;
+    vid.volume = window.KanaLearning?.settings().voice ?? 1;
     vid.setAttribute("playsinline", "");
     vid.setAttribute("webkit-playsinline", "");
     vid.src = ch.castVideo;
@@ -2007,10 +2076,16 @@ function splitComboDamage(total, hits) {
     weights.push(w);
     sumW += w;
   }
-  const parts = weights.map((w) => Math.max(1, Math.round(total * (w / sumW))));
-  let diff = total - parts.reduce((a, b) => a + b, 0);
-  parts[parts.length - 1] += diff;
-  if (parts[parts.length - 1] < 1) parts[parts.length - 1] = 1;
+  const amount = Math.max(0, Math.round(total));
+  let cumulative = 0;
+  let allocated = 0;
+  const parts = weights.map((w) => {
+    cumulative += w;
+    const next = Math.round(amount * cumulative / sumW);
+    const part = next - allocated;
+    allocated = next;
+    return part;
+  });
   return parts;
 }
 
@@ -2050,7 +2125,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     if (!battleOpen || actionEpoch !== battleEpoch) return false;
     await playSpecialAftermath(atkTheme.id);
     if (!battleOpen || actionEpoch !== battleEpoch) return false;
-    if (audioCtx && audioCtx.state !== "running") await audioCtx.resume().catch(() => {});
+    if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
     await preloadBattleSfx().catch(() => {});
   } else {
     playCastBurst(atk, atkTheme);
@@ -2108,6 +2183,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     showCombo("HIT " + hitNo, tier);
     hp[foe] = Math.max(0, hp[foe] - partDmg);
     updateHpUi();
+    updatePlayerMeters(foe);
     showDmgFloat(foe, partDmg, hitNo);
     if (guarded) {
       spawnBlockParry(def, hitNo === 1 || hitNo === hits || isSpecial);
@@ -2151,6 +2227,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     if (reflectedDamage > 0) {
       hp[player] = Math.max(0, hp[player] - reflectedDamage);
       updateHpUi();
+      updatePlayerMeters(player);
       showDmgFloat(player, reflectedDamage, 1);
       showEffectForBoth(foe, "霜返 " + reflectedDamage + " 傷害", "反彈傷害 −" + reflectedDamage, "bad");
       playHitSfx(2);
@@ -2193,6 +2270,7 @@ function applySelfMissDamage(player, dmg, wrongCount) {
   const theme = fxThemeOf(player);
   hp[player] = Math.max(0, hp[player] - dmg);
   updateHpUi();
+  updatePlayerMeters(player);
   showDmgFloat(player, dmg, wrongCount);
   spawnHitBurst(me, theme, wrongCount);
   shakeBattle(wrongCount >= 3);
@@ -2288,10 +2366,10 @@ function battleSubmit(player) {
   showWordReveal(player, q);
 
   // 競速：不等對方，立刻進自己的下一題
-  playerQi[player] += 1;
   const questionEpoch = battleEpoch;
   setTimeout(function () {
     if (!battleOpen || questionEpoch !== battleEpoch) return;
+    playerQi[player] += 1;
     loadPlayerQuestion(player);
   }, 900);
 }
@@ -2320,6 +2398,7 @@ function battleFireAttack(player) {
 }
 
 function battleSkip(player) {
+  if (boards[player]?.locked) return;
   if (!battleOpen) return;
   if (isListenBattle()) {
     boards[player]?.setFeedback("聽力搶答不可跳過", "bad");
@@ -2343,8 +2422,7 @@ async function enterMode(mode) {
   if (practiceBtn) practiceBtn.disabled = true;
   if (battleBtn) battleBtn.disabled = true;
   modeEntry = (async () => {
-    try { await getSessionToken(); setTtsStatus(true, "session OK"); }
-    catch { setTtsStatus(true, "題目 MP3 可用 · 雲端後備離線"); }
+    // Static MP3 practice does not need to wait for the cloud session service.
     if (mode === "battle") {
       pickP1 = CHARACTERS[0] || null;
       pickP2 = CHARACTERS[1] || CHARACTERS[0] || null;
@@ -2455,6 +2533,7 @@ document.querySelectorAll(".btn-again-home").forEach((btn) => {
       window.KanaBattleOnline.leaveBattle();
       return;
     }
+    if (gameMode === "practice") { stopTts(); showScreen("start"); return; }
     cancelAllDrags();
     stopBattleBgm();
     stopTts();
@@ -2486,7 +2565,7 @@ document.querySelectorAll(".btn-again").forEach((btn) => {
     if (gameMode === "battle") {
       if (pickP1 && pickP2) startBattle();
       else showScreen("chars");
-    } else startPractice();
+    } else startPractice({ kind: practiceKind });
   });
 });
 
@@ -2495,6 +2574,13 @@ bindTap($("btn-listen"), () => { if (!busy && currentQ()) speakQuestionAudio(cur
 bindTap($("btn-listen-seg"), () => practiceSpeakSegment());
 bindTap($("btn-clear"), () => boards.practice.clearAll());
 bindTap($("btn-submit"), () => practiceSubmit());
+bindTap($("btn-practice-skip"), () => {
+  if (busy || !currentQ() || results[qi]) return;
+  stopTts();
+  everMissed[qi] = true; results[qi] = "skip";
+  window.KanaLearning?.recordAttempt(currentQ().id, false);
+  practiceNext();
+});
 bindTap($("btn-next"), () => practiceNext());
 bindTap($("btn-replay"), () => { if (!busy) playReward(currentQ()); });
 document.querySelectorAll("[data-act]").forEach((btn) => {

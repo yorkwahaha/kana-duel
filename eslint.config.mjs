@@ -1,7 +1,7 @@
 import js from "@eslint/js";
 export default [
   {
-    ignores: ["node_modules/**", "assets/**"],
+    ignores: ["node_modules/**", "assets/**", "worker/.wrangler/**", "outputs/**"],
   },
   {
     ...js.configs.recommended,
@@ -45,6 +45,8 @@ export default [
     languageOptions: {
       globals: {
         Request: "readonly",
+        Response: "readonly",
+        Response: "readonly",
         clearInterval: "readonly",
         clearTimeout: "readonly",
         console: "readonly",

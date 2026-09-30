@@ -21,7 +21,7 @@ test("all eight ultimates keep a cast video and land as a dedicated particle aft
     assert.match(css, new RegExp(`\\.ultimate-particle--${hero}\\b`), `${hero}: missing material-specific particles`);
   }
 
-  assert.match(html, /special-vfx\.css\?v=20260909-layout/);
+  assert.match(html, /special-vfx\.css\?v=20261001/);
   assert.match(vfx, /el\.replaceChildren\(buildSpecialAftermath\(resolvedTheme\)\)/);
   assert.match(vfx, /scene\.appendChild\(buildUltimateAttack\(themeId\)\)/);
   assert.match(vfx, /addUltimateParticles\(scene, themeId\)/);

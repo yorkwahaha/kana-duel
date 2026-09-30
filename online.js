@@ -10,6 +10,7 @@ window.KanaBattleOnlineClient = (() => {
   let reconnectTimer = 0;
   let reconnectAttempts = 0;
   let intentionalClose = false;
+  let stateReceived = false;
   let readySyncTimers = [];
   let handlers = { onState() {}, onConnection() {}, onError() {} };
 
@@ -21,7 +22,15 @@ window.KanaBattleOnlineClient = (() => {
     PLAYER_NOT_CONNECTED: "連線尚未完成，請稍候再準備。",
     CHARACTER_TAKEN: "對手已選這名角色，請換一位。",
     OPPONENT_UNAVAILABLE: "對手目前離線，對戰已暫停。",
-    STALE_STATE: "戰況剛更新，已重新同步。",
+    STALE_STATE: "戰況剛更新，已重新同步；請再按一次。",
+    INVALID_DECK: "題組無效，請重新選擇分類或題目長度。",
+    INVALID_JSON: "請求格式無效，請重新操作。",
+    INVALID_MESSAGE: "連線訊息格式無效，請重新加入。",
+    INVALID_ROOM: "房號格式無效，請輸入六碼英數字。",
+    ROOM_CODE_UNAVAILABLE: "暫時無法產生房號，請稍後再試。",
+    ROOM_EXISTS: "房號已被使用，請重新建立。",
+    UNKNOWN_COMMAND: "無法辨識這個操作，請重新整理。",
+    NOT_FOUND: "找不到這個服務，請重新整理。",
     STALE_QUESTION: "題目已更新，請依新題目作答。",
     ROUND_ALREADY_CLAIMED: "本輪已被對手搶先答對。",
     ROUND_NOT_STARTED: "題目語音尚未開始，請先聽完提示。",
@@ -62,6 +71,11 @@ window.KanaBattleOnlineClient = (() => {
 
   function sessionKey(code) {
     return SESSION_PREFIX + String(code || "").toUpperCase();
+  }
+
+  function normalizeRoomCode(code) {
+    const clean = String(code || "").trim().toUpperCase();
+    return /^[A-Z2-9]{6}$/.test(clean) ? clean : "";
   }
 
   function saveSession(playerName) {
@@ -131,6 +145,11 @@ window.KanaBattleOnlineClient = (() => {
 
   function connect() {
     clearReconnect();
+    clearReadySync();
+    const oldSocket = socket;
+    socket = null;
+    if (oldSocket) { try { oldSocket.close(); } catch {} }
+    stateReceived = false;
     intentionalClose = false;
     emitConnection(reconnectAttempts ? "reconnecting" : "connecting");
     let currentSocket;
@@ -141,26 +160,32 @@ window.KanaBattleOnlineClient = (() => {
       scheduleReconnect();
       return;
     }
-    let openTimer = setTimeout(() => {
+    const onStalled = () => {
       if (socket !== currentSocket || intentionalClose) return;
       socket = null;
       try { currentSocket.close(); } catch {}
       scheduleReconnect();
-    }, 6000);
+    };
+    let openTimer = setTimeout(onStalled, 6000);
     currentSocket.addEventListener("open", () => {
       if (socket !== currentSocket || intentionalClose) return;
       clearTimeout(openTimer);
-      openTimer = 0;
-      reconnectAttempts = 0;
-      emitConnection("connected");
+      openTimer = setTimeout(onStalled, 6000);
       currentSocket.send(JSON.stringify({ type: "sync" }));
     });
     currentSocket.addEventListener("message", (event) => {
       if (socket !== currentSocket || intentionalClose) return;
       let message;
       try { message = JSON.parse(event.data); } catch { return; }
+      if (!message || typeof message !== "object" || Array.isArray(message)) return;
       if (message.room && (!room || message.room.version >= room.version)) {
+        clearTimeout(openTimer);
+        openTimer = 0;
         room = message.room;
+        stateReceived = true;
+        // Merely opening is not a successful recovery: require useful state.
+        reconnectAttempts = 0;
+        emitConnection("connected");
         if (room.phase !== "lobby") clearReadySync();
         handlers.onState(room);
       }
@@ -174,6 +199,8 @@ window.KanaBattleOnlineClient = (() => {
       if (intentionalClose) { emitConnection("closed"); return; }
       if (event.code === 4000 || event.code === 4001) {
         intentionalClose = true;
+        forgetSession();
+        token = "";
         emitConnection("closed");
         emitError(event.code === 4000 ? "ROOM_NOT_FOUND" : "INVALID_SESSION", event.reason);
         return;
@@ -217,7 +244,8 @@ window.KanaBattleOnlineClient = (() => {
   }
 
   async function join({ playerName, code }) {
-    const clean = String(code || "").toUpperCase().replace(/[^A-Z2-9]/g, "");
+    const clean = normalizeRoomCode(code);
+    if (!clean) { emitError("INVALID_ROOM"); throw new Error("INVALID_ROOM"); }
     emitConnection("joining");
     try {
       return acceptSession(await request(`/rooms/${encodeURIComponent(clean)}/join`, { method: "POST", body: JSON.stringify({ playerName }) }), playerName);
@@ -227,9 +255,11 @@ window.KanaBattleOnlineClient = (() => {
   }
 
   function resume(code) {
-    const saved = loadSession(code);
-    if (!saved?.token) return false;
-    roomCode = saved.roomCode;
+    const clean = normalizeRoomCode(code);
+    if (!clean) return false;
+    const saved = loadSession(clean);
+    if (!saved?.token || saved.roomCode !== clean || typeof saved.token !== "string") return false;
+    roomCode = clean;
     token = saved.token;
     room = null;
     connect();
@@ -237,7 +267,7 @@ window.KanaBattleOnlineClient = (() => {
   }
 
   function send(type, payload = {}) {
-    if (!socket || socket.readyState !== window.WebSocket.OPEN || !room) {
+    if (!socket || socket.readyState !== window.WebSocket.OPEN || !room || !stateReceived) {
       emitError("NETWORK_UNAVAILABLE");
       return false;
     }
@@ -275,6 +305,7 @@ window.KanaBattleOnlineClient = (() => {
 
   return {
     apiBase: API_BASE,
+    normalizeRoomCode,
     init(next) { handlers = { ...handlers, ...(next || {}) }; },
     create, join, resume, leave,
     ready(characterId, ready = true) {

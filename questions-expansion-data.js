@@ -99,7 +99,7 @@
       ["manga_word", "マンガ", null, "漫畫"], ["supootsu", "スポーツ", null, "運動"], ["sakkaa", "サッカー", null, "足球"], ["tenisu", "テニス", null, "網球"], ["basuketto", "バスケット", null, "籃球"],
       ["bareebooru", "バレーボール", null, "排球"], ["piano", "ピアノ", null, "鋼琴"], ["gitaa", "ギター", null, "吉他"], ["konsaato", "コンサート", null, "演唱會"], ["dorama", "ドラマ", null, "戲劇"],
       ["chansu", "チャンス", null, "機會"], ["memo", "メモ", null, "筆記"], ["nooto", "ノート", null, "筆記本"], ["pen", "ペン", null, "筆"], ["purezento", "プレゼント", null, "禮物"],
-      ["paatii", "パーティー", null, "派對"], ["ryukkusakku", "リュックサック", null, "後背包"], ["petto", "ペット", null, "寵物"], ["dokutaa", "ドクター", null, "醫生"], ["sukejuuru", "スケジュール", null, "行程表"],
+      ["paatii", "パーティー", null, "派對"], ["ryukkusakku", "リュックサック", null, "後背包"], ["petto", "ペット", null, "寵物"], ["dokutaa", "ドクター", null, "醫生（外來語）"], ["sukejuuru", "スケジュール", null, "行程表"],
     ],
     action: [
       ["okiru", "おきる", "起きる", "起床"], ["neru", "ねる", "寝る", "睡覺"], ["aruku", "あるく", "歩く", "走路"], ["hashiru", "はしる", "走る", "跑步"], ["oyogu", "およぐ", "泳ぐ", "游泳"],
@@ -110,7 +110,7 @@
     daily: [
       ["yukkuri", "ゆっくり", null, "慢慢地"], ["hayaku", "はやく", "早く", "快點／早點"], ["sugu", "すぐ", null, "馬上"], ["mata", "また", null, "再／又"], ["mada", "まだ", null, "還沒／仍然"],
       ["mou", "もう", null, "已經"], ["itsumo", "いつも", null, "總是"], ["yoku", "よく", null, "經常／很好地"], ["tokidoki", "ときどき", "時々", "有時候"], ["amari", "あまり", null, "不太"],
-      ["zenzen", "ぜんぜん", "全然", "完全不"], ["issho", "いっしょ", "一緒", "一起"], ["hitoride", "ひとりで", "一人で", "一個人"], ["chotto", "ちょっと", null, "一點／稍微"], ["motto", "もっと", null, "更／再多一些"],
+      ["zenzen", "ぜんぜん", "全然", "完全不"], ["issho", "いっしょ", "一緒", "一起"], ["hitoride", "ひとりで", "一人で", "獨自／自己一個人"], ["chotto", "ちょっと", null, "一點／稍微"], ["motto", "もっと", null, "更／再多一些"],
     ],
   };
 

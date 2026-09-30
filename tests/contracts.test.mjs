@@ -158,12 +158,13 @@ test("reduced-motion mode avoids long video and shake sequences", () => {
 
 test("split scripts load in dependency order", () => {
   const html = read("index.html");
-  const scripts = ["questions-data.js", "questions-expansion-data.js", "game-content.js", "game-audio.js", "game-vfx.js", "game.js"];
+  const scripts = ["questions-data.js", "questions-expansion-data.js", "game-content.js", "game-learning.js", "game-audio.js", "game-vfx.js", "online.js", "game.js", "game-online.js", "pwa.js"];
   const offsets = scripts.map((script) => html.indexOf(`src="${script}`));
   assert.ok(offsets.every((offset) => offset >= 0), "all game modules must be loaded");
   assert.deepEqual(offsets, offsets.slice().sort((a, b) => a - b), "game modules are out of order");
   const releaseVersions = [...html.matchAll(/(?:src|href)="[^"]+\?v=([^"]+)"/g)].map((match) => match[1]);
-  assert.equal(releaseVersions.length, 10, "all CSS and scripts need a release cache version");
+  assert.equal(releaseVersions.length, scripts.length + 2, "all CSS and scripts need a release cache version");
+  assert.equal((html.match(/<script defer src=/g) || []).length, scripts.length);
   assert.equal(new Set(releaseVersions).size, 1, "CSS and scripts must share one release cache version");
 });
 

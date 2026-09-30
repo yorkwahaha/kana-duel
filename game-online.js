@@ -247,15 +247,17 @@
       status.setAttribute("aria-live", "polite");
       $("duel-half-2")?.querySelector(".duel-panel")?.appendChild(status);
     }
-    const opponent = room.battle.fighters[remoteSeat()];
+    const opponent = room.battle.fighters?.[remoteSeat()];
+    if (!opponent) { status.textContent = "等待對手戰況同步…"; return; }
     const connected = remotePlayer()?.connected;
     status.innerHTML = `<strong>${connected ? "對手作答中" : "對手重新連線中"}</strong><span>答對 ${opponent.corrects} 題 · COMBO ${opponent.combo}</span>`;
   }
 
   function syncBattleState() {
     if (!room?.battle) return;
-    const mine = room.battle.fighters[localSeat()];
-    const foe = room.battle.fighters[remoteSeat()];
+    const mine = room.battle.fighters?.[localSeat()];
+    const foe = room.battle.fighters?.[remoteSeat()];
+    if (!mine || !foe) return;
     hp = { 1: mine.hp, 2: foe.hp };
     charge = { 1: mine.charge, 2: foe.charge };
     combo = { 1: mine.combo, 2: foe.combo };
@@ -685,7 +687,16 @@
       }
       if (room?.phase === "lobby") renderLobby();
     },
-    onError(error) { setSubmitPending(false); setError(error.message); },
+    onError(error) {
+      setSubmitPending(false);
+      if (error.code === "CHARACTER_TAKEN") {
+        const mine = localPlayer()?.characterId;
+        const taken = remotePlayer()?.characterId;
+        pendingCharacterId = mine && mine !== taken ? mine : CHARACTERS.find((ch) => ch.id !== taken)?.id || "ao";
+        renderCharacterCard(pendingCharacterId);
+      }
+      setError(error.message);
+    },
   });
 
   const characterSelect = $("online-character");
@@ -790,7 +801,9 @@
     },
   };
 
-  const invitedRoom = new URL(location.href).searchParams.get("room");
+  const rawInvite = new URL(location.href).searchParams.get("room");
+  const invitedRoom = client.normalizeRoomCode(rawInvite);
+  if (rawInvite && !invitedRoom) { enterOnline(); setError("邀請房號無效，請輸入六碼英數字。"); }
   if (invitedRoom) {
     enterOnline();
     if (!client.resume(invitedRoom)) setInviteMode(true, invitedRoom);

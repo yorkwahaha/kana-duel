@@ -11,6 +11,19 @@ const ttsRequestCache = new Map();
 const sharedTtsAudio = new Audio();
 const SILENT_TTS_UNLOCK_SRC = "data:audio/wav;base64,UklGRiUAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQEAAACA";
 const TTS_VOLUME = 1;
+function audioPreference(key) { return window.KanaLearning?.settings()[key] ?? 1; }
+function applyAudioSettings() {
+  applyBgmVolume();
+  if (characterSelectBgm) characterSelectBgm.volume = CHARACTER_SELECT_BGM_VOL * audioPreference("bgm");
+  sharedTtsAudio.volume = TTS_VOLUME * audioPreference("voice");
+  if (currentQuestionGain) currentQuestionGain.gain.value = audioPreference("voice");
+  if (currentQuestionAudioSource) currentQuestionAudioSource.playbackRate.value = audioPreference("speed");
+  if (currentQuestionHtml) { currentQuestionHtml.volume = audioPreference("voice"); currentQuestionHtml.playbackRate = audioPreference("speed"); }
+  if (voiceGain) voiceGain.gain.value = voiceGainBaseVolume * audioPreference("voice");
+  if (voiceHtml) voiceHtml.volume = audioPreference("voice");
+  const video = document.getElementById("special-video");
+  if (video) video.volume = audioPreference("voice");
+}
 let ttsPlaybackUnlocked = false;
 let ttsUnlockPromise = null;
 let ttsUnlockGen = 0;
@@ -30,8 +43,12 @@ function unlockTtsPlayback(force = false) {
   sharedTtsAudio.volume = 0.001;
   sharedTtsAudio.src = SILENT_TTS_UNLOCK_SRC;
   const attempt = sharedTtsAudio.play();
-  const restoreVolume = () => { sharedTtsAudio.volume = TTS_VOLUME; };
-  ttsUnlockPromise = Promise.resolve(attempt).then(() => {
+  let unlockTimer;
+  const boundedAttempt = Promise.race([Promise.resolve(attempt), new Promise((_, reject) => {
+    unlockTimer = setTimeout(() => reject(new Error("audio unlock timeout")), 1500);
+  })]);
+  const restoreVolume = () => { sharedTtsAudio.volume = TTS_VOLUME * audioPreference("voice"); };
+  ttsUnlockPromise = boundedAttempt.then(() => {
     restoreVolume();
     if (gen !== ttsUnlockGen) return false;
     sharedTtsAudio.pause();
@@ -39,6 +56,7 @@ function unlockTtsPlayback(force = false) {
     ttsPlaybackUnlocked = true;
     return true;
   }).catch(() => false).finally(() => {
+    clearTimeout(unlockTimer);
     restoreVolume();
     if (gen !== ttsUnlockGen) return;
     ttsUnlockPromise = null;
@@ -149,12 +167,14 @@ function playPreparedGoogleTts(prepared, my) {
   const url = URL.createObjectURL(prepared.blob);
   revokeCloudUrl(); currentCloudTtsObjectUrl = url;
   const a = sharedTtsAudio; currentTtsAudio = a;
-  a.volume = TTS_VOLUME;
+  a.volume = TTS_VOLUME * audioPreference("voice");
   return new Promise((resolve) => {
     let settled = false;
+    const hardTimer = setTimeout(() => done(false), 30000);
     const done = (ok) => {
       if (settled) return;
       settled = true;
+      clearTimeout(hardTimer);
       if (currentTtsSettle === done) currentTtsSettle = null;
       if (currentTtsAudio === a) currentTtsAudio = null;
       revokeCloudUrl(url);
@@ -174,7 +194,7 @@ function playPreparedGoogleTts(prepared, my) {
     });
   });
 }
-async function scheduleGoogleTts(text, { rate = "1.0", delayMs = 0 } = {}) {
+async function scheduleGoogleTts(text, { rate = String(audioPreference("speed")), delayMs = 0 } = {}) {
   const clean = cleanTtsText(text);
   if (!clean) return false;
   stopTts();
@@ -188,7 +208,7 @@ async function scheduleGoogleTts(text, { rate = "1.0", delayMs = 0 } = {}) {
   if (!await waitForTtsStart(Math.max(0, target - performance.now()), my)) return false;
   return playPreparedGoogleTts(prepared, my);
 }
-async function speakGoogleTts(text, { rate = "1.0" } = {}) {
+async function speakGoogleTts(text, { rate = String(audioPreference("speed")) } = {}) {
   return scheduleGoogleTts(text, { rate, delayMs: 0 });
 }
 
@@ -199,7 +219,9 @@ const questionAudioPending = new Map();
 const QUESTION_AUDIO_CACHE_MAX = 48;
 let questionAudioSessionId = 0;
 let currentQuestionAudioSource = null;
+let currentQuestionGain = null;
 let currentQuestionAudioResolve = null;
+let currentQuestionHtml = null;
 function stopQuestionAudio() {
   questionAudioSessionId += 1;
   if (currentQuestionAudioSource) {
@@ -208,6 +230,41 @@ function stopQuestionAudio() {
   }
   if (currentQuestionAudioResolve) currentQuestionAudioResolve(false);
   currentQuestionAudioResolve = null;
+}
+async function playQuestionHtml(question, target, my) {
+  const record = (await loadQuestionAudioManifest())?.get(question.id);
+  if (!record?.file || my !== questionAudioSessionId) return false;
+  const audio = new Audio(record.file);
+  audio.volume = audioPreference("voice");
+  audio.playbackRate = audioPreference("speed");
+  audio.setAttribute("playsinline", "");
+  currentQuestionHtml = audio;
+  return new Promise((resolve) => {
+    let startTimer;
+    let hardTimer;
+    let settled = false;
+    const done = (ok) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(startTimer); clearTimeout(hardTimer);
+      audio.onended = null; audio.onerror = null;
+      try { audio.pause(); } catch {}
+      if (currentQuestionHtml === audio) currentQuestionHtml = null;
+      if (currentQuestionAudioResolve === done) currentQuestionAudioResolve = null;
+      resolve(ok);
+    };
+    currentQuestionAudioResolve = done;
+    audio.onended = () => done(true);
+    audio.onerror = () => done(false);
+    const delay = Math.max(0, target - performance.now());
+    const start = () => {
+      if (my !== questionAudioSessionId) return done(false);
+      audio.play().then(() => setTtsStatus(true, "本地題目 MP3")).catch(() => done(false));
+    };
+    hardTimer = setTimeout(() => done(false), delay + 30000);
+    if (delay) startTimer = setTimeout(start, delay);
+    else start();
+  });
 }
 function rememberQuestionBuffer(id, buffer) {
   if (questionAudioBufferCache.has(id)) questionAudioBufferCache.delete(id);
@@ -262,23 +319,30 @@ async function scheduleQuestionAudio(question, { delayMs = 0 } = {}) {
   const buffer = await prepareQuestionAudio(question);
   if (!buffer || my !== questionAudioSessionId) {
     if (my !== questionAudioSessionId) return false;
+    if (await playQuestionHtml(question, target, my)) return true;
+    if (my !== questionAudioSessionId) return false;
     return scheduleGoogleTts(question.speakText, { delayMs: Math.max(0, target - performance.now()) });
   }
   const ctx = await ensureAudioCtx();
   if (my !== questionAudioSessionId) return false;
   if (!ctx || ctx.state !== "running") {
+    if (await playQuestionHtml(question, target, my)) return true;
+    if (my !== questionAudioSessionId) return false;
     return scheduleGoogleTts(question.speakText, { delayMs: Math.max(0, target - performance.now()) });
   }
   const source = ctx.createBufferSource();
   const gain = ctx.createGain();
-  gain.gain.value = 1;
+  gain.gain.value = audioPreference("voice");
   source.buffer = buffer;
+  source.playbackRate.value = audioPreference("speed");
   source.connect(gain);
   gain.connect(ctx.destination);
   currentQuestionAudioSource = source;
+  currentQuestionGain = gain;
   return new Promise((resolve) => {
     const done = (ok) => {
       if (currentQuestionAudioSource === source) currentQuestionAudioSource = null;
+      if (currentQuestionGain === gain) currentQuestionGain = null;
       if (currentQuestionAudioResolve === done) currentQuestionAudioResolve = null;
       try { source.disconnect(); gain.disconnect(); } catch {}
       resolve(ok);
@@ -309,8 +373,16 @@ let audioInterrupted = false;
 let sfxDuckFactor = 1;
 let voiceHtml = null;
 let voiceWebSrc = null;
+let voiceWebCleanup = null;
+let voiceGain = null;
+let voiceGainBaseVolume = 1;
+let voiceEpoch = 0;
+let voiceHtmlCleanup = null;
 function stopVoice() {
-  try { if (voiceWebSrc) { voiceWebSrc.onended = null; voiceWebSrc.stop(0); voiceWebSrc.disconnect(); } } catch {}
+  voiceEpoch += 1;
+  try { if (voiceWebSrc) voiceWebSrc.stop(0); } catch {}
+  if (voiceWebCleanup) voiceWebCleanup();
+  if (voiceHtmlCleanup) voiceHtmlCleanup(false);
   voiceWebSrc = null;
   if (voiceHtml) {
     try { voiceHtml.pause(); voiceHtml.removeAttribute("src"); voiceHtml.load(); } catch {}
@@ -322,16 +394,16 @@ function setSfxDuck(factor) {
 }
 function playSfx(name, volume = 0.45) {
   try {
-    const vol = Math.min(1, volume * sfxDuckFactor);
+    const vol = Math.min(1, volume * sfxDuckFactor * audioPreference("sfx"));
     if (vol <= 0.001) return;
-    if (audioCtx && sfxBufCache.has(name)) {
-      if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+    if (audioCtx?.state === "running" && sfxBufCache.has(name)) {
       const src = audioCtx.createBufferSource();
       const g = audioCtx.createGain();
       g.gain.value = vol;
       src.buffer = sfxBufCache.get(name);
       src.connect(g);
       g.connect(audioCtx.destination);
+      src.onended = () => { src.disconnect(); g.disconnect(); };
       src.start(0);
       return;
     }
@@ -358,7 +430,7 @@ function playHitSfx(hitIndex) {
       sfxCache.set(name, a);
     }
     const c = a.cloneNode();
-    c.volume = Math.min(1, vol * sfxDuckFactor);
+    c.volume = Math.min(1, vol * sfxDuckFactor * audioPreference("sfx"));
     let fellBack = false;
     const fallback = () => {
       if (fellBack) return;
@@ -407,7 +479,7 @@ async function startCharacterSelectBgm(opts = {}) {
     characterSelectBgm = new Audio(CHARACTER_SELECT_BGM_PATH);
     characterSelectBgm.loop = true;
     characterSelectBgm.preload = "auto";
-    characterSelectBgm.volume = CHARACTER_SELECT_BGM_VOL;
+    characterSelectBgm.volume = CHARACTER_SELECT_BGM_VOL * audioPreference("bgm");
     characterSelectBgm.setAttribute("playsinline", "");
     characterSelectBgm.setAttribute("webkit-playsinline", "");
     characterSelectBgm.addEventListener("error", () => { characterSelectBgmUnavailable = true; }, { once: true });
@@ -464,7 +536,8 @@ async function ensureAudioCtx() {
     audioCtxHasRun = false;
     audioCtx.addEventListener("statechange", onAudioCtxStateChange);
   }
-  if (audioCtx.state !== "running") await audioCtx.resume().catch(() => {});
+  // Autoplay policy may leave resume pending until a later gesture.
+  if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
   return audioCtx;
 }
 function onAudioCtxStateChange() {
@@ -511,10 +584,11 @@ async function preloadBattleBgm() {
   await loadBattleBgmBuffer(chooseBattleBgmPath()).catch(() => null);
 }
 function applyBgmVolume() {
+  const volume = BATTLE_BGM_VOL * audioPreference("bgm");
   if (bgmGain && audioCtx) {
-    try { bgmGain.gain.setTargetAtTime(BATTLE_BGM_VOL, audioCtx.currentTime, 0.03); } catch { bgmGain.gain.value = BATTLE_BGM_VOL; }
+    try { bgmGain.gain.setTargetAtTime(volume, audioCtx.currentTime, 0.03); } catch { bgmGain.gain.value = volume; }
   }
-  if (bgmHtmlFallback) bgmHtmlFallback.volume = BATTLE_BGM_VOL;
+  if (bgmHtmlFallback) bgmHtmlFallback.volume = volume;
 }
 function keepBattleBgmAlive() {
   if (!battleOpen) return;
@@ -533,12 +607,12 @@ async function startBattleBgm() {
   queuedBattleBgmPath = "";
   try {
     const ctx = await ensureAudioCtx();
-    if (!ctx) throw new Error("no AudioContext");
+    if (!ctx || ctx.state !== "running") throw new Error("AudioContext unavailable");
     const buf = await loadBattleBgmBuffer(src);
     if (!buf) throw new Error("bgm fetch fail");
     if (my !== bgmSessionId || !battleOpen) return false;
     bgmGain = ctx.createGain();
-    bgmGain.gain.value = BATTLE_BGM_VOL;
+    bgmGain.gain.value = BATTLE_BGM_VOL * audioPreference("bgm");
     bgmGain.connect(ctx.destination);
     const node = ctx.createBufferSource();
     node.buffer = buf;
@@ -550,7 +624,7 @@ async function startBattleBgm() {
     if (my !== bgmSessionId || !battleOpen) return false;
     const a = new Audio(src);
     a.loop = true;
-    a.volume = BATTLE_BGM_VOL;
+    a.volume = BATTLE_BGM_VOL * audioPreference("bgm");
     bgmHtmlFallback = a;
     a.play().catch(() => {});
   }
@@ -567,6 +641,7 @@ async function primeBattleAudio() {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
+    source.onended = () => source.disconnect();
     source.start(0);
   }
   await Promise.allSettled([ttsUnlock, preloadBattleSfx(), preloadBattleBgm()]);
@@ -593,7 +668,6 @@ function markAudioInterrupted() {
 }
 async function restoreBattleAudio() {
   const wasInterrupted = audioInterrupted;
-  if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
   const ctx = await ensureAudioCtx();
   if (wasInterrupted || !ttsPlaybackUnlocked) await unlockTtsPlayback(true).catch(() => {});
   if (battleOpen) {

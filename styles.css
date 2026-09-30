@@ -388,6 +388,46 @@ body:not(.online-battle) .result-summary {
   animation: coverRise 0.85s 0.4s var(--ease) both;
 }
 .cover-foot .tts-status { margin: 0; font-size: 0.66rem; }
+.cover-learning { width: min(420px, 100%); }
+.cover-learning > button { width: 100%; padding: 10px 12px; border: 1px solid rgba(224,184,74,.5); border-radius: 8px; background: rgba(14,18,23,.85); color: #f6ecd8; }
+.cover-learning > button span { font-family: var(--serif); letter-spacing: .16em; font-size: 1rem; }
+.cover-learning small { display: block; margin-top: 4px; font-size: .78rem; color: #d9c7a6; }
+.cover-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 6px; }
+.cover-tools button { min-height: 44px; padding: 8px 16px; background: rgba(14,18,23,.85); color: #f6ecd8; border: 1px solid #71644c; border-radius: 6px; }
+.learning-dialog { width: min(560px, calc(100% - 28px)); max-height: calc(100dvh - 32px); overflow-y: auto; margin: auto; padding: 22px; border: 1px solid #a38953; border-radius: 14px; background: #161c22; color: #f6ecd8; box-shadow: 0 20px 70px #0009; }
+.learning-dialog::backdrop { background: #05080dcc; }
+.dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dialog-head h2 { font-family: var(--serif); margin: 0; font-size: 1.4rem; }
+.learning-stats, .guide-copy { line-height: 1.9; font-size: 1rem; }
+.learning-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0 10px; }
+.learning-stats dt { color: #d0c8b9; font-size: .85rem; }
+.learning-stats dd { margin: 0; font-size: 1.55rem; font-weight: 700; color: #f4d492; }
+.learning-note summary { min-height: 44px; cursor: pointer; padding: 10px 0; }
+.learning-entries { display: grid; gap: 10px; margin: 18px 0; }
+.learning-entry { padding: 16px; background: #212c32; color: #f6ecd8; border: 1px solid #698d89; border-left: 3px solid #d9b76d; border-radius: 5px; text-align: left; }
+.learning-entry strong { display: block; font-size: 1.1rem; }
+.learning-entry span { display: block; margin-top: 5px; font-size: .86rem; line-height: 1.5; color: #c9d8d4; }
+.learning-entry:disabled { opacity: .55; }
+.learning-note { font-size: .85rem; color: #d0c8b9; line-height: 1.7; }
+.settings-controls { display: grid; gap: 18px; margin: 24px 0; }
+.settings-controls label { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 44px; }
+.settings-controls input[type="range"] { width: 48%; accent-color: #d9b76d; }
+.settings-controls input[type="checkbox"] { width: 24px; height: 24px; accent-color: #d9b76d; }
+.settings-controls select { min-height: 44px; padding: 6px 12px; background: #243239; color: #fff; border: 1px solid #829890; border-radius: 5px; }
+.learning-dialog button { min-height: 44px; }
+.learning-dialog :focus-visible, .cover-learning :focus-visible { outline: 3px solid #f6d88a; outline-offset: 3px; }
+.result-card .result-summary { color: #d0c8b9; }
+@media (max-height: 700px) { .cover-content { gap: 10px; } .cover-brand h1 { font-size: 2.2rem; } .cover-btn { height: 46px; } }
+@media (orientation: landscape) and (max-height: 550px) {
+  .cover-content { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr); grid-template-rows: 1fr auto auto; column-gap: 28px; row-gap: 8px; padding: 16px 24px; }
+  .cover-brand { grid-column: 1; grid-row: 1; align-self: end; }
+  .cover-brand h1 { font-size: 2rem; }
+  .cover-brand p { font-size: .85rem; }
+  .cover-actions { grid-column: 2; grid-row: 1 / 4; align-self: center; gap: 12px; justify-self: center; }
+  .cover-learning { grid-column: 1; grid-row: 2; justify-self: center; }
+  .cover-foot { grid-column: 1; grid-row: 3; }
+  .cover-tools { margin-top: 4px; }
+}
 @keyframes coverRise {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }

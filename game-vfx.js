@@ -694,6 +694,7 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
   });
 }
 function clearBattleFx() {
+  aftermathEpoch += 1;
   fxEpoch += 1;
   clearTimeout(shakeTimer);
   shakeTimer = 0;
@@ -843,7 +844,9 @@ function buildSpecialAftermath(themeId) {
   return scene;
 }
 
+let aftermathEpoch = 0;
 async function playSpecialAftermath(themeId) {
+  const epoch = ++aftermathEpoch;
   const el = $("special-aftermath");
   if (!el) return;
   const resolvedTheme = SPECIAL_AFTERMATH_DURATION[themeId] ? themeId : "ao";
@@ -857,6 +860,7 @@ async function playSpecialAftermath(themeId) {
   el.setAttribute("aria-hidden", "false");
   if (prefersReducedMotion()) {
     await wait(180);
+    if (epoch !== aftermathEpoch) return;
     el.classList.remove("go");
     el.replaceChildren();
     el.setAttribute("aria-hidden", "true");
@@ -864,6 +868,7 @@ async function playSpecialAftermath(themeId) {
   }
   shakeBattle(true);
   await wait(duration);
+  if (epoch !== aftermathEpoch) return;
   el.classList.remove("go");
   el.replaceChildren();
   el.setAttribute("aria-hidden", "true");

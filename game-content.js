@@ -231,7 +231,17 @@ function romajiOfKana(kana) {
   return kana;
 }
 function romajiSequence(seq) {
-  return (seq || []).map(romajiOfKana);
+  const out = [];
+  (seq || []).forEach((kana, i) => {
+    if (kana === "っ" || kana === "ッ") {
+      const next = romajiOfKana(seq[i + 1] || "");
+      out.push(next.startsWith("ch") ? "t" : (/^[bcdfghjklmpqrstvwxyz]/.test(next) ? next[0] : "促音"));
+    } else if (kana === "ー") {
+      // 一格一拍的學習提示；不是帶長音符號的整詞 Hepburn 拼寫。
+      out.push(out.slice().reverse().join("").match(/[aeiou]/)?.[0] || "長音");
+    } else out.push(romajiOfKana(kana));
+  });
+  return out;
 }
 function nearDistractors(k) {
   // 形近／音近／拗音易錯；表外則靠 buildPool 的通用字補足

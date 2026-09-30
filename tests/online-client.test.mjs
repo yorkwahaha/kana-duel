@@ -50,6 +50,8 @@ function harness() {
     online: window.KanaBattleOnlineClient,
     sockets,
     clipboardWrites,
+    storage,
+    timers,
     runTimer(delay) {
       const found = [...timers.entries()].find(([, timer]) => timer.delay === delay);
       assert.ok(found, `missing ${delay}ms timer`);
@@ -100,6 +102,65 @@ test("an error without close schedules a materially new connection", () => {
   online.resume("AB2C3D");
   sockets[0].emit("error");
   runTimer(250);
+  runTimer(500);
+  assert.equal(sockets.length, 2);
+});
+
+test("readiness waits for fresh state on the current socket", () => {
+  const { online, sockets } = harness();
+  online.resume("AB2C3D");
+  sockets[0].emit("open");
+  assert.equal(online.ready("ao"), false);
+  sockets[0].emit("message", { data: JSON.stringify({ room: { version: 2, phase: "lobby" } }) });
+  assert.equal(online.ready("ao"), true);
+  online.resume("AB2C3D");
+  assert.equal(sockets[0].readyState, 3);
+  sockets[1].emit("open");
+  assert.equal(online.ready("ao"), false);
+});
+
+test("terminal close forgets credentials instead of repeatedly resuming them", () => {
+  for (const code of [4000, 4001]) {
+    const { online, sockets, storage } = harness();
+    online.resume("AB2C3D");
+    sockets[0].emit("close", { code });
+    assert.equal(storage.size, 0);
+    assert.equal(online.resume("AB2C3D"), false);
+  }
+});
+
+test("opening and immediately closing cannot reset the retry budget", () => {
+  const { online, sockets, timers } = harness();
+  online.resume("AB2C3D");
+  for (let i = 0; i < 9; i++) {
+    sockets.at(-1).emit("open");
+    sockets.at(-1).emit("close", { code: 1006 });
+    const timer = [...timers.entries()].find(([, t]) => t.delay <= 8000);
+    if (i < 8) {
+      assert.ok(timer);
+      timers.delete(timer[0]);
+      timer[1].callback();
+    } else assert.equal(timer, undefined);
+  }
+  assert.equal(sockets.length, 9);
+});
+
+test("room IDs are validated without silently redirecting to a truncated room", async () => {
+  const { online, sockets } = harness();
+  assert.equal(online.normalizeRoomCode(" ab2c3d "), "AB2C3D");
+  for (const code of ["AB2C3DX", "AB2-3D", "../AB2C3D", "ABC01D"]) {
+    assert.equal(online.resume(code), false);
+    await assert.rejects(online.join({ code }), /INVALID_ROOM/);
+  }
+  assert.equal(sockets.length, 0);
+});
+
+test("an open socket without state eventually reconnects instead of leaving ready stuck", () => {
+  const { online, sockets, runTimer } = harness();
+  online.resume("AB2C3D");
+  sockets[0].emit("open");
+  runTimer(6000);
+  assert.equal(sockets[0].readyState, 3);
   runTimer(500);
   assert.equal(sockets.length, 2);
 });
