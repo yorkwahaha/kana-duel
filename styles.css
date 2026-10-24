@@ -2820,6 +2820,17 @@ input:focus-visible,
 .duel-stage.listen-mode #btn-battle-listen:not(.hidden) {
   display: inline-flex;
 }
+/* 聽音題播音前隱藏候選假名。 */
+body.online-battle.listen-cue-pending .duel-half.p1 .board .slots,
+body.online-battle.listen-cue-pending .duel-half.p1 .board .pool { visibility: hidden; pointer-events: none; }
+body.online-battle.listen-cue-pending .duel-half.p1 .board { position: relative; }
+body.online-battle.listen-cue-pending .duel-half.p1 .board::after {
+  content: "語音即將播放 · 請準備聆聽";
+  position: absolute; left: 50%; top: 46%; width: min(92%, 300px);
+  transform: translate(-50%, -50%); text-align: center;
+  font-weight: 700; pointer-events: none;
+}
+
 .duel-mid #btn-battle-listen {
   font-size: 0.72rem;
   padding: 4px 10px;
@@ -3585,4 +3596,18 @@ body.online-battle #screen-result .btn-ghost {
   0% { opacity: 0; transform: translate(-50%, 10px) scale(0.96); }
   16%, 78% { opacity: 1; transform: translate(-50%, 0) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -6px) scale(0.98); }
+}
+
+/* 同機雙人聽音：音訊播畢前隱藏雙方的假名與字池。 */
+body.local-listen-cue-pending:not(.online-battle) .duel-stage.listen-mode .board .slots,
+body.local-listen-cue-pending:not(.online-battle) .duel-stage.listen-mode .board .pool {
+  visibility: hidden;
+  pointer-events: none;
+}
+body.local-listen-cue-pending:not(.online-battle) .duel-stage.listen-mode .board { position: relative; }
+body.local-listen-cue-pending:not(.online-battle) .duel-stage.listen-mode .board::after {
+  content: "語音播放中 · 請專心聆聽";
+  position: absolute; left: 50%; top: 46%; width: min(92%, 300px);
+  transform: translate(-50%, -50%); text-align: center;
+  font-weight: 700; pointer-events: none;
 }

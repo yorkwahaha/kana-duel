@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { setImmediate as nextTick } from "node:timers/promises";
 
 const read = (name) => fs.readFileSync(new URL(`../${name}`, import.meta.url), "utf8");
 function audioContext(window = {}) {
@@ -128,6 +129,37 @@ test("static question audio respects saved voice volume and playback speed", asy
   assert.equal(await context.scheduleQuestionAudio({ id: "q1" }), true);
   assert.equal(source.playbackRate.value, 0.75);
   assert.equal(gain.gain.value, 0.5);
+});
+
+test("WebAudio interrupted on iOS resolves via audio-duration watchdog and cleans up", async () => {
+  const timers = new Map();
+  let nextTimer = 1;
+  const source = { connect() {}, start() {}, stop() { this.stopped = true; },
+    disconnect() { this.disconnected = true; }, playbackRate: {} };
+  const gain = { gain: {}, connect() {}, disconnect() {} };
+  const context = audioContext({ KanaLearning: { settings: () => ({ voice: 1, speed: 1 }) } });
+  context.performance = { now: () => 0 };
+  context.setTimeout = (fn, delay) => {
+    const id = nextTimer++;
+    timers.set(id, { fn, delay });
+    return id;
+  };
+  context.clearTimeout = id => timers.delete(id);
+  vm.runInContext(read("game-audio.js"), context);
+  context.ctx = { state: "running", currentTime: 0, createBufferSource: () => source, createGain: () => gain };
+  context.window.AudioContext = function () { return context.ctx; };
+  vm.runInContext("audioCtx = ctx;", context);
+  context.prepareQuestionAudio = async () => ({ duration: 1.3 });
+  const pending = context.scheduleQuestionAudio({ id: "q1" });
+  await nextTick();
+  assert.equal(timers.size, 1);
+  assert.equal([...timers.values()][0].delay, 2300);
+  [...timers.values()][0].fn();
+  assert.equal(await pending, false, "a missing onended must not keep the round locked");
+  assert.equal(source.stopped, true);
+  assert.equal(source.disconnected, true);
+  assert.equal(timers.size, 0);
+  assert.equal(source.onended, null);
 });
 
 test("normal, reflected and autoplay-blocked special damage complete and refresh injured players", async () => {

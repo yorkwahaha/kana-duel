@@ -20,6 +20,14 @@ test("room creation and joining can be rate limited by route and client address"
   assert.deepEqual(keys, ["create:203.0.113.9", "join:203.0.113.9"]);
 });
 
+test("spoofed X-Forwarded-For cannot choose a rate-limit bucket", async () => {
+  const keys = [];
+  const limiter = { limit: async ({ key }) => { keys.push(key); return { success: true }; } };
+  const request = { headers: { get: (name) => name === "x-forwarded-for" ? "198.51.100.7" : "" } };
+  assert.equal(await rateLimitAllowed(request, limiter, "join"), true);
+  assert.deepEqual(keys, ["join:unknown"]);
+});
+
 test("missing rate-limit bindings fail open for unit and local environments", async () => {
   const request = { headers: { get: () => "" } };
   assert.equal(await rateLimitAllowed(request, undefined, "create"), true);

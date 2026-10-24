@@ -145,8 +145,10 @@ test("listen mode preserves the winner streak across automatic attacks", () => {
   const room = createPlayingRoom("listen");
   assert.equal(room.battle.listenCue.questionId, "neko");
   assert.equal(room.battle.listenCue.playAt, 4250);
+  assert.ok(room.battle.listenCue.answerAt > room.battle.listenCue.playAt);
   const firstCue = room.battle.listenCue.seq;
-  assert.equal(applySubmit(room, 0, { questionId: "neko", answer: ["ね", "こ"] }, 4300).correct, true);
+  assert.equal(applySubmit(room, 0, { questionId: "neko", answer: ["ね", "こ"] },
+    room.battle.listenCue.answerAt + 10).correct, true);
   assert.equal(room.battle.sharedQi, 1);
   assert.equal(room.battle.fighters[0].combo, 1);
   assert.equal(room.lastEvent.type, "attack");
@@ -167,7 +169,8 @@ test("listen mode rejects submissions before playback and after the round is cla
   );
   room.battle.listenClaimed = true;
   assert.equal(
-    applySubmit(room, 1, { questionId: "neko", answer: ["ね", "え"] }, 4300).error,
+    applySubmit(room, 1, { questionId: "neko", answer: ["ね", "え"] },
+      room.battle.listenCue.answerAt + 10).error,
     "ROUND_ALREADY_CLAIMED",
   );
   assert.equal(fighter.hp, beforeHp);
@@ -180,7 +183,83 @@ test("disconnect pauses commands and explicit leave transfers the host", () => {
   assert.equal(applySubmit(room, 0, { questionId: "neko", answer: ["ね", "こ"] }, 1110).error, "OPPONENT_UNAVAILABLE");
   assert.equal(leaveRoom(room, 0, 1120).ok, true);
   assert.equal(room.hostSeat, 1);
+  assert.equal(room.phase, "complete");
+  assert.equal(room.battle.winnerSeat, 1);
+  assert.equal(room.lastEvent.type, "forfeit");
+  assert.equal(room.battle.completedAt, 1120);
+});
+
+test("opponent pending defensive skills are public, matching the skill events and HUD", () => {
+  const room = createPlayingRoom();
+  const fighter = room.battle.fighters[1];
+  fighter.blockReady = true;
+  fighter.reflectReady = true;
+  fighter.dodgeChance = 60;
+  const view = publicRoomState(room, 0);
+  assert.equal(view.battle.fighters[1].blockReady, true);
+  assert.equal(view.battle.fighters[1].reflectReady, true);
+  assert.equal(view.battle.fighters[1].dodgeChance, 60);
+  for (const field of ["reflectReady", "blockReady", "mistakeGuardReady", "dodgeChance", "attackBoost"]) {
+    assert.equal(Object.hasOwn(view.battle.fighters[1], field), true, field);
+  }
+  assert.equal(view.battle.fighters[1].qi, undefined);
+  assert.equal(publicRoomState(room, 1).battle.fighters[1].reflectReady, true);
+});
+
+test("an open seat after a forfeit can be refilled without requiring winner ready first", () => {
+  const room = createPlayingRoom();
+  const before = room.battle;
+  assert.equal(leaveRoom(room, 1, 1100).forfeited, true);
+  assert.equal(room.phase, "complete");
+  assert.equal(room.battle.winnerSeat, 0);
+  assert.equal(joinRoom(room, { name: "New Guest", token: "new-guest", now: 1110 }).ok, true);
   assert.equal(room.phase, "lobby");
+  assert.equal(room.battle, null);
+  assert.equal(room.players[0].name, "Host");
+  assert.equal(room.players[0].ready, false);
+  assert.equal(room.players[1].name, "New Guest");
+  assert.equal(before.winnerSeat, 0);
+  setConnected(room, 1, true, 1120);
+  assert.equal(setReady(room, 0, { ready: true, characterId: "ao" }, 1130).started, false);
+  assert.equal(setReady(room, 1, { ready: true, characterId: "rin" }, 1140).started, true);
+});
+
+test("several actions inside a single broadcast window remain ordered and observable", () => {
+  const room = createPlayingRoom();
+  assert.equal(room.battle.events.at(-1).type, "start");
+  assert.equal(applySubmit(room, 0, { questionId: "neko", answer: ["ね", "こ"] }, 1100).ok, true);
+  assert.equal(applyAttack(room, 0, 1101).ok, true);
+  const events = publicRoomState(room, 1).battle.events;
+  assert.deepEqual(events.slice(-2).map((event) => event.type), ["correct", "attack"]);
+  assert.ok(events.at(-2).id < events.at(-1).id);
+  assert.equal(publicRoomState(room, 1).lastEvent.type, "attack");
+});
+
+test("disconnect forfeits after 60s, but a timely reconnect cancels it", () => {
+  const room = createPlayingRoom();
+  setConnected(room, 1, false, 2000);
+  assert.equal(nextTimedEffectAt(room), 62000);
+  assert.deepEqual(settleTimedEffects(room, 61999), []);
+  setConnected(room, 1, true, 61000);
+  assert.equal(nextTimedEffectAt(room), 0);
+  assert.equal(room.phase, "playing");
+  setConnected(room, 1, false, 70000);
+  assert.equal(nextTimedEffectAt(room), 130000);
+  assert.deepEqual(settleTimedEffects(room, 129999), []);
+  const events = settleTimedEffects(room, 130000);
+  assert.equal(events[0].type, "forfeit");
+  assert.equal(room.phase, "complete");
+  assert.equal(room.battle.winnerSeat, 0);
+  assert.equal(room.battle.completedAt, 130000);
+  assert.equal(nextTimedEffectAt(room), 0);
+});
+
+test("late reconnect cannot evade the server forfeiture deadline", () => {
+  const room = createPlayingRoom();
+  setConnected(room, 1, false, 2000);
+  setConnected(room, 1, true, 62001);
+  assert.equal(room.phase, "complete");
+  assert.equal(room.battle.winnerSeat, 0);
 });
 
 test("rematch, skip, and room expiry follow the authoritative lifecycle", () => {

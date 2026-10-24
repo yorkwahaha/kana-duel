@@ -340,16 +340,29 @@ async function scheduleQuestionAudio(question, { delayMs = 0 } = {}) {
   currentQuestionAudioSource = source;
   currentQuestionGain = gain;
   return new Promise((resolve) => {
+    let settled = false;
+    let hardTimer = 0;
     const done = (ok) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(hardTimer);
+      source.onended = null;
       if (currentQuestionAudioSource === source) currentQuestionAudioSource = null;
       if (currentQuestionGain === gain) currentQuestionGain = null;
       if (currentQuestionAudioResolve === done) currentQuestionAudioResolve = null;
+      if (!ok) try { source.stop(0); } catch {}
       try { source.disconnect(); gain.disconnect(); } catch {}
       resolve(ok);
     };
     currentQuestionAudioResolve = done;
     source.onended = () => done(true);
-    source.start(ctx.currentTime + Math.max(0, target - performance.now()) / 1000);
+    const remainingDelayMs = Math.max(0, target - performance.now());
+    const speed = Math.max(0.1, Number(source.playbackRate.value) || 1);
+    const durationMs = Math.ceil(Math.max(0, Number(buffer.duration) || 0) * 1000 / speed);
+    // iOS 中斷可能漏 onended；音長 + 1 秒保底，缺時長以 30 秒保底。
+    hardTimer = setTimeout(() => done(false), remainingDelayMs + (durationMs || 30000) + 1000);
+    try { source.start(ctx.currentTime + remainingDelayMs / 1000); }
+    catch { done(false); return; }
     setTtsStatus(true, "本地題目 MP3");
   });
 }

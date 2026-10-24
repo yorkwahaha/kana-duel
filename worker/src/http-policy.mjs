@@ -12,9 +12,8 @@ export function originAllowed(request, env) {
 
 export async function rateLimitAllowed(request, limiter, action) {
   if (!limiter?.limit) return true;
-  const forwarded = String(request.headers.get("cf-connecting-ip") || "")
-    || String(request.headers.get("x-forwarded-for") || "").split(",")[0].trim()
-    || "local";
+  // x-forwarded-for 可由用戶端偽造；只以 Cloudflare 可信任的來源作限流鍵。
+  const forwarded = String(request.headers.get("cf-connecting-ip") || "").trim() || "unknown";
   const result = await limiter.limit({ key: `${action}:${forwarded}` });
   return result.success;
 }

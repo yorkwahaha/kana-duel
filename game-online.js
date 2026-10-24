@@ -19,8 +19,10 @@
   let room = null;
   let active = false;
   let lastEventId = 0;
+  let hasReceivedRoomSnapshot = false;
   let localQuestionId = "";
   let lastListenCueSeq = 0;
+  let listenCueGateTimer = 0;
   let connectionStatus = "idle";
   let battleResultShown = false;
   let submitPending = false;
@@ -30,6 +32,12 @@
   let battleIntroPending = false;
   let battleIntroTimer = 0;
   let lastBoardDisruptSeq = 0;
+
+  function initialSeenEventId(snapshot) {
+    const events = snapshot?.battle?.events;
+    return Math.max(0, Number(snapshot?.lastEvent?.id) || 0,
+      ...(Array.isArray(events) ? events : []).map((event) => Number(event?.id) || 0));
+  }
 
   const CHARACTER_INTROS = {
     ao: "清空對手字盤，並加入額外干擾字。",
@@ -143,6 +151,12 @@
       if ($("online-script")) $("online-script").value = room.config.script;
       if ($("online-distractors")) $("online-distractors").checked = room.config.distractors;
     }
+    const distractorOption = $("online-distractors");
+    if (distractorOption && room.config.mode === "listen") {
+      distractorOption.checked = true;
+      distractorOption.disabled = true;
+      distractorOption.title = "聽音模式固定啟用干擾字，以免題目未播放就能從唯一字池猜出答案";
+    }
     const players = $("online-players");
     if (players) {
       players.innerHTML = room.players.map((player, seat) => {
@@ -216,13 +230,20 @@
       boards[1].load(localQ.kanaSequence, {
         showRomaji: room.config.mode === "race",
         promptText: room.config.mode === "zh-race" ? localQ.zh : "",
-        noDistractors: !room.config.distractors,
+        // 聽音題即使關閉干擾字，也不能先把完整答案當作唯一字池。
+        noDistractors: room.config.mode !== "listen" && !room.config.distractors,
         distractorDelta: extraDistractors,
       });
-      boards[1].locked = false;
-      $("board1")?.classList.remove("locked");
+      boards[1].locked = document.body.classList.contains("listen-cue-pending");
+      $("board1")?.classList.toggle("locked", boards[1].locked);
       noteQuestionOpen(1);
     }
+  }
+
+  function clearListenCueGate() {
+    clearTimeout(listenCueGateTimer);
+    listenCueGateTimer = 0;
+    document.body.classList.remove("listen-cue-pending");
   }
 
   function syncListenCue() {
@@ -231,9 +252,24 @@
     const question = questionById(cue.questionId);
     if (!question) return;
     lastListenCueSeq = cue.seq;
+    clearListenCueGate();
     const delayMs = Math.max(0, Number(cue.playAt) - Number(room.serverNow || Date.now()));
+    const gatedSeq = cue.seq;
+    document.body.classList.add("listen-cue-pending");
+    boards[1].locked = true;
+    $("board1")?.classList.add("locked");
+    const finish = (played) => {
+      if (!active || room?.config?.mode !== "listen" || room?.battle?.listenCue?.seq !== gatedSeq) return;
+      clearListenCueGate();
+      boards[1].locked = false;
+      $("board1")?.classList.remove("locked");
+      if (!played) boards[1]?.setFeedback("語音未能播放，請按「再聽」重試。", "bad");
+    };
+    // 不可僅憑預定播音時間開放字盤，必須等音訊完成；播放卡住有安全超時。
+    listenCueGateTimer = setTimeout(() => finish(false), delayMs + 35000);
     prepareQuestionAudio(question).catch(() => {});
-    scheduleQuestionAudio(question, { delayMs }).catch(() => {});
+    Promise.resolve().then(() => scheduleQuestionAudio(question, { delayMs }))
+      .then((played) => finish(!!played), () => finish(false));
   }
 
   function updateOpponentStatus() {
@@ -294,6 +330,7 @@
     lastEventId = 0;
     localQuestionId = "";
     lastListenCueSeq = 0;
+    clearListenCueGate();
     lastBoardDisruptSeq = 0;
     document.body.classList.add("online-battle");
     gameMode = "online";
@@ -603,7 +640,9 @@
     document.querySelectorAll(".btn-again-home").forEach((button) => { button.textContent = "離開對戰"; });
     document.querySelectorAll(".btn-again").forEach((button) => { button.textContent = "準備再戰"; });
     setResultScreen(
-      draw ? "平手！" : (won ? "你獲勝！" : "你落敗"),
+      draw ? "平手！" : (room.lastEvent?.type === "forfeit"
+        ? (won ? "對手棄權 · 你獲勝！" : "你已棄權")
+        : (won ? "你獲勝！" : "你落敗")),
       `對戰時間 ${seconds.toFixed(1)} 秒`,
       false,
       resultRows
@@ -611,7 +650,21 @@
     playSfx("fanfare", 0.55);
   }
 
+  function renderPendingEvents() {
+    const events = room?.battle?.events;
+    if (Array.isArray(events) && events.length) {
+      for (const event of events) renderEvent(event);
+    } else {
+      renderEvent(room?.lastEvent);
+    }
+  }
+
   function onState(nextRoom) {
+    // 重新整理／從斷線重入房間時，首次 snapshot 的事件都是歷史。
+    // 先定位到已知最新 ID，避免將最多 48 段舊動畫／音效當作即時事件播放。
+    // 從 lobby 自然開新一場則不略過新事件。
+    const firstSnapshot = !hasReceivedRoomSnapshot;
+    hasReceivedRoomSnapshot = true;
     const priorPhase = room?.phase;
     room = nextRoom;
     setError("");
@@ -621,12 +674,14 @@
         else beginOnlineBattle();
       } else if (active) syncBattleState();
       if (active) {
-        renderEvent(room.lastEvent);
+        if (firstSnapshot) lastEventId = Math.max(lastEventId, initialSeenEventId(room));
+        renderPendingEvents();
         pauseOverlay(!room.players.every((player) => player?.connected));
       }
     } else if (room.phase === "complete") {
+      if (firstSnapshot) lastEventId = Math.max(lastEventId, initialSeenEventId(room));
       if (room.battle) syncBattleState();
-      renderEvent(room.lastEvent);
+      renderPendingEvents();
       pauseOverlay(false);
       Promise.resolve(attackQueue).then(() => finishOnlineBattle()).catch((error) => {
         console.error("Online battle completion failed", error);
@@ -640,6 +695,7 @@
         cancelAnimationFrame(timerRaf);
         stopBattleBgm();
         pauseOverlay(false);
+        clearListenCueGate();
         document.body.classList.remove("online-battle");
         $("board2")?.removeAttribute("aria-hidden");
         showScreen("online");
@@ -653,12 +709,14 @@
     clearOnlineBattleIntro();
     client.leave();
     room = null;
+    hasReceivedRoomSnapshot = false;
     active = false;
     battleOpen = false;
     battleEpoch += 1;
     cancelAnimationFrame(timerRaf);
     stopBattleBgm(); stopCharacterSelectBgm(); stopTts(); hideSpecialStage(); clearBattleFx(); cancelAllDrags();
     pauseOverlay(false);
+    clearListenCueGate();
     document.body.classList.remove("online-battle");
     $("board2")?.removeAttribute("aria-hidden");
     $("online-opponent-status")?.remove();
@@ -761,6 +819,10 @@
     isSubmitPending() { return active && submitPending; },
     handleAction(player, action) {
       if (!active || player !== 1 || room?.phase !== "playing") return;
+      if (room.config.mode === "listen" && document.body.classList.contains("listen-cue-pending")) {
+        boards[1]?.setFeedback("語音即將播放，請先聽完再作答。");
+        return;
+      }
       if (!room.players.every((entry) => entry?.connected)) { setError("對手重新連線中，對戰暫停。 "); return; }
       if (action === "clear") boards[1].clearAll();
       else if (action === "submit") {
@@ -797,7 +859,7 @@
     },
     replayQuestion() {
       const q = questionById(room?.currentQuestionId);
-      if (active && room?.config.mode === "listen" && q) speakQuestionAudio(q);
+      if (active && room?.config.mode === "listen" && q && !document.body.classList.contains("listen-cue-pending")) speakQuestionAudio(q);
     },
   };
 

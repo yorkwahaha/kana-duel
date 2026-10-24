@@ -1,7 +1,9 @@
 import "../../questions-data.js";
 import "../../questions-expansion-data.js";
+import { QUESTION_AUDIO_DURATION_MS } from "./audio-durations.generated.mjs";
 
 export const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+export const DISCONNECT_FORFEIT_MS = 60 * 1000;
 export const MAX_HP = 2400;
 
 const MAX_NAME_LENGTH = 16;
@@ -9,6 +11,9 @@ const MAX_DECK_SIZE = 500;
 const LISTEN_START_LEAD_MS = 3200;
 const LISTEN_NEXT_LEAD_MS = 2200;
 const LISTEN_SPECIAL_LEAD_MS = 10800;
+const LISTEN_SLOWEST_PLAYBACK_RATE = 0.75; // the slowest playback setting in index.html
+const LISTEN_AUDIO_END_PADDING_MS = 100;
+const LISTEN_UNKNOWN_AUDIO_MS = 2200; // conservative fallback if a new question lacks approved MP3
 const VALID_CHARACTERS = new Set(["ao", "rin", "ya", "go", "ran", "gen", "sho", "yo"]);
 const VALID_CATEGORIES = new Set(["all", "daily", "action", "school_work", "food", "household", "clothing", "health", "places_transport", "shopping_numbers", "time_nature", "animals", "description", "loanword", "anime", "fantasy_battle"]);
 const CANONICAL_QUESTIONS = new Map(
@@ -151,6 +156,7 @@ function startBattle(room, now = Date.now()) {
   room.phase = "playing";
   room.battle = {
     fighters: [blankFighter(now), blankFighter(now)],
+    events: [],
     sharedQi: 0,
     listenClaimed: false,
     startedAt: now,
@@ -162,8 +168,7 @@ function startBattle(room, now = Date.now()) {
     regenPauseStartedAt: 0,
   };
   scheduleListenCue(room, now, LISTEN_START_LEAD_MS);
-  room.eventSeq += 1;
-  room.lastEvent = { id: room.eventSeq, type: "start", at: now };
+  setEvent(room, { type: "start" }, now);
 }
 
 function resetLobby(room) {
@@ -206,6 +211,11 @@ export function seatForToken(room, token) {
 }
 
 export function joinRoom(room, { name, token, now = Date.now() }) {
+  // 棄權後保留結算供倖存者觀看，但空位有人加入時應恢復為大廳。
+  // 已滿員的一般對戰結算仍須由玩家自行選擇是否再戰。
+  if (room?.phase === "complete" && room.players.some((player) => !player)) {
+    resetLobby(room);
+  }
   if (!room || room.phase !== "lobby") return { ok: false, error: "ROOM_ALREADY_STARTED" };
   const existing = seatForToken(room, token);
   if (existing >= 0) return { ok: true, seat: existing, reconnected: true };
@@ -228,10 +238,15 @@ export function joinRoom(room, { name, token, now = Date.now() }) {
 export function setConnected(room, seat, connected, now = Date.now()) {
   const player = room?.players?.[seat];
   if (!player || player.connected === connected) return false;
+  // 重連發生於逾時之後，也必須尊重伺服器裁決，避免搶在 alarm 前逃過判定。
+  if (connected && typeof player.leftAt === "number" && room.phase === "playing") {
+    settleTimedEffects(room, now);
+  }
   if (!connected && room.phase === "playing" && room.battle && !room.battle.regenPauseStartedAt) {
     room.battle.regenPauseStartedAt = now;
   }
   player.connected = connected;
+  player.leftAt = !connected && room.phase === "playing" ? now : null;
   if (connected && room.phase === "playing" && room.battle?.regenPauseStartedAt
       && room.players.every((entry) => entry?.connected)) {
     const pausedFor = Math.max(0, now - room.battle.regenPauseStartedAt);
@@ -247,13 +262,25 @@ export function setConnected(room, seat, connected, now = Date.now()) {
 export function leaveRoom(room, seat, now = Date.now()) {
   if (!room?.players?.[seat]) return { ok: false, error: "INVALID_SESSION" };
   const wasHost = hostSeat(room) === seat;
+  const forfeited = room.phase === "playing" && !!room.battle;
+  if (forfeited) {
+    const winnerSeat = seat === 0 ? 1 : 0;
+    room.phase = "complete";
+    room.battle.completedAt = now;
+    room.battle.winnerSeat = winnerSeat;
+    room.battle.fighters.forEach((fighter) => {
+      fighter.regenTicksLeft = 0;
+      fighter.regenNextAt = 0;
+    });
+    room.players.forEach((player) => { if (player) player.ready = false; });
+    setEvent(room, { type: "forfeit", seat, winnerSeat }, now);
+  }
   room.players[seat] = null;
   if (wasHost) room.hostSeat = room.players.findIndex(Boolean);
-  resetLobby(room);
-  room.eventSeq += 1;
-  room.lastEvent = { id: room.eventSeq, type: "left", seat, at: now };
+  if (!forfeited) resetLobby(room);
+  if (!forfeited) setEvent(room, { type: "left", seat }, now);
   bump(room, now);
-  return { ok: true };
+  return { ok: true, forfeited };
 }
 
 export function configureRoom(room, seat, config, deck, now = Date.now()) {
@@ -321,10 +348,16 @@ function scheduleListenCue(room, now, delayMs) {
   const question = questionAt(room, 0);
   if (!question) return;
   room.battle.listenCueSeq += 1;
+  const audioDurationMs = QUESTION_AUDIO_DURATION_MS[question.id] ?? LISTEN_UNKNOWN_AUDIO_MS;
+  const playAt = now + Math.max(0, delayMs);
   room.battle.listenCue = {
     seq: room.battle.listenCueSeq,
     questionId: question.id,
-    playAt: now + Math.max(0, delayMs),
+    playAt,
+    // Server-authoritative minimum answer time: playback duration at slowest
+    // selectable audio rate, not the instant playback is scheduled.
+    answerAt: playAt + Math.ceil(audioDurationMs / LISTEN_SLOWEST_PLAYBACK_RATE)
+      + LISTEN_AUDIO_END_PADDING_MS,
   };
 }
 
@@ -336,8 +369,12 @@ function chargeGain(room, seat, answerLength) {
 }
 
 export function nextTimedEffectAt(room) {
-  if (!room?.battle || room.phase !== "playing" || room.battle.regenPauseStartedAt
-      || !room.players.every((player) => player?.connected)) return 0;
+  if (!room?.battle || room.phase !== "playing") return 0;
+  const deadlines = room.players
+    .filter((player) => player && !player.connected && typeof player.leftAt === "number")
+    .map((player) => player.leftAt + DISCONNECT_FORFEIT_MS);
+  if (deadlines.length) return Math.min(...deadlines);
+  if (room.battle.regenPauseStartedAt || !room.players.every((player) => player?.connected)) return 0;
   const times = room.battle.fighters
     .filter((fighter) => fighter.regenTicksLeft > 0 && fighter.regenNextAt > 0)
     .map((fighter) => fighter.regenNextAt);
@@ -345,8 +382,23 @@ export function nextTimedEffectAt(room) {
 }
 
 export function settleTimedEffects(room, now = Date.now()) {
-  if (!room?.battle || room.phase !== "playing" || room.battle.regenPauseStartedAt
-      || !room.players.every((player) => player?.connected)) return [];
+  if (!room?.battle || room.phase !== "playing") return [];
+  const timedOutSeat = room.players.findIndex((player) => player && !player.connected
+    && typeof player.leftAt === "number" && now >= player.leftAt + DISCONNECT_FORFEIT_MS);
+  if (timedOutSeat >= 0) {
+    const opponentSeat = 1 - timedOutSeat;
+    const winnerSeat = room.players[opponentSeat]?.connected ? opponentSeat : null;
+    room.phase = "complete";
+    room.battle.completedAt = now;
+    room.battle.winnerSeat = winnerSeat;
+    room.battle.fighters.forEach((fighter) => { fighter.regenTicksLeft = 0; fighter.regenNextAt = 0; });
+    room.players.forEach((player) => { if (player) player.ready = false; });
+    const event = { type: "forfeit", reason: "disconnect_timeout", seat: timedOutSeat, winnerSeat };
+    setEvent(room, event, now);
+    bump(room, now);
+    return [event];
+  }
+  if (room.battle.regenPauseStartedAt || !room.players.every((player) => player?.connected)) return [];
   const heals = [];
   room.battle.fighters.forEach((fighter, seat) => {
     let applied = 0;
@@ -386,6 +438,12 @@ function finishIfNeeded(room, now) {
 function setEvent(room, event, now) {
   room.eventSeq += 1;
   room.lastEvent = { id: room.eventSeq, at: now, ...event };
+  if (room.battle) {
+    // 兩事件可能在同一份 WebSocket 狀態前完成；保留最近的順序供動畫播放。
+    const history = room.battle.events || (room.battle.events = []);
+    history.push(room.lastEvent);
+    if (history.length > 48) history.splice(0, history.length - 48);
+  }
 }
 
 function performAttack(room, seat, now, automatic = false, questionId = "", random = Math.random) {
@@ -398,7 +456,7 @@ function performAttack(room, seat, now, automatic = false, questionId = "", rand
   let damage = fighter.charge;
   if (special) damage = Math.round(damage * SPECIAL_MULT);
   const hits = Math.max(1, fighter.combo || 1);
-  damage = Math.round(damage * (1 + (hits - 1) * 0.05));
+  // COMBO 的加成已計入答對後蓄力；hits 僅提供演出，避免重複乘傷害。
   damage = Math.round(damage * (fighter.attackBoost || 1));
   const dodgeChance = foe.dodgeChance || 0;
   const dodged = dodgeChance > 0 && random() * 100 < dodgeChance;
@@ -439,7 +497,7 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
   if (!question || question.id !== cleanText(questionId, 80)) return { ok: false, error: "STALE_QUESTION" };
   if (room.config.mode === "listen") {
     if (room.battle.listenClaimed) return { ok: false, error: "ROUND_ALREADY_CLAIMED" };
-    if (now < Number(room.battle.listenCue?.playAt || 0)) return { ok: false, error: "ROUND_NOT_STARTED" };
+    if (now < Number(room.battle.listenCue?.answerAt || 0)) return { ok: false, error: "ROUND_NOT_STARTED" };
   }
   const submitted = Array.isArray(answer) ? answer.map((part) => cleanText(part, 8)).slice(0, 16) : [];
   const wrong = question.answer.reduce((count, part, index) => count + (submitted[index] === part ? 0 : 1), 0);
@@ -460,7 +518,7 @@ export function applySubmit(room, seat, { questionId, answer }, now = Date.now()
   fighter.maxCombo = Math.max(fighter.maxCombo, fighter.combo);
   fighter.corrects += 1;
   const answerStartedAt = room.config.mode === "listen"
-    ? Number(room.battle.listenCue?.playAt)
+    ? Number(room.battle.listenCue?.answerAt)
     : Number(fighter.questionStartedAt);
   const answerMs = Math.max(0, now - (Number.isFinite(answerStartedAt) ? answerStartedAt : now));
   fighter.bestAnswerMs = fighter.bestAnswerMs == null ? answerMs : Math.min(fighter.bestAnswerMs, answerMs);
@@ -609,7 +667,11 @@ export function publicRoomState(room, youSeat) {
     ...room.battle,
     fighters: room.battle.fighters.map((fighter, seat) => {
       const visible = { ...fighter };
-      if (seat !== youSeat) delete visible.qi;
+      if (seat !== youSeat) {
+        delete visible.qi;
+        // 技能啟動原本已有對雙方公開的事件／提示，
+        // 待機狀態亦維持公開，以免對手 HUD 出現永久不亮的錯誤。
+      }
       return visible;
     }),
   };

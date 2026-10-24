@@ -1,5 +1,5 @@
 /* global $, ALL_QUESTIONS, ATTACK_BOOST_MULT, BLOCK_COMBO_COST */
-/* global BLOCK_DAMAGE_MULT, CHARACTERS, COMBO_DAMAGE_PER_HIT */
+/* global BLOCK_DAMAGE_MULT, CHARACTERS */
 /* global DRAG_THRESHOLD, GAUGE_HITS_TO_FULL, HEAL_AMOUNT, HEAL_COMBO_COST */
 /* global DODGE_MAX_CHANCE, DODGE_START_CHANCE, DODGE_STEP_CHANCE, MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, MISTAKE_GUARD_DAMAGE_MULT, PRACTICE_ROUND_SIZE */
 /* global REFLECT_DAMAGE_RATIO, REGEN_HP_PER_TICK, REGEN_TICK_MS, REGEN_TICKS, SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO */
@@ -495,6 +495,8 @@ let battleDeck = []; // shared shuffled question order
 let playerQi = { 1: 0, 2: 0 }; // race: independent progress into battleDeck
 let sharedQi = 0; // listen: shared round index
 let listenRoundClaimed = false; // listen: first fully-correct claim
+let localListenCuePending = false; // 同機聽音：播放完成前隱藏雙方字盤
+let localListenCueToken = 0;
 let charge = { 1: 0, 2: 0 }; // accumulated attack value
 let combo = { 1: 0, 2: 0 }; // consecutive correct → N COMBO
 let gaugeHits = { 1: 0, 2: 0 }; // correct answers toward special (need GAUGE_HITS_TO_FULL)
@@ -1212,7 +1214,7 @@ function projectedAttackDamage(player) {
   if (dmg <= 0) return { dmg: 0, hits: 0, special };
   if (special) dmg = Math.round(dmg * SPECIAL_MULT);
   const hits = Math.max(1, combo[player] || 1);
-  dmg = Math.round(dmg * (1 + (hits - 1) * COMBO_DAMAGE_PER_HIT));
+  // COMBO 已在答對後蓄力加成，hits 只用於攻擊演出。
   dmg = Math.round(dmg * (attackBoost[player] || 1));
   return { dmg, hits, special };
 }
@@ -1561,7 +1563,8 @@ function startBattle() {
   const rule = $("rule-chip");
   if (rule) {
     const bits = [battleModeLabel(battleOpts.mode)];
-    if (!battleOpts.distractors) bits.push("無干擾");
+    if (!battleOpts.distractors && !listen) bits.push("無干擾");
+    if (!battleOpts.distractors && listen) bits.push("聽力模式保留干擾字");
     if (battleOpts.maxLen > 0) bits.push("≤" + battleOpts.maxLen + "字");
     if (battleOpts.script === "hira") bits.push("平假名");
     if (battleOpts.script === "kata") bits.push("片假名");
@@ -1571,6 +1574,9 @@ function startBattle() {
   playerQi = { 1: 0, 2: 0 };
   sharedQi = 0;
   listenRoundClaimed = false;
+  localListenCueToken += 1;
+  localListenCuePending = false;
+  document.body.classList.remove("local-listen-cue-pending");
   charge = { 1: 0, 2: 0 };
   combo = { 1: 0, 2: 0 };
   gaugeHits = { 1: 0, 2: 0 };
@@ -1985,7 +1991,7 @@ function ensureCastLayers() {
 function loadPlayerQuestion(player, extraDistractors = 0, trackOpen = true) {
   const q = playerQ(player);
   if (!q) return;
-  const noDistractors = !battleOpts.distractors;
+  const noDistractors = !isListenBattle() && !battleOpts.distractors;
   boards[player].load(q.kanaSequence, {
     showRomaji: !isListenBattle() && !isChineseRaceBattle(),
     promptText: isChineseRaceBattle() ? q.zh : "",
@@ -1998,12 +2004,40 @@ function loadPlayerQuestion(player, extraDistractors = 0, trackOpen = true) {
 }
 
 /** 聽力搶答：雙方同題、無羅馬音、播一次 TTS */
+function setLocalListenCuePending(pending) {
+  localListenCuePending = !!pending;
+  document.body.classList.toggle("local-listen-cue-pending", localListenCuePending);
+  for (const player of [1, 2]) {
+    const board = boards[player];
+    if (!board) continue;
+    board.locked = localListenCuePending;
+    $("board" + player)?.classList.toggle("locked", localListenCuePending);
+    updatePlayerMeters(player);
+  }
+  const replay = $("btn-battle-listen");
+  if (replay) replay.disabled = localListenCuePending;
+}
+function playLocalListenCue(question) {
+  const token = ++localListenCueToken;
+  const epoch = battleEpoch;
+  setLocalListenCuePending(true);
+  Promise.resolve().then(() => speakQuestionAudio(question)).then((played) => {
+    if (!battleOpen || epoch !== battleEpoch || token !== localListenCueToken) return;
+    setLocalListenCuePending(false);
+    if (!played) for (const player of [1, 2]) boards[player]?.setFeedback("音訊未能播放；請按『再聽』重試。", "bad");
+  }).catch(() => {
+    if (!battleOpen || epoch !== battleEpoch || token !== localListenCueToken) return;
+    setLocalListenCuePending(false);
+    for (const player of [1, 2]) boards[player]?.setFeedback("音訊載入失敗；請按『再聽』重試。", "bad");
+  });
+}
 function loadSharedListenRound(autoSpeak) {
   listenRoundClaimed = false;
   loadPlayerQuestion(1);
   loadPlayerQuestion(2);
   const q = playerQ(1);
-  if (autoSpeak && q) speakQuestionAudio(q);
+  if (autoSpeak && q) playLocalListenCue(q);
+  else setLocalListenCuePending(false);
 }
 
 function lockBoardForListen(player, asWinner) {
@@ -2304,7 +2338,7 @@ function applySelfMissDamage(player, dmg, wrongCount) {
 }
 
 function battleSubmit(player) {
-  if (!battleOpen || hp[player] <= 0) return;
+  if (!battleOpen || hp[player] <= 0 || (isListenBattle() && localListenCuePending)) return;
   const b = boards[player];
   if (b.locked) return;
   if (nowMs() < submitCooldownUntil[player]) return;
@@ -2523,9 +2557,9 @@ bindTap($("btn-battle-listen"), () => {
     window.KanaBattleOnline.replayQuestion();
     return;
   }
-  if (!battleOpen || !isListenBattle() || listenRoundClaimed) return;
+  if (!battleOpen || !isListenBattle() || listenRoundClaimed || localListenCuePending) return;
   const q = playerQ(1);
-  if (q) speakQuestionAudio(q);
+  if (q) playLocalListenCue(q);
 });
 document.querySelectorAll(".btn-again-home").forEach((btn) => {
   bindTap(btn, () => {

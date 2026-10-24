@@ -391,7 +391,8 @@ test("online listen audio prefers static MP3 and remains server scheduled", () =
   assert.match(online, /replayQuestion\(\)[\s\S]*?speakQuestionAudio\(q\)/);
   assert.doesNotMatch(online, /playQuestionAudio\(q\)/);
   assert.match(worker, /listenCue: null/);
-  assert.match(worker, /playAt: now \+ Math\.max\(0, delayMs\)/);
+  assert.match(worker, /const playAt = now \+ Math\.max\(0, delayMs\)/);
+  assert.match(worker, /answerAt: playAt \+ Math\.ceil\(audioDurationMs/);
 });
 
 test("correct answers reveal kanji, reading, and Chinese in every mode", () => {
@@ -526,7 +527,7 @@ test("rematch and submit guards keep client battle state consistent", () => {
   const game = read("game.js");
   const online = read("game-online.js");
   assert.match(online, /if \(active && priorPhase !== "lobby"\) \{\s*setSubmitPending\(false\);\s*active = false;\s*battleOpen = false/);
-  assert.match(online, /stopBattleBgm\(\);\s*pauseOverlay\(false\);\s*document\.body\.classList\.remove\("online-battle"\)/);
+  assert.match(online, /stopBattleBgm\(\);\s*pauseOverlay\(false\);\s*clearListenCueGate\(\);\s*document\.body\.classList\.remove\("online-battle"\)/);
   assert.doesNotMatch(online, /listenRoundClaimed = room\.battle\.listenClaimed;\s*setSubmitPending\(false\)/);
   assert.match(online, /if \(localQuestionId !== localId\) setSubmitPending\(false\)/);
   assert.match(game, /if \(isListenBattle\(\) && listenRoundClaimed\)[\s\S]*?const wrong = b\.markSlots/);
