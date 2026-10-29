@@ -136,6 +136,8 @@ const SPECIAL_MULT = 1.5;
 const MAX_ATTACK_SEGMENTS = 8; // COMBO 僅影響蓄力與演出；顯示最多 8 段，不再重複加乘傷害
 const MISS_SELF_DMG_PER_WRONG = 72; // 答錯每格對自己扣血
 const DRAG_THRESHOLD = 4;
+// 拖曳後未落在格子上時，位移小於此值仍當點選；超過就取消，字留在字池
+const DRAG_TAP_SLOP = 16;
 const BLOCK_COMBO_COST = 3;
 const BLOCK_DAMAGE_MULT = 0.2;
 const HEAL_COMBO_COST = 2;

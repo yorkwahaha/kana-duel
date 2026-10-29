@@ -1,6 +1,6 @@
 /* global $, ALL_QUESTIONS, ATTACK_BOOST_MULT, BLOCK_COMBO_COST */
 /* global BLOCK_DAMAGE_MULT, CHARACTERS */
-/* global DRAG_THRESHOLD, GAUGE_HITS_TO_FULL, HEAL_AMOUNT, HEAL_COMBO_COST */
+/* global DRAG_TAP_SLOP, DRAG_THRESHOLD, GAUGE_HITS_TO_FULL, HEAL_AMOUNT, HEAL_COMBO_COST */
 /* global DODGE_MAX_CHANCE, DODGE_START_CHANCE, DODGE_STEP_CHANCE, MAX_ATTACK_SEGMENTS, MAX_HP, MISS_SELF_DMG_PER_WRONG, MISTAKE_GUARD_DAMAGE_MULT, PRACTICE_ROUND_SIZE */
 /* global REFLECT_DAMAGE_RATIO, REGEN_HP_PER_TICK, REGEN_TICK_MS, REGEN_TICKS, SPECIAL_MULT, STEAL_CHARGE_MIN, STEAL_CHARGE_RATIO */
 /* global TYPE_LABEL, audioCtx, battleOpts, buildBattleDeck, buildPool, categoryLabelOf, clearBattleFx */
@@ -238,8 +238,8 @@ function endDrag(e) {
       }
     } else if (poolHit && cur.from === "slot" && board) {
       board.clearSlot(cur.slotIndex);
-    } else if (cur.from === "pool" && board) {
-      // 微移被當成拖曳但沒放到格子 → 仍當點選，支援快速連點
+    } else if (cur.from === "pool" && board && Math.hypot(x - cur.startX, y - cur.startY) < DRAG_TAP_SLOP) {
+      // 微移被當成拖曳但沒放到格子 → 仍當點選，支援快速連點；拖遠了就取消，字留在字池
       board.place(cur.poolId);
     }
   } else if (board) {
@@ -788,14 +788,18 @@ function bindCharCarouselSwipe() {
         moved: false,
       };
       charSpinVel[player] = 0;
-      try { stage.setPointerCapture(e.pointerId); } catch {}
+      // 不在按下時就攔截指標：未滑動的點擊要留給角色卡自己的 bindTap 選角
     }, { capture: true, passive: true });
     stage.addEventListener("pointermove", (e) => {
       const drag = charDrag[player];
       if (!drag || drag.id !== e.pointerId) return;
       const now = performance.now();
       const dx = e.clientX - drag.startX;
-      if (Math.abs(dx) > 10) drag.moved = true;
+      if (!drag.moved && Math.abs(dx) > 10) {
+        drag.moved = true;
+        // 確定是滑動後才攔截，之後的 pointerup 交給舞台處理
+        try { stage.setPointerCapture(e.pointerId); } catch {}
+      }
       const dt = Math.max(8, now - drag.lastT);
       const width = Math.max(1, stage.clientWidth);
       const next = drag.origin - (dx / width) * 1.85 * mirror;
@@ -1230,7 +1234,7 @@ function updatePlayerMeters(player) {
   gaugeWrap?.setAttribute("aria-valuenow", String(Math.min(GAUGE_HITS_TO_FULL, hits)));
   const btn = $("btn-attack-" + player);
   if (btn) {
-    btn.disabled = c <= 0;
+    btn.disabled = c <= 0 || battleActionBlocked(player);
     btn.classList.toggle("special", ready);
     if (c <= 0) btn.textContent = "攻擊 0";
     else btn.textContent = (ready ? "大招 " : "攻擊 ") + projectedAttackDamage(player).dmg;
@@ -1241,6 +1245,10 @@ function updatePlayerMeters(player) {
   updateSkillUi(player);
 }
 function nowMs() { return performance.now(); }
+/** 倒下或同機聽音播放中：禁止攻擊與技能 */
+function battleActionBlocked(player) {
+  return !battleOpen || hp[player] <= 0 || (isListenBattle() && localListenCuePending);
+}
 function isBlocking(player) { return !!blockReady[player]; }
 function spendCombo(player, cost) {
   if ((combo[player] || 0) < cost) return false;
@@ -1260,14 +1268,14 @@ function updateSkillUi(player) {
   if (f) f.classList.toggle("blocking", blocking);
   const btnBlock = $("btn-skill-block-" + player);
   if (btnBlock) {
-    btnBlock.disabled = !battleOpen || blocking || (dodgeChance[player] || 0) > 0 || (combo[player] || 0) < BLOCK_COMBO_COST;
+    btnBlock.disabled = battleActionBlocked(player) || blocking || (dodgeChance[player] || 0) > 0 || (combo[player] || 0) < BLOCK_COMBO_COST;
     btnBlock.classList.toggle("is-active", blocking);
     btnBlock.textContent = blocking ? "格擋 80%" : ((dodgeChance[player] || 0) > 0 ? "閃避待機中" : "格擋");
   }
   const btnHeal = $("btn-skill-heal-" + player);
   if (btnHeal) {
     const full = hp[player] >= MAX_HP;
-    btnHeal.disabled = !battleOpen || full || (combo[player] || 0) < HEAL_COMBO_COST;
+    btnHeal.disabled = battleActionBlocked(player) || full || (combo[player] || 0) < HEAL_COMBO_COST;
   }
   const ch = charOf(player);
   const act = ch?.active;
@@ -1279,7 +1287,7 @@ function updateSkillUi(player) {
       ? (act.label + " +" + DODGE_STEP_CHANCE + "%")
       : (act?.label || "專屬");
     btnU.title = (act?.desc || "") + (act ? "（本次耗 " + cost + " COMBO）" : "");
-    let can = battleOpen && !!act && (combo[player] || 0) >= cost;
+    let can = !battleActionBlocked(player) && !!act && (combo[player] || 0) >= cost;
     if (act?.id === "ink_seal") {
       can = can && !boards[foe]?.locked && inkDisruptedQuestion[foe] !== currentQuestionKey(foe);
     } else if (act?.id === "ember_steal") {
@@ -1312,7 +1320,7 @@ function updateSkillUi(player) {
   }
 }
 function battleActivateBlock(player) {
-  if (!battleOpen) return;
+  if (battleActionBlocked(player)) return;
   if ((dodgeChance[player] || 0) > 0) {
     boards[player]?.setFeedback("閃避待機中，不能同時使用格擋", "bad");
     return;
@@ -1335,7 +1343,7 @@ function battleActivateBlock(player) {
   updatePlayerMeters(player);
 }
 function battleActivateHeal(player) {
-  if (!battleOpen) return;
+  if (battleActionBlocked(player)) return;
   if (hp[player] >= MAX_HP) {
     boards[player]?.setFeedback("血量已滿", "bad");
     return;
@@ -1355,7 +1363,7 @@ function battleActivateHeal(player) {
   updatePlayerMeters(player);
 }
 function battleActivateUnique(player) {
-  if (!battleOpen) return;
+  if (battleActionBlocked(player)) return;
   const act = charOf(player)?.active;
   if (!act) return;
   const foe = player === 1 ? 2 : 1;
@@ -1616,7 +1624,6 @@ function startBattle() {
     loadPlayerQuestion(2);
   }
   battleStartedAt = performance.now();
-  cancelAnimationFrame(timerRaf);
   tickBattleClock();
   startBattleBgm().catch(() => {});
 }
@@ -1837,7 +1844,7 @@ async function playBattleDefeatOutro(loser, winner) {
   battleEpoch += 1;
   stopRegen(1);
   stopRegen(2);
-  cancelAnimationFrame(timerRaf);
+  stopBattleClock();
   cancelAllDrags();
   stopTts();
   // 壓低連打音效，避免蓋過敗北慘叫
@@ -1884,7 +1891,7 @@ async function finishBattleDraw(summary) {
   battleEpoch += 1;
   stopRegen(1);
   stopRegen(2);
-  cancelAnimationFrame(timerRaf);
+  stopBattleClock();
   cancelAllDrags();
   stopTts();
   stopBattleBgm();
@@ -2017,16 +2024,28 @@ function setLocalListenCuePending(pending) {
   const replay = $("btn-battle-listen");
   if (replay) replay.disabled = localListenCuePending;
 }
+const LOCAL_LISTEN_CUE_TIMEOUT_MS = 35000;
+let localListenCueTimer = 0;
 function playLocalListenCue(question) {
   const token = ++localListenCueToken;
   const epoch = battleEpoch;
   setLocalListenCuePending(true);
+  // 與線上相同：播放卡住時安全解鎖，避免字盤永遠鎖住
+  clearTimeout(localListenCueTimer);
+  localListenCueTimer = setTimeout(() => {
+    if (!battleOpen || epoch !== battleEpoch || token !== localListenCueToken || !localListenCuePending) return;
+    localListenCueToken += 1;
+    setLocalListenCuePending(false);
+    for (const player of [1, 2]) boards[player]?.setFeedback("音訊逾時；請按『再聽』重試。", "bad");
+  }, LOCAL_LISTEN_CUE_TIMEOUT_MS);
   Promise.resolve().then(() => speakQuestionAudio(question)).then((played) => {
     if (!battleOpen || epoch !== battleEpoch || token !== localListenCueToken) return;
+    clearTimeout(localListenCueTimer);
     setLocalListenCuePending(false);
     if (!played) for (const player of [1, 2]) boards[player]?.setFeedback("音訊未能播放；請按『再聽』重試。", "bad");
   }).catch(() => {
     if (!battleOpen || epoch !== battleEpoch || token !== localListenCueToken) return;
+    clearTimeout(localListenCueTimer);
     setLocalListenCuePending(false);
     for (const player of [1, 2]) boards[player]?.setFeedback("音訊載入失敗；請按『再聽』重試。", "bad");
   });
@@ -2083,13 +2102,37 @@ async function resolveListenRoundWin(player) {
   loadSharedListenRound(true);
 }
 
-function tickBattleClock() {
-  if (!battleOpen) return;
+function renderBattleClock() {
   const sec = (performance.now() - battleStartedAt) / 1000;
   const el = $("battle-timer");
   if (el) el.textContent = sec.toFixed(1) + "s";
-  timerRaf = requestAnimationFrame(tickBattleClock);
 }
+function tickBattleClock() {
+  stopBattleClock();
+  if (!battleOpen) return;
+  renderBattleClock();
+  // 畫面只顯示 0.1 秒，100ms 更新即可，不必每幀寫 DOM
+  timerRaf = setInterval(function () {
+    if (!battleOpen) { stopBattleClock(); return; }
+    if (!document.hidden) renderBattleClock();
+  }, 100);
+}
+function stopBattleClock() {
+  if (timerRaf) clearInterval(timerRaf);
+  timerRaf = 0;
+}
+// 本機對戰：分頁隱藏時回血暫停，時鐘也一併暫停（線上以伺服器時間為準，不調整）
+let battleClockHiddenAt = 0;
+document.addEventListener("visibilitychange", function () {
+  if (document.hidden) {
+    battleClockHiddenAt = performance.now();
+    return;
+  }
+  if (battleClockHiddenAt && battleOpen && !window.KanaBattleOnline?.isActive()) {
+    battleStartedAt += performance.now() - battleClockHiddenAt;
+  }
+  battleClockHiddenAt = 0;
+});
 
 function showDmgFloat(player, dmg, hitIndex) {
   const el = $("dmg" + player);
@@ -2137,7 +2180,8 @@ function enqueueAttack(fn) {
 
 async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
   const actionEpoch = battleEpoch;
-  if (!battleOpen) return false;
+  // 攻擊者已倒下（例如答錯自傷）：丟棄佇列中的攻擊，由其後的敗北演出接手
+  if (!battleOpen || hp[player] <= 0) return false;
   const foe = player === 1 ? 2 : 1;
   const def = $("fighter" + foe);
   const atk = $("fighter" + player);
@@ -2203,7 +2247,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
   const parts = splitComboDamage(resolvedDamage, hits);
   setFighterPose(foe, "hit");
   for (let i = 0; i < parts.length; i++) {
-    if (!battleOpen || actionEpoch !== battleEpoch || hp[foe] <= 0) break;
+    if (!battleOpen || actionEpoch !== battleEpoch || hp[foe] <= 0 || hp[player] <= 0) break;
     const hitNo = i + 1;
     const sfxNo = Math.min(hitNo, 5);
     const partDmg = parts[i];
@@ -2242,7 +2286,7 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     await wait(230 + Math.min(hitNo, 5) * 18);
     if (!battleOpen || actionEpoch !== battleEpoch) return false;
     def.classList.remove("hit", "hit-strong", "block-absorb");
-    if (hp[foe] <= 0) break;
+    if (hp[foe] <= 0 || hp[player] <= 0) break;
     await wait(28);
   }
 
@@ -2254,12 +2298,14 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     updatePlayerMeters(foe);
   }
 
-  if (willReflect) {
+  let lethalReflect = false;
+  if (willReflect && hp[player] > 0) {
     reflectReady[foe] = false;
     const actualDamage = Math.max(0, hpBeforeAttack - hp[foe]);
     const reflectedDamage = Math.round(actualDamage * REFLECT_DAMAGE_RATIO);
     if (reflectedDamage > 0) {
       hp[player] = Math.max(0, hp[player] - reflectedDamage);
+      lethalReflect = hp[player] <= 0;
       updateHpUi();
       updatePlayerMeters(player);
       showDmgFloat(player, reflectedDamage, 1);
@@ -2275,14 +2321,16 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     setFighterPose(foe, "idle");
   }
 
-  if (hp[foe] <= 0 && hp[player] <= 0) {
+  if (lethalReflect && hp[foe] <= 0) {
     await finishBattleDraw("平手 · 霜返造成雙方同時倒下");
     return true;
   }
-  if (hp[player] <= 0) {
+  if (lethalReflect) {
     await finishBattleDefeat(player, foe, "反彈決勝");
     return true;
   }
+  // 攻擊者在演出中答錯自傷倒下且對手仍站著：停止結算，佇列中的自傷敗北接手
+  if (hp[player] <= 0 && hp[foe] > 0) return false;
   if (hp[foe] <= 0) {
     await finishBattleDefeat(
       foe,
@@ -2409,7 +2457,7 @@ function battleSubmit(player) {
 }
 
 function battleFireAttack(player) {
-  if (!battleOpen) return;
+  if (!battleOpen || hp[player] <= 0) return;
   if (isListenBattle()) {
     boards[player]?.setFeedback("聽力搶答由系統自動攻擊", "bad");
     return;
@@ -2546,8 +2594,9 @@ bindTap($("btn-home-b"), () => {
     window.KanaBattleOnline.leaveBattle();
     return;
   }
-  stopTts(); stopBattleBgm(); hideSpecialStage(); cancelAllDrags(); clearBattleFx();
-  battleOpen = false; battleEpoch += 1; cancelAnimationFrame(timerRaf);
+  stopTts(); stopVoice(); stopBattleBgm(); hideSpecialStage(); cancelAllDrags(); clearBattleFx();
+  stopRegen(1); stopRegen(2);
+  battleOpen = false; battleEpoch += 1; stopBattleClock();
   document.querySelector(".duel-stage")?.classList.remove("listen-mode");
   $("btn-battle-listen")?.classList.add("hidden");
   showScreen("start");
@@ -2571,11 +2620,14 @@ document.querySelectorAll(".btn-again-home").forEach((btn) => {
     cancelAllDrags();
     stopBattleBgm();
     stopTts();
+    stopVoice();
+    stopRegen(1);
+    stopRegen(2);
     hideSpecialStage();
     clearBattleFx();
     battleOpen = false;
     battleEpoch += 1;
-    cancelAnimationFrame(timerRaf);
+    stopBattleClock();
     document.querySelector(".duel-stage")?.classList.remove("listen-mode");
     $("btn-battle-listen")?.classList.add("hidden");
     readyP1 = false;

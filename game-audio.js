@@ -288,6 +288,7 @@ async function loadQuestionAudioManifest() {
   if (!manifest) questionAudioManifestPromise = null;
   return manifest;
 }
+const QUESTION_AUDIO_TIMEOUT_MS = 8000;
 async function prepareQuestionAudio(question) {
   if (!question?.id) return null;
   if (questionAudioBufferCache.has(question.id)) {
@@ -297,17 +298,27 @@ async function prepareQuestionAudio(question) {
     return cached;
   }
   if (questionAudioPending.has(question.id)) return questionAudioPending.get(question.id);
-  const pending = (async () => {
+  // 下載＋解碼整段設逾時；逾時或失敗回傳 null，讓 HTML 音檔／雲端 TTS 接手
+  const signal = typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(QUESTION_AUDIO_TIMEOUT_MS) : undefined;
+  const work = (async () => {
     const manifest = await loadQuestionAudioManifest();
     const record = manifest?.get(question.id);
     if (!record?.file) return null;
     const ctx = await ensureAudioCtx();
     if (!ctx) return null;
-    const response = await fetch(record.file);
+    const response = await fetch(record.file, signal ? { signal } : undefined);
     if (!response.ok) return null;
     const buffer = await ctx.decodeAudioData(await response.arrayBuffer());
     return rememberQuestionBuffer(question.id, buffer);
-  })().catch(() => null).finally(() => questionAudioPending.delete(question.id));
+  })();
+  let timer = 0;
+  const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(null), QUESTION_AUDIO_TIMEOUT_MS); });
+  const pending = Promise.race([work, timeout]).catch(() => null).finally(() => {
+    clearTimeout(timer);
+    if (questionAudioPending.get(question.id) === pending) questionAudioPending.delete(question.id);
+  });
+  work.catch(() => {});
   questionAudioPending.set(question.id, pending);
   return pending;
 }

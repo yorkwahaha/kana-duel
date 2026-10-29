@@ -3,7 +3,7 @@
 /* global battleStartedAt:writable, charge:writable, combo:writable, gaugeHits:writable, hp:writable, showAnswerGain */
 /* global attackBoost:writable, blockReady:writable, dodgeChance:writable, mistakeGuardReady:writable, reflectReady:writable, regenState:writable */
 /* global pickP1:writable, pickP2:writable, gameMode:writable, playerQi:writable, sharedQi:writable */
-/* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, timerRaf */
+/* global listenRoundClaimed:writable, battleStats:writable, attackQueue:writable, stopBattleClock */
 /* global bindTap, cancelAllDrags, clearBattleFx, hideSpecialStage, noteQuestionOpen */
 /* global getSessionToken, preloadBattleSfx, prepareQuestionAudio, primeBattleAudio, scheduleQuestionAudio, speakQuestionAudio */
 /* global fxThemeOf, playAttackBolt, playBlockActivate, playCastBurst, playHitSfx, playSfx, setFighterPose, setResultScreen */
@@ -19,6 +19,9 @@
   let room = null;
   let active = false;
   let lastEventId = 0;
+  // 伺服器已扣、畫面尚未播出的傷害；血條先停在舊值，隨動畫逐擊扣到伺服器值
+  let hpDebt = { 1: 0, 2: 0 };
+  let serverHp = { 1: MAX_HP, 2: MAX_HP };
   let hasReceivedRoomSnapshot = false;
   let localQuestionId = "";
   let lastListenCueSeq = 0;
@@ -294,7 +297,8 @@
     const mine = room.battle.fighters?.[localSeat()];
     const foe = room.battle.fighters?.[remoteSeat()];
     if (!mine || !foe) return;
-    hp = { 1: mine.hp, 2: foe.hp };
+    serverHp = { 1: mine.hp, 2: foe.hp };
+    hp = { 1: shownHpOf(1), 2: shownHpOf(2) };
     charge = { 1: mine.charge, 2: foe.charge };
     combo = { 1: mine.combo, 2: foe.combo };
     gaugeHits = { 1: mine.gauge, 2: foe.gauge };
@@ -328,6 +332,7 @@
     active = true;
     battleResultShown = false;
     lastEventId = 0;
+    resetHpDebt();
     localQuestionId = "";
     lastListenCueSeq = 0;
     clearListenCueGate();
@@ -361,7 +366,7 @@
     showScreen("battle");
     syncBattleState();
     battleStartedAt = performance.now() - Math.max(0, Number(room.serverNow) - Number(room.battle.startedAt));
-    cancelAnimationFrame(timerRaf); tickBattleClock();
+    tickBattleClock();
     startBattleBgm().catch(() => {});
   }
 
@@ -425,6 +430,36 @@
     }, prefersReducedMotion() ? 600 : 3000);
   }
 
+  function shownHpOf(player) {
+    return Math.min(MAX_HP, Math.max(0, (serverHp[player] || 0) + (hpDebt[player] || 0)));
+  }
+  function addHpDebt(player, amount) {
+    const value = Math.max(0, Number(amount) || 0);
+    if (!value) return;
+    hpDebt[player] += value;
+    hp[player] = shownHpOf(player);
+    updateHpUi();
+  }
+  // 動畫逐擊扣血；債務清空時對齊伺服器血量
+  function payHpDebt(player, amount) {
+    const value = Math.min(hpDebt[player] || 0, Math.max(0, Number(amount) || 0));
+    hpDebt[player] -= value;
+    hp[player] = shownHpOf(player);
+    updateHpUi();
+    updatePlayerMeters(player);
+  }
+  function resetHpDebt() {
+    hpDebt = { 1: 0, 2: 0 };
+  }
+  function settleHpDebt() {
+    if (!hpDebt[1] && !hpDebt[2]) return;
+    resetHpDebt();
+    hp = { 1: shownHpOf(1), 2: shownHpOf(2) };
+    updateHpUi();
+    updatePlayerMeters(1);
+    updatePlayerMeters(2);
+  }
+
   function displaySeat(serverSeat) { return serverSeat === localSeat() ? 1 : 2; }
 
   function pulseDeviceImpact(heavy = false) {
@@ -434,13 +469,18 @@
 
   function queueOnlineAnimation(task) {
     const queuedEpoch = battleEpoch;
-    attackQueue = Promise.resolve(attackQueue).then(() => {
+    const queued = Promise.resolve(attackQueue).then(() => {
       if (!active || queuedEpoch !== battleEpoch) return false;
       return task(queuedEpoch);
     }).catch((error) => {
       console.error("Online battle animation failed", error);
       return false;
+    }).then((result) => {
+      // 佇列播完（或中途失敗）時結清剩餘傷害，血條對齊伺服器值
+      if (attackQueue === queued && queuedEpoch === battleEpoch) settleHpDebt();
+      return result;
     });
+    attackQueue = queued;
     return attackQueue;
   }
 
@@ -450,6 +490,7 @@
     setFighterPose(player, "hit");
     playHitSfx(Math.min(5, wrong));
     showDmgFloat(player, event.damage, wrong);
+    payHpDebt(player, event.damage);
     spawnHitBurst(fighter, fxThemeOf(player === 1 ? 2 : 1), wrong + 1);
     shakeBattle(wrong >= 2);
     pulseDeviceImpact(wrong >= 2);
@@ -470,6 +511,7 @@
     const theme = fxThemeOf(player);
     const hits = Math.max(1, Math.min(Number(event.hits) || 1, MAX_ATTACK_SEGMENTS));
     const parts = splitComboDamage(Math.max(1, Number(event.damage) || 1), hits);
+    let foeDebtLeft = event.dodged ? 0 : Math.max(0, Number(event.damage) || 0);
     const comboSize = event.hits >= 5 ? "lg" : event.hits >= 3 ? "md" : "sm";
     showCombo(`${event.special ? "大招" : "攻擊"} · ${event.hits} COMBO`, comboSize);
     playSfx("skillpop", 0.48);
@@ -507,6 +549,9 @@
       const hitNo = index + 1;
       playHitSfx(Math.min(hitNo, 5));
       showDmgFloat(foe, parts[index], hitNo);
+      const paid = Math.min(foeDebtLeft, parts[index]);
+      foeDebtLeft -= paid;
+      payHpDebt(foe, paid);
       if (event.guarded) spawnBlockParry(defender, hitNo === 1 || hitNo === parts.length);
       else spawnHitBurst(defender, theme, hitNo + (event.special ? 2 : 0));
       if (!event.special) {
@@ -522,6 +567,7 @@
     defender?.classList.remove("hit", "hit-strong", "block-absorb");
     if (event.reflected && event.reflectedDamage > 0) {
       showDmgFloat(player, event.reflectedDamage, 1);
+      payHpDebt(player, event.reflectedDamage);
       showEffectForBoth(foe, "霜返 " + event.reflectedDamage + " 傷害", "反彈傷害 −" + event.reflectedDamage, "bad");
       playHitSfx(2);
     }
@@ -542,10 +588,13 @@
       showWordReveal(player, questionById(event.questionId));
       playSfx("skillpop", 0.4);
     } else if (event.type === "miss") {
+      addHpDebt(player, event.damage);
       boards[player]?.setFeedback(`${player === 1 ? "答錯" : "對手答錯"} · -${event.damage}${event.protectedMiss ? " · COMBO 保留" : ""}`, "bad");
       queueOnlineAnimation((actionEpoch) => animateMiss(event, player, actionEpoch));
     } else if (event.type === "attack") {
       const foe = displaySeat(event.foeSeat);
+      if (!event.dodged) addHpDebt(foe, event.damage);
+      if (event.reflected) addHpDebt(player, event.reflectedDamage);
       if (event.automatic && event.questionId) {
         const question = questionById(event.questionId);
         showWordReveal(1, question);
@@ -692,7 +741,7 @@
         active = false;
         battleOpen = false;
         battleEpoch += 1;
-        cancelAnimationFrame(timerRaf);
+        stopBattleClock();
         stopBattleBgm();
         pauseOverlay(false);
         clearListenCueGate();
@@ -713,7 +762,7 @@
     active = false;
     battleOpen = false;
     battleEpoch += 1;
-    cancelAnimationFrame(timerRaf);
+    stopBattleClock();
     stopBattleBgm(); stopCharacterSelectBgm(); stopTts(); hideSpecialStage(); clearBattleFx(); cancelAllDrags();
     pauseOverlay(false);
     clearListenCueGate();

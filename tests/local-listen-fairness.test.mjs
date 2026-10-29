@@ -53,6 +53,8 @@ function makeLocalBattle() {
     playerQ: () => ({ id: "inu", kanaSequence: ["い", "ぬ"] }),
     speakQuestionAudio: () => new Promise(resolve => speech.push(resolve)),
     Promise,
+    setTimeout,
+    clearTimeout,
   };
   vm.createContext(context);
   vm.runInContext(source.slice(start, end), context);

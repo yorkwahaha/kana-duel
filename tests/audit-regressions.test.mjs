@@ -215,7 +215,7 @@ test("successful answer advances only with the board and cannot be disrupted dur
   const noop = () => {};
   const pending = [];
   const b = { slots: [{}], locked: false, markSlots: () => 0, lockGold() { this.locked = true; }, setFeedback: noop };
-  const context = functions(["battleSubmit", "battleActivateUnique"], { battleOpen: true, battleEpoch: 1, boards: { 1: b, 2: { setFeedback: noop } },
+  const context = functions(["battleSubmit", "battleActivateUnique", "battleActionBlocked"], { battleOpen: true, localListenCuePending: false, battleEpoch: 1, boards: { 1: b, 2: { setFeedback: noop } },
     hp: { 1: 2400 }, submitCooldownUntil: {}, nowMs: () => 1000, playerQ: () => ({ kanaSequence: ["あ"] }), isListenBattle: () => false,
     combo: { 1: 0 }, gaugeHits: { 1: 0 }, charge: { 1: 0 }, calcChargeGain: () => 1, noteCorrectAnswer: noop,
     playSfx: noop, showAnswerGain: noop, updatePlayerMeters: noop, showWordReveal: noop, playerQi: { 1: 0 },

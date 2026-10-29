@@ -22,23 +22,40 @@ window.KanaLearning = (() => {
     out.hints = typeof raw.hints === "boolean" ? raw.hints : true;
     return out;
   }
-  let raw = {};
-  try {
-    const text = window.localStorage.getItem(KEY);
-    if (text && text.length < 150000) raw = JSON.parse(text) || {};
-  } catch {}
-  let data = { settings: normalizeSettings(raw.settings || {}), days: {}, wrong: {}, daily: [] };
-  for (const day of Object.keys(raw.days || {}).filter(validDay).sort().slice(-90)) {
-    const value = raw.days[day] || {};
-    const attempts = count(value.attempts);
-    const correct = Math.min(attempts, count(value.correct));
-    data.days[day] = { attempts, correct, maxStreak: Math.min(correct, count(value.maxStreak)), totalMs: count(value.totalMs, 864000000) };
+  // 從 localStorage 解析；讀取失敗回傳 null（保留記憶體內資料）
+  function readStored() {
+    let raw = {};
+    try {
+      const text = window.localStorage.getItem(KEY);
+      if (text && text.length < 150000) raw = JSON.parse(text) || {};
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) return null;
+    }
+    return parseStored(raw);
   }
-  for (const id of Object.keys(raw.wrong || {}).filter((id) => knownIds.has(id))) {
-    const value = raw.wrong[id];
-    if (value && validDay(value.due)) data.wrong[id] = { due: value.due, level: count(value.level, 4) };
+  function parseStored(raw) {
+    const data = { settings: normalizeSettings(raw.settings || {}), days: {}, wrong: {}, daily: [] };
+    for (const day of Object.keys(raw.days || {}).filter(validDay).sort().slice(-90)) {
+      const value = raw.days[day] || {};
+      const attempts = count(value.attempts);
+      const correct = Math.min(attempts, count(value.correct));
+      data.days[day] = { attempts, correct, maxStreak: Math.min(correct, count(value.maxStreak)), totalMs: count(value.totalMs, 864000000) };
+    }
+    for (const id of Object.keys(raw.wrong || {}).filter((id) => knownIds.has(id))) {
+      const value = raw.wrong[id];
+      if (value && validDay(value.due)) data.wrong[id] = { due: value.due, level: count(value.level, 4) };
+    }
+    data.daily = Array.isArray(raw.daily) ? [...new Set(raw.daily.filter(validDay))].sort().slice(-90) : [];
+    return data;
   }
-  data.daily = Array.isArray(raw.daily) ? [...new Set(raw.daily.filter(validDay))].sort().slice(-90) : [];
+  let data = readStored() || parseStored({});
+  // 修改前先重讀，避免多個分頁互相覆蓋（localStorage 為同步存取）
+  function reload() {
+    // 上次寫入失敗時，記憶體才是最新資料，不可被舊的儲存內容蓋掉
+    if (!storageAvailable) return;
+    const next = readStored();
+    if (next) data = next;
+  }
   let streak = 0;
   let storageAvailable = true;
   function save() {
@@ -50,6 +67,7 @@ window.KanaLearning = (() => {
   }
   function recordAttempt(id, correct, ms = 0, day = localDay()) {
     if (!knownIds.has(id) || !validDay(day)) return;
+    reload();
     const stat = data.days[day] ||= { attempts: 0, correct: 0, maxStreak: 0, totalMs: 0 };
     stat.attempts += 1;
     if (correct) {
@@ -80,7 +98,9 @@ window.KanaLearning = (() => {
     return [...knownIds].sort((a, b) => score(a) - score(b) || a.localeCompare(b)).slice(0, 10);
   }
   function completeDaily(day = localDay()) {
-    if (!validDay(day) || data.daily.includes(day)) return;
+    if (!validDay(day)) return;
+    reload();
+    if (data.daily.includes(day)) return;
     data.daily.push(day);
     save();
   }
@@ -172,8 +192,14 @@ window.KanaLearning = (() => {
     });
     refresh();
   }
-  const api = { settings: () => ({ ...data.settings }), setSettings(value) { data.settings = normalizeSettings({ ...data.settings, ...value }); save(); },
+  const api = { settings: () => ({ ...data.settings }), setSettings(value) { reload(); data.settings = normalizeSettings({ ...data.settings, ...value }); save(); },
     localDay, recordAttempt, dueIds, dailyIds, completeDaily, summary, beginSession() { streak = 0; }, refresh };
   window.addEventListener?.("DOMContentLoaded", init, { once: true });
+  // 其他分頁寫入時同步重載
+  window.addEventListener?.("storage", (event) => {
+    if (event.key !== KEY && event.key !== null) return;
+    reload();
+    refresh();
+  });
   return api;
 })();
