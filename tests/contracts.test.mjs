@@ -255,7 +255,7 @@ test("online room entry and battle interception stay wired", () => {
   assert.match(online, /room\.currentQuestionId/);
   assert.match(online, /scheduleQuestionAudio\(question, \{ delayMs \}\)/);
   assert.match(online, /playHitSfx\(Math\.min\(hitNo, 5\)\)/);
-  assert.match(online, /shakeBattle\(event\.special \|\| hitNo >= 3/);
+  assert.match(online, /if \(event\.special\) shakeBattle\(true\);/);
   assert.match(online, /await playSpecialUltimate\(player\)/);
   assert.doesNotMatch(online, /room\.questionIds/);
   assert.match(css, /body\.online-battle \.duel-half\.p2 \{\s*transform: none/);

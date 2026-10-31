@@ -2441,7 +2441,7 @@ input:focus-visible,
   text-shadow: 0 0 28px rgba(224,184,74,0.75), 0 0 48px rgba(255,120,40,0.35), 0 6px 20px rgba(0,0,0,0.5);
 }
 @media (prefers-reduced-motion: reduce) {
-  .fx-bolt, .fx-orb, .fx-orb-trail, .fx-slash, .fx-ring, .fx-spark, .fx-cast, .fx-bloom, .fx-flash, .fx-flame, .fx-crystal, .fx-zap, .fx-inkblot, .fx-ink-stroke, .fx-pillar, .fx-frost-ring, .fx-chain, .fx-gale, .fx-wind-arc, .fx-shadow, .fx-dagger, .fx-ofuda, .fx-seal-stamp, .fx-crescent, .fx-light-ring, .fx-block-ring, .fx-block-spark, .fx-block-clang, .fx-block-flash, .fx-shield, .special-aftermath { animation: none !important; opacity: 0 !important; }
+  .fx-bolt, .fx-orb, .fx-orb-trail, .fx-slash, .fx-ring, .fx-spark, .fx-cast, .fx-bloom, .fx-flash, .fx-flame, .fx-crystal, .fx-zap, .fx-inkblot, .fx-ink-stroke, .fx-pillar, .fx-frost-ring, .fx-chain, .fx-gale, .fx-wind-arc, .fx-shadow, .fx-dagger, .fx-ofuda, .fx-seal-stamp, .fx-crescent, .fx-light-ring, .fx-block-ring, .fx-block-spark, .fx-block-clang, .fx-block-flash, .fx-shield, .special-aftermath, .hit-flash { animation: none !important; opacity: 0 !important; }
   .word-reveal { animation: none !important; opacity: 1 !important; transform: translate(-50%, 0) !important; }
   .answer-gain-float { animation: none !important; opacity: 1 !important; transform: translate(-50%, 0) !important; }
   .duel-stage.fx-shake, .duel-stage.fx-shake-lg { animation: none !important; }

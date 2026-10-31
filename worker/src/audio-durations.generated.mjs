@@ -26,7 +26,7 @@ export const QUESTION_AUDIO_DURATION_MS = Object.freeze({
   "bankai": 862,
   "bareebooru": 1045,
   "basu": 705,
-  "basuketto": 1123,
+  "basuke": 862,
   "beddo": 810,
   "bengoshi": 888,
   "benkyou": 888,

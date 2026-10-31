@@ -236,6 +236,8 @@
         // 聽音題即使關閉干擾字，也不能先把完整答案當作唯一字池。
         noDistractors: room.config.mode !== "listen" && !room.config.distractors,
         distractorDelta: extraDistractors,
+        listen: room.config.mode === "listen",
+        romajiOverride: localQ.romajiOverride,
       });
       boards[1].locked = document.body.classList.contains("listen-cue-pending");
       $("board1")?.classList.toggle("locked", boards[1].locked);
@@ -554,10 +556,12 @@
       payHpDebt(foe, paid);
       if (event.guarded) spawnBlockParry(defender, hitNo === 1 || hitNo === parts.length);
       else spawnHitBurst(defender, theme, hitNo + (event.special ? 2 : 0));
-      if (!event.special) {
+      // 連段只在最後一擊補軌跡（第 1 擊已在開場播放），減少同時存在的動畫節點。
+      if (!event.special && hitNo > 1 && hitNo === parts.length) {
         playAttackBolt(player, foe, theme, hitNo >= 3 || hitNo === parts.length);
       }
-      shakeBattle(event.special || hitNo >= 3 || hitNo === parts.length);
+      // 普攻不震畫面，只有大招才震。
+      if (event.special) shakeBattle(true);
       pulseDeviceImpact(event.special || hitNo === parts.length);
       defender?.classList.remove("hit", "hit-strong", "block-absorb");
       void defender?.offsetWidth;

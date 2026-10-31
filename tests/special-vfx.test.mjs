@@ -21,7 +21,7 @@ test("all eight ultimates keep a cast video and land as a dedicated particle aft
     assert.match(css, new RegExp(`\\.ultimate-particle--${hero}\\b`), `${hero}: missing material-specific particles`);
   }
 
-  assert.match(html, /special-vfx\.css\?v=20261030/);
+  assert.match(html, /special-vfx\.css\?v=20261031/);
   assert.match(vfx, /el\.replaceChildren\(buildSpecialAftermath\(resolvedTheme\)\)/);
   assert.match(vfx, /scene\.appendChild\(buildUltimateAttack\(themeId\)\)/);
   assert.match(vfx, /addUltimateParticles\(scene, themeId\)/);
@@ -42,9 +42,9 @@ test("special attacks do not fall back to the basic bolt after their full-screen
   const onlineSpecialStart = online.indexOf("if (event.special) {");
   const onlineSpecialEnd = online.indexOf("} else {", onlineSpecialStart);
 
-  assert.match(local, /if \(!isSpecial\) \{\s*playAttackBolt\(player, foe, atkTheme/);
+  assert.match(local, /if \(!isSpecial && hitNo > 1 && hitNo === hits\) \{\s*playAttackBolt\(player, foe, atkTheme/);
   assert.doesNotMatch(local, /大招開場連射兩道/);
   assert.doesNotMatch(local.slice(localSpecialStart, localSpecialEnd), /playAttackBolt/);
-  assert.match(online, /if \(!event\.special\) \{\s*playAttackBolt\(player, foe, theme/);
+  assert.match(online, /if \(!event\.special && hitNo > 1 && hitNo === parts\.length\) \{\s*playAttackBolt\(player, foe, theme/);
   assert.doesNotMatch(online.slice(onlineSpecialStart, onlineSpecialEnd), /playAttackBolt/);
 });

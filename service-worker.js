@@ -1,15 +1,15 @@
 /* global self, caches, Response */
 // Change VERSION whenever shell files change; activation waits for old tabs to close.
-const VERSION = "20261030-1";
+const VERSION = "20261031-1";
 const PREFIX = "kana-duel-";
 const SHELL_CACHE = `${PREFIX}${VERSION}-shell`;
 const MEDIA_CACHE = `${PREFIX}${VERSION}-media`;
 const scopeUrl = new URL(self.registration.scope);
-const scriptVersion = "20261030";
+const scriptVersion = "20261031";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "assets/cover.png", "assets/icons/icon-192.png", "assets/icons/icon-512.png",
   "assets/audio/questions/manifest.json", `styles.css?v=${scriptVersion}`, `special-vfx.css?v=${scriptVersion}`,
   ...["questions-data", "questions-expansion-data", "game-content", "game-audio", "game-vfx", "online", "game", "game-online"].map((name) => `${name}.js?v=${scriptVersion}`),
-  "game-learning.js?v=20261030", "pwa.js?v=20261030",
+  "game-learning.js?v=20261031", "pwa.js?v=20261031",
   ...["ao", "rin", "ya", "go", "ran", "gen", "sho", "yo"].map((name) => `assets/characters/${name}.webp`),
 ].map((path) => new URL(path, scopeUrl).href);
 

@@ -231,10 +231,13 @@ function romajiOfKana(kana) {
   if (KANA_ROMAJI[kana]) return KANA_ROMAJI[kana];
   return kana;
 }
-function romajiSequence(seq) {
+function romajiSequence(seq, override) {
   const out = [];
   (seq || []).forEach((kana, i) => {
-    if (kana === "っ" || kana === "ッ") {
+    if (Array.isArray(override) && override[i]) {
+      // 題目可逐格覆寫讀音（例：句尾助詞「は」讀 wa）。
+      out.push(override[i]);
+    } else if (kana === "っ" || kana === "ッ") {
       const next = romajiOfKana(seq[i + 1] || "");
       out.push(next.startsWith("ch") ? "t" : (/^[bcdfghjklmpqrstvwxyz]/.test(next) ? next[0] : "促音"));
     } else if (kana === "ー") {
@@ -285,10 +288,40 @@ function nearDistractors(k) {
     ミャ:["ミュ","ミ"],ミュ:["ミョ","ミ"],ミョ:["ミュ","ミ"],
     リャ:["リュ","リ"],リュ:["リョ","リ","ユ"],リョ:["リュ","リ","ヨ"],
     フィ:["ヒ","フ","ピ"],ファ:["ハ","フ"],フェ:["ヘ","フ"],フォ:["ホ","フ"],
-    ヴァ:["バ","ワ"],ヴィ:["ビ","イ"],ヴェ:["ベ","エ"],ヴォ:["ボ","オ"],
+    ヴァ:["バ","ワ"],ヴィ:["ビ","イ"],ヴェ:["ベ","エ"],ヴォ:["ボ","オ"],ヴ:["ブ","ウ"],
+    ゲ:["ケ","ゴ","ガ"],ザ:["サ","ジ","ダ"],ジ:["シ","チ","ギ"],ズ:["ス","ツ","ヌ"],ゼ:["セ","ジ","デ"],ゾ:["ソ","ド"],
+    ダ:["タ","ラ","ナ"],デ:["テ","ド","レ"],ド:["ト","ロ","デ"],
+    バ:["ハ","パ","ボ"],ビ:["ヒ","ピ","ジ"],ブ:["フ","プ","ム"],ベ:["ヘ","ペ"],ボ:["ホ","ポ","モ"],
+    パ:["ハ","バ","ポ"],ピ:["ヒ","ビ"],プ:["フ","ブ"],ペ:["ヘ","ベ"],ポ:["ホ","ボ"],ヲ:["オ","モ"],
+    ギャ:["ギュ","ギ","ヤ"],ギュ:["ギョ","ギ"],ギョ:["ギュ","ギ","ヨ"],
+    ビャ:["ビュ","ビ"],ビュ:["ビョ","ビ"],ビョ:["ビュ","ビ","ヨ"],
+    ピャ:["ピュ","ピ"],ピュ:["ピョ","ピ"],ピョ:["ピュ","ピ","ヨ"],
+    びゃ:["びゅ","び","や"],びゅ:["びょ","び","ゆ"],びょ:["びゅ","び","よ"],
+    ぴゃ:["ぴゅ","ぴ","や"],ぴゅ:["ぴょ","ぴ","ゆ"],ぴょ:["ぴゅ","ぴ","よ"],
+    ティ:["テ","チ","ディ"],ディ:["デ","ジ","ティ"],トゥ:["ト","ツ"],ドゥ:["ド","ズ"],
+    チェ:["チ","シェ","テ"],シェ:["シ","セ","ジェ"],ジェ:["ジ","ゼ","シェ"],
+    ウィ:["ウ","イ"],ウェ:["ウ","エ"],ウォ:["ウ","オ"],フュ:["フ","ヒュ"],
     ー:["う","ウ","っ"],
   };
   return (m[k] || []).filter((d, i, arr) => d && d !== k && arr.indexOf(d) === i);
+}
+const KANA_SOUND_ALIAS = { を:"o", ヲ:"o", ぢ:"ji", ヂ:"ji", づ:"zu", ヅ:"zu", ウォ:"o" };
+function kanaSound(kana, override) {
+  if (override) return override;
+  return KANA_SOUND_ALIAS[kana] || romajiOfKana(kana);
+}
+function poolScriptOf(seq) {
+  let hira = false, kata = false;
+  (seq || []).forEach((k) => {
+    for (const ch of k) {
+      if (ch === "ー") continue;
+      if (ch >= "\u3041" && ch <= "\u309f") hira = true;
+      else if (ch >= "\u30a1" && ch <= "\u30ff") kata = true;
+    }
+  });
+  if (hira && !kata) return "hira";
+  if (kata && !hira) return "kata";
+  return "";
 }
 function buildPool(seq, distractorDelta = 0, opts = {}) {
   const correct = seq.map((kana, i) => ({ id: "c"+i+"_"+Math.random().toString(36).slice(2,5), kana, used: false }));
@@ -300,8 +333,21 @@ function buildPool(seq, distractorDelta = 0, opts = {}) {
   const extraN = Math.min(desiredExtras, Math.max(0, 12 - correct.length));
   const bag = new Set();
   seq.forEach((k) => nearDistractors(k).forEach((d) => bag.add(d)));
-  ["あ","い","う","ん","き","し","つ","よ"].forEach((d) => bag.add(d));
+  const script = poolScriptOf(seq);
+  (script === "kata" ? ["ア","イ","ウ","ン","キ","シ","ツ","ヨ"] : ["あ","い","う","ん","き","し","つ","よ"]).forEach((d) => bag.add(d));
   seq.forEach((k) => bag.delete(k));
+  // 純片假名題只放片假名干擾、純平假名題只放平假名干擾，避免一眼排除。
+  if (script) [...bag].forEach((d) => { if (poolScriptOf([d]) !== script) bag.delete(d); });
+  if (Array.isArray(opts.romajiOverride)) {
+    // 覆寫讀音的格（助詞は=wa）在任何模式都不放同音干擾字（わ），否則提示與字池互相矛盾。
+    const overridden = new Set(opts.romajiOverride.filter(Boolean));
+    [...bag].forEach((d) => { if (overridden.has(kanaSound(d))) bag.delete(d); });
+  }
+  if (opts.listen) {
+    // 聽力模式只能靠聲音：同音字（お/を、ず/づ、じ/ぢ、助詞は=わ…）不能當干擾字。
+    const sounds = new Set(seq.map((k, i) => kanaSound(k, opts.romajiOverride?.[i])));
+    [...bag].forEach((d) => { if (sounds.has(kanaSound(d))) bag.delete(d); });
+  }
   const extras = shuffle([...bag]).slice(0, extraN).map((kana, i) => ({ id: "d"+i+"_"+Math.random().toString(36).slice(2,5), kana, used: false }));
   return shuffle([...correct, ...extras]);
 }

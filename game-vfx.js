@@ -30,8 +30,23 @@ function fxThemeOf(player) {
 function fxLayer() { return $("fx-layer"); }
 let fxEpoch = 0;
 let shakeTimer = 0;
+// 手機（粗指標）減半粒子與折線段數，降低每擊的節點與濾鏡重繪量。
+const fxLiteQuery = (typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")) || null;
+function fxLite() { return !!fxLiteQuery?.matches; }
+// 同一影格內重複讀取同一角色座標時共用結果，避免每擊多次同步 layout。
+let fxRectCache = null;
+function fxRectOf(el) {
+  if (!fxRectCache) {
+    fxRectCache = new Map();
+    const clear = () => { fxRectCache = null; };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(clear); else setTimeout(clear, 16);
+  }
+  let r = fxRectCache.get(el);
+  if (!r) { r = el.getBoundingClientRect(); fxRectCache.set(el, r); }
+  return r;
+}
 function fxPoint(fighterEl, yRatio) {
-  const r = fighterEl.getBoundingClientRect();
+  const r = fxRectOf(fighterEl);
   return { x: r.left + r.width * 0.5, y: r.top + r.height * (yRatio == null ? 0.42 : yRatio) };
 }
 function styleFx(el, theme) {
@@ -297,10 +312,15 @@ function spawnHitBurst(fighterEl, theme, power) {
   const pt = fxPoint(fighterEl, 0.4);
   const heavy = power >= 4;
   const kind = theme.name || "ink";
+  if (prefersReducedMotion()) {
+    // 減少動態：不建立火花、光暈與全畫面閃光，只保留傷害數字（由 showDmgFloat 負責）。
+    return;
+  }
   spawnThemeShapes(layer, pt, theme, power);
   // 通用火花減少，讓專屬形狀更搶眼
   const lowSpark = kind === "ember" || kind === "seal" || kind === "light";
-  const sparkN = lowSpark ? (heavy ? 8 : 5) : (heavy ? 12 : 8);
+  const fullSparkN = lowSpark ? (heavy ? 8 : 5) : (heavy ? 12 : 8);
+  const sparkN = fxLite() ? Math.ceil(fullSparkN / 2) : fullSparkN;
   for (let i = 0; i < sparkN; i++) {
     const spark = document.createElement("i");
     spark.className = "fx-spark" + (heavy && i % 3 === 0 ? " lg" : "");
@@ -439,10 +459,8 @@ function spawnBlockParry(fighterEl, heavy) {
   spawnBlockSparks(layer, pt, heavy ? 16 : 10, heavy ? 3 : 0);
   spawnBlockClang(layer, pt, (Math.random() * 40 - 28) + "deg", false);
   if (heavy) spawnBlockClang(layer, pt, "72deg", true);
-  fighterEl.classList.remove("block-absorb");
-  void fighterEl.offsetWidth;
-  fighterEl.classList.add("block-absorb");
-  setTimeout(function () { fighterEl.classList.remove("block-absorb"); }, 340);
+  // block-absorb class 由 game.js applyAttack 逐擊加上／移除；這裡不再另設計時器，
+  // 避免上一擊的計時器提早拿掉下一擊剛加上的 class。
 }
 function addBoltLine(layer, a, b, theme, cls) {
   const dx = b.x - a.x;
@@ -461,7 +479,7 @@ function addBoltLine(layer, a, b, theme, cls) {
   return bolt;
 }
 function addZigZagBolt(layer, a, b, theme, cls) {
-  const segs = 6;
+  const segs = fxLite() ? 3 : 6;
   let prev = { x: a.x, y: a.y };
   for (let i = 1; i <= segs; i++) {
     const t = i / segs;
@@ -484,9 +502,14 @@ function playAttackBolt(fromPlayer, toPlayer, theme, heavy) {
     const fromEl = $("fighter" + fromPlayer);
     const toEl = $("fighter" + toPlayer);
     if (!layer || !fromEl || !toEl) { resolve(); return; }
+    const dur = heavy ? 460 : 320;
+    if (prefersReducedMotion()) {
+      // 減少動態：不畫飛行軌跡，只保留原本的節奏時間。
+      setTimeout(resolve, Math.round(dur * 0.5));
+      return;
+    }
     const a = fxPoint(fromEl, 0.4);
     const b = fxPoint(toEl, 0.4);
-    const dur = heavy ? 460 : 320;
     const kind = theme.name || "ink";
     const nx = -(b.y - a.y);
     const ny = b.x - a.x;

@@ -366,7 +366,7 @@ function createBoard(id, slotsId, poolId, feedbackId) {
     load(seq, opts) {
       cancelDragsForBoard(this.id);
       this.slots = seq.map(() => null);
-      this.promptRoma = opts?.showRomaji && (window.KanaLearning?.settings().hints ?? true) ? romajiSequence(seq) : null;
+      this.promptRoma = opts?.showRomaji && (window.KanaLearning?.settings().hints ?? true) ? romajiSequence(seq, opts?.romajiOverride) : null;
       const prompt = $("prompt" + this.id);
       if (prompt) {
         prompt.textContent = opts?.promptText || "";
@@ -374,6 +374,8 @@ function createBoard(id, slotsId, poolId, feedbackId) {
       }
       this.pool = buildPool(seq, opts?.distractorDelta || 0, {
         noDistractors: !!opts?.noDistractors,
+        listen: !!opts?.listen,
+        romajiOverride: opts?.romajiOverride,
       });
       this.locked = false;
       if (this.id === "1" || this.id === "2") $("board" + this.id)?.classList.remove("locked");
@@ -963,7 +965,7 @@ async function loadPracticeQuestion(autoSpeak) {
   if (!q) return;
   practiceOpenedAt = performance.now();
   practiceSegIndex = 0;
-  boards.practice.load(q.kanaSequence);
+  boards.practice.load(q.kanaSequence, { listen: true, romajiOverride: q.romajiOverride });
   $("progress-text").textContent = `${qi + 1} / ${QUESTIONS.length}`;
   $("progress-dots").innerHTML = "";
   results.forEach((r, i) => {
@@ -2003,6 +2005,8 @@ function loadPlayerQuestion(player, extraDistractors = 0, trackOpen = true) {
     showRomaji: !isListenBattle() && !isChineseRaceBattle(),
     promptText: isChineseRaceBattle() ? q.zh : "",
     noDistractors,
+    listen: isListenBattle(),
+    romajiOverride: q.romajiOverride,
     // 蒼的墨鎖即使在「無干擾」規則下仍會額外加入 3 字，總池維持 12 格上限。
     distractorDelta: extraDistractors,
   });
@@ -2268,7 +2272,8 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
     } else {
       spawnHitBurst(def, atkTheme, hitNo + (isSpecial ? 2 : 0));
     }
-    shakeBattle(hitNo >= 3 || isSpecial || hitNo === hits);
+    // 普攻不震畫面，只有大招才震（Hayato 的手感需求）。
+    if (isSpecial) shakeBattle(true);
     def.classList.remove("hit", "hit-strong", "block-absorb");
     void def.offsetWidth;
     if (guarded) def.classList.add("block-absorb");
@@ -2280,7 +2285,8 @@ async function applyAttack(player, dmg, isSpecial, hitCount, comboCount) {
       flash.classList.add("go");
     }
     // 普攻保留角色軌跡；大招已由影片後的專屬全畫面特效完成攻擊。
-    if (!isSpecial) {
+    // 連段只在第 1 擊與最後一擊補軌跡，減少同時存在的動畫節點（手機效能）。
+    if (!isSpecial && hitNo > 1 && hitNo === hits) {
       playAttackBolt(player, foe, atkTheme, hitNo >= 3 || hitNo === hits);
     }
     await wait(230 + Math.min(hitNo, 5) * 18);
